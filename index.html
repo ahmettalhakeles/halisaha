@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSK - KOLAY SAHA KIRALAMA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <h1>KSK</h1>
+            <p id="secretLogoTrigger" onclick="handleSecretLogoClick()" style="cursor: default;">KOLAY SAHA KIRALAMA</p>
+        </div>
+        
+        <div class="weather-container">
+            <div class="weather-title">AMASYA 7 GUNLUK HAVA TAHMINI</div>
+            <div class="weather-days" id="weatherDisplay">
+                </div>
+        </div>
+
+        <div class="header-actions">
+            <div id="userAuthSection" class="user-auth-zone">
+                <button class="nav-btn" onclick="openModal('loginModal')">GIRIS YAP</button>
+                <button class="nav-btn green-btn" onclick="openModal('registerModal')">KAYIT OL</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="fields-section">
+            <h2 class="section-title">HALISAHA SECIMI</h2>
+            <div class="fields-grid" id="fieldsGrid">
+                </div>
+        </section>
+
+        <section class="booking-section">
+            <h2 class="section-title">REZERVASYON PANELI</h2>
+            
+            <div id="placeholderText" class="placeholder-text">
+                ISLEM YAPMAK ICIN SOL TARAFDAN BIR HALISAHA SECINIZ.
+            </div>
+
+            <div id="bookingPanel" class="booking-panel">
+                <div id="authRequiredAlert" class="auth-alert-message">
+                    REZERVASYON YAPABILMEK ICIN LUFTEN KULLANICI GIRISI YAPIN
+                </div>
+                
+                <div class="form-group">
+                    <label for="datePicker">TARIH SECIN</label>
+                    <select id="datePicker" class="form-control" onchange="onDateOrFieldChange()"></select>
+                </div>
+
+                <p class="sub-label">MUSAIT MAC SAATLERI</p>
+                <div class="hours-grid" id="hoursGrid">
+                    </div>
+
+                <button id="submitBtn" class="action-btn" onclick="completeBooking()">REZERVASYON YAP</button>
+            </div>
+        </section>
+    </main>
+
+    <section class="forum-section">
+        <h2 class="section-title">OYUNCU ARAMA FORUMU</h2>
+        
+        <div class="forum-layout">
+            <div class="forum-form-container">
+                <h3>YENI OYUNCU ILANI OLUSTUR</h3>
+                <div class="form-group">
+                    <label>MAC TARIHI</label>
+                    <select id="forumDate" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>MAC SAATI</label>
+                    <select id="forumHour" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>ARANILAN MEVKI</label>
+                    <select id="forumPosition" class="form-control">
+                        <option value="KALECI">KALECI</option>
+                        <option value="DEFANS">DEFANS</option>
+                        <option value="ORTA SAHA">ORTA SAHA</option>
+                        <option value="FORVET">FORVET</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>UCRET DURUMU</label>
+                    <select id="forumPayment" class="form-control">
+                        <option value=" UCRET KARSILANACAK">UCRET KARSILANACAK</option>
+                        <option value=" UCRET KARSILANMAYACAK">UCRET KARSILANMAYACAK</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>KAPTAN TELEFON (WHATSAPP)</label>
+                    <input type="text" id="forumPhone" class="form-control" placeholder="5XXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>EKSTRA MESAJ</label>
+                    <textarea id="forumMessage" class="form-control" rows="2" placeholder="NOTUNUZU YAZIN"></textarea>
+                </div>
+                <button class="action-btn" onclick="createForumPost()">ILANI YAYINLA</button>
+            </div>
+
+            <div class="forum-wall">
+                <h3>AKTIF ILANLAR</h3>
+                <div class="posts-container" id="postsContainer">
+                    </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card mini-modal">
+            <div class="modal-header">
+                <h2>KULLANICI GIRISI</h2>
+                <button type="button" class="close-modal" onclick="closeModal('loginModal')">X</button>
+            </div>
+            <div class="form-group">
+                <label>MAIL ADRESI</label>
+                <input type="email" id="loginEmail" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>SIFRE</label>
+                <input type="password" id="loginPassword" class="form-control">
+            </div>
+            <button class="action-btn" onclick="handleUserLogin()">GIRIS YAP</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="registerModal">
+        <div class="modal-card mini-modal">
+            <form id="registerForm" onsubmit="handleUserRegister(event)">  
+                <div class="modal-header">
+                    <h2>KAYIT OL</h2>
+                    <button type="button" class="close-modal" onclick="closeModal('registerModal')">X</button>
+                </div>
+                <div class="form-group">
+                    <label>ISIM SOYISIM</label>
+                    <input type="text" id="regName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>TELEFON NUMARASI</label>
+                    <input type="text" id="regPhone" class="form-control" placeholder="5XXXXXXXXX" required>
+                </div>
+                <div class="form-group">
+                    <label>MAIL ADRESI</label>
+                    <input type="email" id="regEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>SIFRE</label>
+                    <input type="password" id="regPassword" class="form-control" required>
+                    <small class="help-text">EN AZ 6 HANELI, BUYUK HARF, RAKAM VE SEMBOL ICERMELIDIR.</small>
+                </div>
+                <button type="submit" class="action-btn">KAYIT OL</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="adminAuthModal">
+        <div class="modal-card mini-modal">
+            <div class="modal-header">
+                <h2>GUVENLI ISLETME GIRISI</h2>
+                <button type="button" class="close-modal" onclick="closeModal('adminAuthModal')">X</button>
+            </div>
+            <div class="form-group">
+                <label>ISLETME SIFRESI</label>
+                <input type="password" id="adminToken" class="form-control" placeholder="YONETILECEK SAHA ADI">
+            </div>
+            <button class="action-btn" onclick="handleAdminLogin()">PANELI AC</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="adminDashboardModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="adminPanelTitle">ISLETME YONETIM DASHBOARD</h2>
+                <button type="button" class="close-modal" onclick="closeModal('adminDashboardModal')">X</button>
+            </div>
+            
+            <div class="toggle-container">
+                <label class="switch">
+                    <input type="checkbox" id="fieldClosureToggle" onchange="toggleFieldClosure()">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-text"><strong>BUGUN KAPALIYIZ / BAKIM VAR MODU</strong></span>
+            </div>
+
+            <div class="admin-time-range">
+                <h3>CALISMA SAAT AYARLARI (24 SAAT ESNEK)</h3>
+                <div class="inline-inputs">
+                    <div class="flex-1">
+                        <label>ACILIS SAATI</label>
+                        <select id="adminOpeningHour" class="form-control" onchange="updateOperatingHours()"></select>
+                    </div>
+                    <div class="flex-1">
+                        <label>KAPANIS SAATI</label>
+                        <select id="adminClosingHour" class="form-control" onchange="updateOperatingHours()"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-hours-section">
+                <h3>CALISMA SAATLERI & ENGELLER</h3>
+                <p class="section-desc">KILITLEMEK VEYA ISLEM YAPMAK ISTEDIGINIZ SAATIN UZERINE TIKLAYIN</p>
+                <div class="hours-grid" id="adminHoursGrid">
+                    </div>
+            </div>
+
+            <div class="admin-reservations-list">
+                <h3>MEVCUT REZERVASYONLAR VE ERTELEME</h3>
+                <div id="adminReservationsContainer">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="hourActionModal" style="z-index: 1100;">
+        <div class="modal-card mini-modal">
+            <div class="modal-header">
+                <h2>SAAT YONETIMI</h2>
+                <button type="button" class="close-modal" onclick="closeModal('hourActionModal')">X</button>
+            </div>
+            <div class="form-group">
+                <label>YAPILACAK ISLEM</label>
+                <select id="hourActionSelect" class="form-control">
+                    <option value="ABONE">BU SAATE HAFTALIK SABIT ABONE TANIMLA</option>
+                    <option value="KAPAT">BU SAATI GENEL KULLANIMA KAPAT/ENGELLE</option>
+                    <option value="TEMIZLE">SAATI TEMIZLE/BOSA CIKAR</option>
+                </select>
+            </div>
+            <button class="action-btn" onclick="saveHourAction()">AYARLARI KAYDET</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

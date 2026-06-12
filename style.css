@@ -1,0 +1,530 @@
+:root {
+    --bg-color: #0b0f19;
+    --card-bg: #151f32;
+    --primary-green: #10b981;
+    --neon-green: #34d399;
+    --text-color: #f8fafc;
+    --text-muted: #64748b;
+    --danger-red: #ef4444;
+    --warning-orange: #f59e0b;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    padding: 20px;
+    line-height: 1.5;
+    font-family: "Montserrat", system-ui, sans-serif;
+    font-weight: 500;
+}
+
+/* Basliklar ve Linkler Buyuk Harf Kurali */
+h1, h2, h3, h4, .nav-btn, .map-link, .phone-link, .action-btn, label, select, option {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+header {
+    max-width: 1300px;
+    margin: 0 auto 30px auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.logo-area h1 {
+    font-family: "Oswald", sans-serif;
+    color: var(--primary-green);
+    font-size: 2.6rem;
+    line-height: 1;
+}
+
+.logo-area p {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+/* 7 Günlük Hava Durumu Kapsayıcı Ayarı (Sıkışmayı Önleyen Düzen) */
+.weather-container {
+    background: rgba(11, 15, 25, 0.6);
+    padding: 10px 15px;
+    border-radius: 8px;
+    min-width: 420px;
+}
+
+.weather-title {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.weather-days {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.weather-day-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.75rem;
+    padding: 4px 6px;
+    background: rgba(21, 31, 50, 0.5);
+    border-radius: 4px;
+    flex: 1;
+    text-align: center;
+}
+
+.weather-day-item span {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.weather-day-item strong {
+    color: var(--neon-green);
+    font-weight: 800;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-auth-zone {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-btn {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #334155;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    font-family: "Montserrat", sans-serif;
+}
+
+.nav-btn.green-btn {
+    background: var(--primary-green);
+    color: #000;
+    border-color: var(--primary-green);
+}
+
+main {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 30px;
+}
+
+.section-title {
+    font-family: "Oswald", sans-serif;
+    font-size: 1.6rem;
+    color: var(--text-color);
+    margin-bottom: 15px;
+    border-left: 5px solid var(--primary-green);
+    padding-left: 10px;
+}
+
+/* Sahalar Listesi Kart Yapisi */
+.fields-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.field-card {
+    background: var(--card-bg);
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.field-card:hover {
+    border-color: var(--text-muted);
+}
+
+.field-card.active {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+.field-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.field-main-details h3 {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 800;
+    color: var(--text-color);
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+}
+
+/* Adres ve Telefon Alanı Sola Sabitlendi */
+.field-meta-inputs {
+    font-size: 1rem;
+    color: #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.service-badge {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 700;
+}
+
+.field-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.map-link {
+    font-size: 0.95rem;
+    color: var(--neon-green);
+    text-decoration: underline !important;
+    font-weight: 700;
+    text-align: right;
+}
+
+.price-tag {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: right;
+    max-width: 200px;
+    line-height: 1.3;
+}
+
+.phone-link {
+    font-size: 1rem;
+    color: #38bdf8;
+    text-decoration: none;
+    font-weight: 700;
+    text-align: left;
+    align-self: flex-start;
+    transition: all 0.2s;
+}
+
+.phone-link:hover {
+    text-decoration: underline;
+    color: #fff;
+}
+
+/* Rezervasyon Paneli */
+.placeholder-text {
+    background: var(--card-bg);
+    padding: 40px;
+    border-radius: 10px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.booking-panel {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+}
+
+.auth-alert-message {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger-red);
+    color: #fca5a5;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.form-control {
+    width: 100%;
+    background: #0b0f19;
+    color: #fff;
+    border: 1px solid #334155;
+    padding: 12px;
+    border-radius: 6px;
+    outline: none;
+    font-family: "Montserrat", sans-serif;
+}
+
+.help-text {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--warning-orange);
+    margin-top: 5px;
+}
+
+.sub-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+/* Saat Secim Kutulari */
+.hours-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.hour-btn {
+    padding: 14px 5px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    font-family: "Montserrat", sans-serif;
+}
+
+.hour-btn.available { background: #064e3b; color: #a7f3d0; }
+.hour-btn.available:hover { background: var(--primary-green); color: #000; }
+.hour-btn.locked { background: #7f1d1d; color: #fca5a5; cursor: not-allowed; }
+.hour-btn.selected { background: var(--neon-green); color: #000; box-shadow: 0 0 10px var(--neon-green); }
+.hour-btn.closed-state { background: #1e293b; color: #64748b; cursor: not-allowed; }
+.hour-btn.abone-state { background: #b45309; color: #fef3c7; cursor: not-allowed; }
+
+.action-btn {
+    background: var(--primary-green);
+    color: #000;
+    font-weight: 700;
+    border: none;
+    width: 100%;
+    padding: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: "Montserrat", sans-serif;
+}
+
+.action-btn:hover { background: var(--neon-green); }
+
+/* Forum Modulu */
+.forum-section {
+    max-width: 1300px;
+    margin: 40px auto 0 auto;
+}
+
+.forum-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 30px;
+}
+
+.forum-form-container {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.forum-form-container h3, .forum-wall h3 {
+    font-family: "Oswald", sans-serif;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: var(--neon-green);
+}
+
+.forum-wall {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 10px;
+    max-height: 590px;
+    overflow-y: auto;
+}
+
+.posts-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.post-card {
+    background: #0b0f19;
+    padding: 18px;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-green);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.post-date-large {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.post-pos-badge {
+    color: var(--warning-orange);
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.post-main {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.post-note {
+    font-size: 0.95rem;
+    color: #cbd5e1;
+}
+
+.post-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 5px;
+}
+
+.whatsapp-btn {
+    background: #25d366;
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+/* Modallar */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+.modal-card {
+    background: var(--card-bg);
+    width: 95%; max-width: 700px;
+    padding: 25px; border-radius: 12px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-card.mini-modal { max-width: 420px; }
+
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+    border-bottom: 1px solid #334155; padding-bottom: 10px;
+}
+
+.modal-header h2 { font-family: "Oswald", sans-serif; font-size: 1.4rem; color: var(--primary-green); }
+
+.close-modal { background: transparent; border: none; color: #fff; font-size: 1.4rem; cursor: pointer; }
+
+.inline-inputs { display: flex; gap: 15px; }
+.flex-1 { flex: 1; }
+
+.admin-time-range, .admin-hours-section, .admin-reservations-list {
+    margin-top: 25px;
+    border-top: 1px solid #334155;
+    padding-top: 15px;
+}
+
+.admin-time-range h3, .admin-hours-section h3, .admin-reservations-list h3 {
+    font-family: "Oswald", sans-serif; font-size: 1.1rem; color: #fff; margin-bottom: 10px;
+}
+
+.section-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; }
+
+/* Isletme Rezervasyon Kartlari */
+.admin-res-item {
+    background: #0b0f19;
+    padding: 14px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.admin-res-info { font-size: 0.9rem; }
+.admin-res-actions { display: flex; gap: 8px; align-items: center; }
+.admin-control-inline { background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 0.8rem; padding: 6px; border-radius: 4px; }
+.btn-danger-sm { background: var(--danger-red); color: #fff; border: none; padding: 7px 12px; font-size: 0.8rem; border-radius: 4px; cursor: pointer; font-weight: 700; }
+
+/* Toggle Switch */
+.toggle-container { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--danger-red); }
+input:checked + .slider:before { transform: translateX(24px); }
+.toggle-text { font-size: 0.9rem; }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+    main, .forum-layout { grid-template-columns: 1fr; }
+    header { flex-direction: column; text-align: center; gap: 15px; }
+    .weather-container { min-width: 100%; }
+    .inline-inputs { flex-direction: column; gap: 10px; }
+}
