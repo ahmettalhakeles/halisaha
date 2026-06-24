@@ -57,6 +57,14 @@ db.getConnection((err, connection) => {
     if (err) return console.error('❌ MySQL Bağlantı Hatası:', err.message);
     console.log('🚀 XAMPP MySQL Veritabanına başarıyla bağlanıldı!');
     
+    // Run database migration (safe - uses IF NOT EXISTS)
+    const fs = require('fs');
+    const migrationSql = fs.readFileSync(__dirname + '/database_complete.sql', 'utf8');
+    connection.query(migrationSql, (migrateErr) => {
+        if (migrateErr) console.error('❌ Migration hatası:', migrateErr.message);
+        else console.log('✅ Veritabanı tablolari başarıyla oluşturuldu/güncellendi.');
+    });
+    
     // Check and add age column
     connection.query("SHOW COLUMNS FROM users LIKE 'age'", (errCheck, results) => {
         if (!errCheck && results.length === 0) {
