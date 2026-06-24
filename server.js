@@ -1126,7 +1126,7 @@ function parseTurkishDateString(dateStr) {
         'TEMMUZ': 6, 'AĞUSTOS': 7, 'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11,
         'SUBAT': 1, 'NISAN': 3, 'HAZIRAN': 5, 'AGUSTOS': 7, 'EYLUL': 8, 'EKIM': 9
     };
-    const parts = dateStr.trim().toUpperCase().split(' ');
+    const parts = dateStr.trim().toLocaleUpperCase('tr-TR').split(' ');
     if (parts.length < 2) return null;
     const day = parseInt(parts[0]);
     const monthStr = parts[1];
@@ -1648,7 +1648,7 @@ app.post('/api/subscriptions', (req, res) => {
             if (daysUntil <= 0) daysUntil += 7;
             const nextDate = new Date(now);
             nextDate.setDate(now.getDate() + daysUntil);
-            const dateText = nextDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toUpperCase();
+            const dateText = nextDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toLocaleUpperCase('tr-TR');
 
             const insResSql = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_phone, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")';
             db.query(insResSql, [fieldKey, pitchNumber, dateText, hourText, subscriberName, subscriberPhone], (insErr) => {
@@ -2562,7 +2562,7 @@ function processWeeklySubscriptions() {
         if (err) { console.error("Cron: Abonelik sorgu hatası:", err); return; }
         if (subs.length === 0) return;
 
-        const dateText = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toUpperCase();
+        const dateText = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toLocaleUpperCase('tr-TR');
 
         subs.forEach(sub => {
             // Check if reservation already exists for this subscription this week

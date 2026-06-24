@@ -209,7 +209,7 @@ window.onload = async function() {
         try {
             const userObj = JSON.parse(decodeURIComponent(oauthUserJson));
             localStorage.setItem('userToken', oauthToken);
-            loggedInUser = userObj.name.toUpperCase();
+            loggedInUser = userObj.name.toLocaleUpperCase('tr-TR');
             currentUser = userObj;
             await loadUserBlacklist();
             renderFieldsGrid();
@@ -281,7 +281,7 @@ async function handleUserRegister(event) {
                 alert(result.message);
             } else {
                 currentUser = result.user || null;
-                loggedInUser = (result.user && result.user.name) ? result.user.name.toUpperCase() : 'MÜŞTERİ';
+                loggedInUser = (result.user && result.user.name) ? result.user.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
                 await loadUserBlacklist();
                 renderFieldsGrid();
                 updateLoginUIVisibility();
@@ -319,7 +319,7 @@ async function handleUserLogin() {
 
         if (result.success) {
             currentUser = result.user;
-            loggedInUser = result.user.name.toUpperCase();
+            loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
             await loadUserBlacklist();
             renderFieldsGrid();
             updateLoginUIVisibility();
@@ -399,7 +399,7 @@ async function handleBusinessLogin() {
 
     document.querySelector('main').classList.add('business-mode');
     document.getElementById('businessPanel').style.display = 'block';
-    document.getElementById('businessPanelTitle').innerText = `${field.name.toUpperCase()} YÖNETİM PANELİ`;
+    document.getElementById('businessPanelTitle').innerText = `${field.name.toLocaleUpperCase('tr-TR')} YÖNETİM PANELİ`;
     document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
 
     switchBusinessTab('stats');
@@ -1015,7 +1015,7 @@ function filterBusinessReservations(type) {
         b.style.color = '#34d399';
         b.style.border = '1px solid rgba(16,185,129,0.3)';
     });
-    const activeBtn = document.getElementById(`resFilter${type.charAt(0).toUpperCase() + type.slice(1)}`);
+    const activeBtn = document.getElementById(`resFilter${type.charAt(0).toLocaleUpperCase('tr-TR') + type.slice(1)}`);
     if (activeBtn) {
         activeBtn.style.background = 'var(--primary-green)';
         activeBtn.style.color = '#000';
@@ -1096,7 +1096,7 @@ function getNext7Days() {
     for (let i = 0; i < 7; i++) {
         let d = new Date();
         d.setDate(d.getDate() + i);
-        let dateText = d.toLocaleDateString('tr-TR', optionsFormat).toUpperCase();
+        let dateText = d.toLocaleDateString('tr-TR', optionsFormat).toLocaleUpperCase('tr-TR');
         days.push(dateText);
     }
     return days;
@@ -1108,7 +1108,7 @@ let businessGridFilter = 'all';
 function filterBusinessGrid(filter) {
     businessGridFilter = filter;
     document.querySelectorAll('#tab-reservations .btn-filter-res').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById(`bizGridFilter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
+    const btn = document.getElementById(`bizGridFilter${filter.charAt(0).toLocaleUpperCase('tr-TR') + filter.slice(1)}`);
     if (btn) btn.classList.add('active');
     renderBusinessHoursGrid();
 }
@@ -1121,7 +1121,7 @@ function initBusinessGridDateSelect() {
     for (let i = 0; i < 14; i++) {
         const d = new Date();
         d.setDate(d.getDate() + i);
-        const dateText = d.toLocaleDateString('tr-TR', optionsFormat).toUpperCase();
+        const dateText = d.toLocaleDateString('tr-TR', optionsFormat).toLocaleUpperCase('tr-TR');
         const opt = document.createElement('option');
         opt.value = dateText;
         opt.textContent = dateText;
@@ -1417,7 +1417,7 @@ async function initWeatherWidget() {
         for (let i = 0; i < 7; i++) {
             const timeStr = data.daily.time[i];
             const date = new Date(timeStr);
-            const dayName = date.toLocaleDateString('tr-TR', options).toUpperCase();
+            const dayName = date.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
             const maxTemp = Math.round(data.daily.temperature_2m_max[i]);
             const minTemp = Math.round(data.daily.temperature_2m_min[i]);
             const weatherCode = data.daily.weathercode[i];
@@ -1445,7 +1445,7 @@ async function initWeatherWidget() {
         const daysShort = [];
         for (let i = 0; i < 7; i++) {
             let d = new Date(); d.setDate(d.getDate() + i);
-            daysShort.push(d.toLocaleDateString('tr-TR', { weekday: 'short' }).toUpperCase());
+            daysShort.push(d.toLocaleDateString('tr-TR', { weekday: 'short' }).toLocaleUpperCase('tr-TR'));
         }
         container.innerHTML = daysShort.map((day, idx) => {
             const min = 12 + idx;
@@ -1533,7 +1533,7 @@ function initDateDropdowns() {
 
     for (let i = 0; i < 14; i++) {
         let d = new Date(); d.setDate(d.getDate() + i);
-        let dateText = d.toLocaleDateString('tr-TR', options).toUpperCase();
+        let dateText = d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
         let dayName = dayNamesMap[d.getDay()];
         [customerPicker, forumPicker].forEach(p => {
             let opt = document.createElement('option');
@@ -1555,7 +1555,7 @@ function initDateDropdowns() {
     if (filterDate) {
         for (let i = 0; i < 7; i++) {
             let d = new Date(); d.setDate(d.getDate() + i);
-            let dateText = d.toLocaleDateString('tr-TR', options).toUpperCase();
+            let dateText = d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
             let opt = document.createElement('option'); opt.value = dateText; opt.text = dateText;
             filterDate.appendChild(opt);
         }
@@ -1573,6 +1573,8 @@ function initDateDropdowns() {
 // =======================================================
 function renderFieldsGrid() {
     const grid = document.getElementById('fieldsGrid');
+    const isMobile = window.innerWidth <= 768;
+
     grid.innerHTML = Object.keys(fieldsData).map(key => {
         const field = fieldsData[key];
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.coordinates)}`;
@@ -1600,7 +1602,7 @@ function renderFieldsGrid() {
         const cleatsStatus = (field.cleats || "Krampon Kiralanmaz") === "Krampon Kiralanır";
         const showerStatus = (field.shower || "Duş Yok").toLowerCase().includes("var");
         const marketStatus = (field.market || "Market Yok").toLowerCase().includes("var");
-        const refreshmentsText = field.refreshments ? `İKRAMLAR: ${field.refreshments.toUpperCase()}` : "";
+        const refreshmentsText = field.refreshments ? `İKRAMLAR: ${field.refreshments.toLocaleUpperCase('tr-TR')}` : "";
 
         // Make nice badges
         const serviceBadge = serviceStatus 
@@ -1620,24 +1622,56 @@ function renderFieldsGrid() {
             : `<span class="detail-badge badge-no">MARKET ❌</span>`;
 
         const isBlacklisted = currentUser && userBlacklistedFields.includes(key);
-        const cardClickHandler = isBlacklisted ? 'event.stopPropagation();' : ("selectField('" + key + "')");
 
-        return `
+        if (isMobile) {
+            const cardClickHandler = isBlacklisted ? 'event.stopPropagation();' : "toggleMobileFieldCard('" + key + "')";
+            return `
+            <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
+                ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
+                <div class="field-card-header">
+                    <h3>${field.name}</h3>
+                </div>
+                <div class="field-card-meta">
+                    <a href="tel:${field.phone}" class="phone-link" onclick="event.stopPropagation();">${field.phone}</a>
+                    <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
+                </div>
+                <div class="field-card-collapse">
+                    <div class="pitch-badges-row">
+                        ${serviceBadge}
+                        ${cleatsBadge}
+                        ${showerBadge}
+                        ${marketBadge}
+                    </div>
+                    ${refreshmentsText ? `<div class="refreshments-display">${refreshmentsText}</div>` : ''}
+                    <div class="price-tag">${priceHtml}</div>
+                </div>
+                <div class="field-comments-section" onclick="event.stopPropagation()">
+                    <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
+                        YORUMLAR VE DEĞERLENDİRMELER 💬
+                    </div>
+                    <div id="field-reviews-container-${key}" class="field-reviews-inline-container" style="display:none; margin-top:6px;">
+                        <div id="field-reviews-list-${key}" style="max-height: 180px; overflow-y: auto; margin-bottom: 6px; display: flex; flex-direction: column; gap: 5px;"></div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <input type="text" id="field-comment-text-${key}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="Yorum yaz..." \${loggedInUser ? '' : 'disabled'}>
+                            <button style="padding:3px 8px; font-size:0.65rem; font-weight:700; border:none; border-radius:6px; background:var(--primary-green); color:#000; cursor:pointer; white-space:nowrap; font-family:'Montserrat',sans-serif;" onclick="submitFieldCardComment('${key}', event)" \${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else {
+            const cardClickHandler = isBlacklisted ? 'event.stopPropagation();' : ("selectField('" + key + "')");
+            return `
             <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
                 ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
                 <div class="field-info-row">
                     <div class="field-main-details">
                         <h3>${field.name}</h3>
-                        
-                        <!-- Badges for Pitch Attributes -->
                         <div class="pitch-badges-row">
                             ${serviceBadge}
                             ${cleatsBadge}
                             ${showerBadge}
                             ${marketBadge}
                         </div>
-                        
-                        <!-- Refreshments/Treats display at the bottom-left -->
                         ${refreshmentsText ? `<div class="refreshments-display">${refreshmentsText}</div>` : ''}
                     </div>
                     <div class="field-actions">
@@ -1656,10 +1690,59 @@ function renderFieldsGrid() {
                         <button style="padding:4px 10px; font-size:0.75rem; font-weight:700; border:none; border-radius:6px; background:var(--primary-green); color:#000; cursor:pointer; white-space:nowrap; font-family:'Montserrat',sans-serif;" onclick="submitFieldCardComment('${key}', event)" \${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
+        }
     }).join('');
 }
+
+// =======================================================
+// MOBİL KOMPAKT KART AÇ/KAPA
+// =======================================================
+function toggleMobileFieldCard(key) {
+    if (window.innerWidth > 768) {
+        selectField(key);
+        return;
+    }
+
+    const card = document.getElementById('card-' + key);
+    if (!card) return;
+
+    if (card.classList.contains('active')) {
+        closeMobileFieldPanel();
+    } else {
+        selectField(key);
+    }
+}
+
+function closeMobileFieldPanel() {
+    document.querySelectorAll('.field-card.active').forEach(c => c.classList.remove('active'));
+
+    const panel = document.getElementById('customerBookingPanel');
+    if (panel) {
+        panel.classList.remove('mobile-open');
+        panel.style.display = 'none';
+    }
+
+    const placeholder = document.getElementById('placeholderText');
+    if (placeholder) placeholder.style.display = 'block';
+
+    currentSelectedFieldKey = null;
+    currentSelectedPitchNumber = null;
+    currentSelectedHourBtn = null;
+}
+
+document.addEventListener('click', function(e) {
+    if (window.innerWidth <= 768 && currentSelectedFieldKey) {
+        const card = e.target.closest('.field-card');
+        const panel = e.target.closest('.booking-panel');
+        const fieldReviews = e.target.closest('.field-reviews-inline-container');
+        const commentsToggle = e.target.closest('.card-comments-toggle');
+        const modal = e.target.closest('.modal-overlay');
+        if (!card && !panel && !fieldReviews && !commentsToggle && !modal) {
+            closeMobileFieldPanel();
+        }
+    }
+});
 
 // =======================================================
 // SAHA SEÇME & REZERVASYON
@@ -1728,7 +1811,7 @@ function getNextCalendarDayText(dateStr) {
     if (!d) return "";
     d.setDate(d.getDate() + 1);
     const options = { day: 'numeric', month: 'long' };
-    return d.toLocaleDateString('tr-TR', options).toUpperCase();
+    return d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
 }
 
 function getPreviousCalendarDayText(dateStr) {
@@ -1736,7 +1819,7 @@ function getPreviousCalendarDayText(dateStr) {
     if (!d) return "";
     d.setDate(d.getDate() - 1);
     const options = { day: 'numeric', month: 'long' };
-    return d.toLocaleDateString('tr-TR', options).toUpperCase();
+    return d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
 }
 
 function onDateOrFieldChange() {
@@ -1962,8 +2045,8 @@ async function completeBooking() {
         turnstileToken: turnstileToken
     };
 
-    const field = fieldsData[currentSelectedFieldKey] || { name: currentSelectedFieldKey.toUpperCase(), address: "" };
-    document.getElementById('bookingConfirmField').textContent = `${field.name.toUpperCase()} - SAHA ${currentSelectedPitchNumber}`;
+    const field = fieldsData[currentSelectedFieldKey] || { name: currentSelectedFieldKey.toLocaleUpperCase('tr-TR'), address: "" };
+    document.getElementById('bookingConfirmField').textContent = `${field.name.toLocaleUpperCase('tr-TR')} - SAHA ${currentSelectedPitchNumber}`;
     document.getElementById('bookingConfirmDate').textContent = dateText;
     document.getElementById('bookingConfirmHour').textContent = hour;
     document.getElementById('bookingConfirmPrice').textContent = `${price} TL`;
@@ -2003,10 +2086,10 @@ async function executePendingBooking() {
                 payment_status: 'odenmedi'
             });
             
-            const field = fieldsData[data.fieldKey] || { name: data.fieldKey.toUpperCase(), address: "" };
+            const field = fieldsData[data.fieldKey] || { name: data.fieldKey.toLocaleUpperCase('tr-TR'), address: "" };
 
-            document.getElementById('successFieldName').innerText = `${field.name.toUpperCase()} - SAHA ${data.pitchNumber}`;
-            document.getElementById('successFieldAddress').innerText = field.address.toUpperCase();
+            document.getElementById('successFieldName').innerText = `${field.name.toLocaleUpperCase('tr-TR')} - SAHA ${data.pitchNumber}`;
+            document.getElementById('successFieldAddress').innerText = field.address.toLocaleUpperCase('tr-TR');
             document.getElementById('successBookingTime').innerText = `${data.dateText} | ${data.hourText}`;
             document.getElementById('successBookingPrice').innerText = `${data.reservation_price} TL`;
 
@@ -2157,7 +2240,7 @@ function initMatchSeekerForm() {
     const options = { day: 'numeric', month: 'long' };
     for (let i = 0; i < 7; i++) {
         let d = new Date(); d.setDate(d.getDate() + i);
-        let dateText = d.toLocaleDateString('tr-TR', options).toUpperCase();
+        let dateText = d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
         const label = document.createElement('label');
         label.className = 'checkbox-item';
         label.innerHTML = `<input type="checkbox" value="${dateText}" onchange="this.parentElement.classList.toggle('checked', this.checked)"> ${dateText}`;
@@ -2547,7 +2630,7 @@ window.addEventListener('message', async function(event) {
     if (event.data && event.data.type === 'oauth-success') {
         const user = event.data.user;
         currentUser = user;
-        loggedInUser = user.name.toUpperCase();
+        loggedInUser = user.name.toLocaleUpperCase('tr-TR');
         
         await loadUserBlacklist();
         renderFieldsGrid();
@@ -2599,7 +2682,7 @@ function selectRatingStar(val) {
 
 async function openPlayerProfile(phone, name, age, position) {
     currentActiveProfilePhone = phone;
-    document.getElementById('profilePlayerName').innerText = name.toUpperCase();
+    document.getElementById('profilePlayerName').innerText = name.toLocaleUpperCase('tr-TR');
     document.getElementById('profilePlayerSubText').innerText = `${age} YAŞ | MEVKİ: ${position}`;
     
     await loadPlayerReviews(phone);
@@ -2631,7 +2714,7 @@ async function loadPlayerReviews(phone) {
                 reviewsContainer.innerHTML = data.reviews.map(r => `
                     <div class="review-item">
                         <div class="review-header">
-                            <span class="review-user">${r.reviewerName.toUpperCase()}</span>
+                            <span class="review-user">${r.reviewerName.toLocaleUpperCase('tr-TR')}</span>
                             <span class="review-stars">${'⭐'.repeat(r.rating)}</span>
                         </div>
                         <div class="review-comment">"${r.comment}"</div>
@@ -2777,7 +2860,7 @@ function parseTurkishDateString(dateStr) {
     if (parts.length < 2) return null;
     const day = parseInt(parts[0]);
     
-    const monthStr = parts[1].toUpperCase();
+    const monthStr = parts[1].toLocaleUpperCase('tr-TR');
     
     // Normalization helper
     const normalize = (str) => {
@@ -2872,7 +2955,7 @@ async function loadProfileReservations() {
 
     const userRes = userReservations.filter(r => 
         ((r.user_id && currentUser && parseInt(r.user_id) === parseInt(currentUser.id)) ||
-        (r.user_name && currentUser && r.user_name.toUpperCase() === currentUser.name.toUpperCase())) &&
+        (r.user_name && currentUser && r.user_name.toLocaleUpperCase('tr-TR') === currentUser.name.toLocaleUpperCase('tr-TR'))) &&
         r.status !== 'cancelled'
     );
     
@@ -2892,7 +2975,7 @@ async function loadProfileReservations() {
     if (userSubscriptions.length > 0) {
         subsHtml = '<h4 style="color:#f59e0b;margin:10px 0 8px;font-size:0.85rem;">­şôà HAFTALIK ABONELİKLERİM</h4>';
         subsHtml += userSubscriptions.map(sub => {
-            const field = fieldsData[sub.fieldKey] || { name: sub.fieldKey.toUpperCase() };
+            const field = fieldsData[sub.fieldKey] || { name: sub.fieldKey.toLocaleUpperCase('tr-TR') };
             return `
                 <div class="profile-booking-item" style="border:2px solid #f59e0b;background:rgba(245,158,11,0.08);margin-bottom:8px;">
                     <div class="profile-booking-details">
@@ -2912,7 +2995,7 @@ async function loadProfileReservations() {
         activeContainer.innerHTML = subsHtml + '<p style="color: var(--text-muted); font-size: 0.85rem; padding: 15px; text-align: center;">Aktif rezervasyonunuz bulunmamaktadır.</p>';
     } else {
         activeContainer.innerHTML = subsHtml + activeList.map(r => {
-            const field = fieldsData[r.fieldKey] || { name: r.fieldKey.toUpperCase(), address: "" };
+            const field = fieldsData[r.fieldKey] || { name: r.fieldKey.toLocaleUpperCase('tr-TR'), address: "" };
             const pitch = pitchObjectsList.find(p => p.fieldKey === r.fieldKey && p.pitchNumber === r.pitchNumber) || field;
             const morningPrice = pitch.morningPrice || 2500;
             const eveningPrice = pitch.eveningPrice || 3000;
@@ -2941,7 +3024,7 @@ async function loadProfileReservations() {
         pastContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem; padding: 15px; text-align: center;">Geçmiş rezervasyonunuz bulunmamaktadır.</p>';
     } else {
         pastContainer.innerHTML = pastList.map(r => {
-            const field = fieldsData[r.fieldKey] || { name: r.fieldKey.toUpperCase(), address: "" };
+            const field = fieldsData[r.fieldKey] || { name: r.fieldKey.toLocaleUpperCase('tr-TR'), address: "" };
             const pitch = pitchObjectsList.find(p => p.fieldKey === r.fieldKey && p.pitchNumber === r.pitchNumber) || field;
             const morningPrice = pitch.morningPrice || 2500;
             const eveningPrice = pitch.eveningPrice || 3000;
@@ -2983,7 +3066,7 @@ async function loadProfileReservations() {
                     <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Ödeme işletme yerinde yapılır.</div>
                 </div>
                 ${unpaidList.map(r => {
-                    const field = fieldsData[r.fieldKey] || { name: r.fieldKey.toUpperCase() };
+                    const field = fieldsData[r.fieldKey] || { name: r.fieldKey.toLocaleUpperCase('tr-TR') };
                     const pitch = pitchObjectsList.find(p => p.fieldKey === r.fieldKey && p.pitchNumber === r.pitchNumber) || field;
                     const mp = pitch.morningPrice || 2500;
                     const ep = pitch.eveningPrice || 3000;
@@ -3024,7 +3107,7 @@ async function loadProfileReviews() {
                 reviewsContainer.innerHTML = data.reviews.map(r => `
                     <div class="review-item" style="margin-bottom: 8px;">
                         <div class="review-header">
-                            <span class="review-user">${r.reviewerName.toUpperCase()}</span>
+                            <span class="review-user">${r.reviewerName.toLocaleUpperCase('tr-TR')}</span>
                             <span class="review-stars">${'⭐'.repeat(r.rating)}</span>
                         </div>
                         <div class="review-comment">"${r.comment}"</div>
@@ -3074,7 +3157,7 @@ async function saveUserProfile() {
         
         if (result.success) {
             currentUser = result.user;
-            loggedInUser = currentUser.name.toUpperCase();
+            loggedInUser = currentUser.name.toLocaleUpperCase('tr-TR');
             
             await loadUserBlacklist();
             renderFieldsGrid();
@@ -3601,7 +3684,7 @@ async function loadForumComments(type, postId) {
             }
             listContainer.innerHTML = comments.map(c => `
                 <div style="background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 0.8rem;">
-                    <strong style="color: var(--neon-green);">${c.commenter_name.toUpperCase()}:</strong>
+                    <strong style="color: var(--neon-green);">${c.commenter_name.toLocaleUpperCase('tr-TR')}:</strong>
                     <span style="color: #e2e8f0;">${c.comment}</span>
                 </div>
             `).join('');
@@ -3683,7 +3766,7 @@ async function loadFieldCardReviews(fieldKey) {
                 return `
                     <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px; font-size: 0.8rem; text-align: left;">
                         <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
-                            <strong style="color: var(--neon-green);">${c.commenter_name.toUpperCase()}</strong>
+                            <strong style="color: var(--neon-green);">${c.commenter_name.toLocaleUpperCase('tr-TR')}</strong>
                             <span style="color: var(--text-muted); font-size: 0.7rem;">${dateStr}</span>
                         </div>
                         <span style="color: #e2e8f0; word-break: break-all;">${c.comment}</span>
@@ -3755,7 +3838,7 @@ async function submitOTPVerification() {
 
         if (result.success) {
             currentUser = result.user;
-            loggedInUser = result.user.name.toUpperCase();
+            loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
             await loadUserBlacklist();
             renderFieldsGrid();
             updateLoginUIVisibility();
@@ -3793,7 +3876,7 @@ async function submitCompleteProfile() {
 
         if (result.success) {
             currentUser = result.user;
-            loggedInUser = result.user.name.toUpperCase();
+            loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
             await loadUserBlacklist();
             renderFieldsGrid();
             updateLoginUIVisibility();
@@ -4278,12 +4361,34 @@ function toggleMobileForm(formId) {
 }
 
 
+// Mobile menu toggle functions
+function toggleMobileMenu() {
+    const panel = document.querySelector('.header-actions');
+    const overlay = document.getElementById('mobileMenuOverlay');
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    if (isOpen) {
+        panel.classList.remove('open');
+        if (overlay) overlay.classList.remove('show');
+    } else {
+        panel.classList.add('open');
+        if (overlay) overlay.classList.add('show');
+    }
+}
+
+function closeMobileMenu() {
+    const panel = document.querySelector('.header-actions');
+    const overlay = document.getElementById('mobileMenuOverlay');
+    if (panel) panel.classList.remove('open');
+    if (overlay) overlay.classList.remove('show');
+}
+
 // Close mobile menu on action
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.header-actions .nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (window.innerWidth <= 768) {
-                document.querySelector('.header-actions').classList.remove('open');
+                closeMobileMenu();
             }
         });
     });

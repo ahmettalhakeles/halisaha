@@ -1131,11 +1131,8 @@ input:checked + .slider:before {
     font-weight: 600;
 }
 
-/* RESPONSIVE */
+/* RESPONSIVE - tablet icin grid korunsun */
 @media (max-width: 900px) {
-    main, .forum-layout, .customer-booking-layout {
-        grid-template-columns: 1fr;
-    }
     header {
         flex-direction: column;
         text-align: center;
@@ -2643,7 +2640,7 @@ main.business-mode {
     border-color: #3b82f6;
     box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
 }
-/* --- MOBÝL ÝLAN PANELLERÝ --- */
+/* --- MOBï¿½L ï¿½LAN PANELLERï¿½ --- */
 .mobile-listing-header {
     display: none;
 }
@@ -2709,7 +2706,12 @@ main.business-mode {
     animation: slideFadeOut 0.3s ease-in forwards;
 }
 
-/* YENÝ REZERVASYON MOBÝL EKRANI ÝÇÝN */
+/* Desktop varsayilan: hamburger ve mobil menu elemanlari gizli */
+.hamburger-btn { display: none; }
+.menu-close-btn { display: none; }
+.mobile-menu-overlay { display: none; }
+
+/* YENï¿½ REZERVASYON MOBï¿½L EKRANI ï¿½ï¿½ï¿½N */
 @media (max-width: 768px) {
     header {
         flex-direction: column !important;
@@ -2732,41 +2734,54 @@ main.business-mode {
     .weather-container {
         width: 100% !important;
         min-width: 100% !important;
-        padding: 10px !important;
-        margin-bottom: 10px;
+        padding: 8px 10px !important;
+        margin-bottom: 8px;
     }
     .weather-title {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
+        margin-bottom: 3px;
+    }
+    .weather-days {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        gap: 4px;
+        padding-bottom: 0;
+    }
+    .weather-days::-webkit-scrollbar {
+        height: 2px;
+    }
+    .weather-days::-webkit-scrollbar-thumb {
+        background: rgba(16, 185, 129, 0.3);
+        border-radius: 2px;
     }
     .weather-day-item {
-        padding: 4px !important;
+        flex: 0 0 auto !important;
+        min-width: 48px !important;
+        padding: 3px 5px !important;
+    }
+    .weather-day-item span {
+        font-size: 0.5rem;
     }
     .weather-day-item strong {
-        font-size: 0.9rem;
+        font-size: 0.7rem;
+    }
+    .weather-day-item small {
+        font-size: 0.45rem;
+    }
+    .sunset-visual-box {
+        padding: 3px 6px !important;
+        margin-top: 4px !important;
+    }
+    .sunset-svg-icon {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    .sunset-time-label {
+        font-size: 0.55rem !important;
     }
     
     .header-actions {
-        display: none !important; /* Masaüstü butonlarýný gizle */
-    }
-    
-    /* Hamburger Menu Butonu */
-    .mobile-header-right {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .hamburger-btn {
-        background: transparent;
-        border: none;
-        color: white;
-        font-size: 1.5rem;
-        cursor: pointer;
-        padding: 5px;
-        display: block !important;
-    }
-    
-    /* Mobil Menü Ýçeriði (Hamburger açýldýðýnda) */
-    .mobile-menu-overlay {
+        display: flex !important;
         position: fixed;
         top: 0;
         left: -100%;
@@ -2778,23 +2793,77 @@ main.business-mode {
         border-right: 1px solid rgba(16, 185, 129, 0.2);
         z-index: 9999;
         transition: left 0.3s ease;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
+        padding: 60px 20px 20px 20px;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+        align-items: stretch !important;
         gap: 15px;
         box-shadow: -5px 0 20px rgba(0,0,0,0.5);
     }
-    .mobile-menu-overlay.open {
+    .header-actions.open {
         left: 0;
     }
-    .mobile-menu-overlay .close-menu-btn {
-        align-self: flex-end;
+    .user-auth-zone {
+        flex-direction: column;
+        width: 100%;
+    }
+    .nav-btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .forum-form-container {
+        display: none;
+    }
+    
+    .customer-tabs {
+        flex-direction: column;
+        gap: 8px;
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 15px;
+        width: 100%;
+    }
+    .customer-tabs .tab-btn {
+        width: 100%;
+        text-align: center;
+        padding: 14px 20px;
+        font-size: 0.9rem;
+        border-radius: 10px;
+    }
+    
+    .hamburger-btn {
         background: transparent;
         border: none;
         color: white;
         font-size: 1.5rem;
         cursor: pointer;
-        margin-bottom: 20px;
+        padding: 5px;
+        display: block !important;
+    }
+    .menu-close-btn {
+        display: flex !important;
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        z-index: 10;
+    }
+    .menu-close-btn:hover {
+        background: rgba(16, 185, 129, 0.25);
+        transform: translateY(-50%) scale(1.1);
+    }
+    .mobile-menu-overlay {
+        display: block !important;
     }
     
     /* Field Cards Mobile Layout */
@@ -2842,7 +2911,7 @@ main.business-mode {
         display: inline-block;
     }
     
-    /* Rezervasyon Paneli (Saha Altýnda Akan) */
+    /* Rezervasyon Paneli (Saha Altï¿½nda Akan) */
     .customer-booking-layout {
         display: block !important;
     }
@@ -2853,74 +2922,5 @@ main.business-mode {
         margin-bottom: 15px;
     }
 }
-@media (max-width: 768px) {
-    .header-actions {
-        display: flex !important;
-        position: fixed;
-        top: 0;
-        left: -100%;
-        width: 80%;
-        max-width: 300px;
-        height: 100vh;
-        background: rgba(11, 15, 25, 0.95);
-        backdrop-filter: blur(10px);
-        border-right: 1px solid rgba(16, 185, 129, 0.2);
-        z-index: 9999;
-        transition: left 0.3s ease;
-        padding: 60px 20px 20px 20px;
-        flex-direction: column !important;
-        justify-content: flex-start !important;
-        align-items: stretch !important;
-        gap: 15px;
-        box-shadow: -5px 0 20px rgba(0,0,0,0.5);
-    }
-    .header-actions.open {
-        left: 0;
-    }
-    .user-auth-zone {
-        flex-direction: column;
-        width: 100%;
-    }
-    .nav-btn {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-    
 
-}
-
-
-@media (max-width: 768px) {
-    .forum-form-container {
-        display: none;
-    }
-}
-@media (max-width: 768px) {
-    .field-card {
-        padding: 10px !important;
-    }
-    .field-main-details h3 {
-        font-size: 1rem !important;
-        margin-bottom: 3px !important;
-    }
-    .field-meta-inputs {
-        font-size: 0.75rem !important;
-        gap: 3px !important;
-        flex-wrap: wrap !important;
-    }
-    .field-actions {
-        min-width: 100px !important;
-    }
-    .field-actions .phone-link, .field-actions .map-link {
-        font-size: 0.75rem !important;
-        padding: 3px 6px !important;
-    }
-    .field-actions .price-tag {
-        font-size: 0.85rem !important;
-    }
-    .service-badge {
-        font-size: 0.65rem !important;
-        padding: 2px 4px !important;
-    }
-}
 

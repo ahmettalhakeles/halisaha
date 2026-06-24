@@ -5,7 +5,7 @@
 **Amaç:** Kullanıcıların halı saha rezervasyonu yapabildiği, işletmelerin saha yönetimini gerçekleştirebildiği, oyuncu bulma ve maç arama ilanlarının paylaşılabildiği çok kullanıcılı web uygulaması.
 
 **Mimari Stil:** Tek Sayfa Uygulaması (SPA) + REST API
-- **Frontend:** Statik HTML/CSS/JS (dosya sistemi üzerinden sunulur)
+- **Frontend:** Statik HTML/CSS/JS (dosya sistemi üzerinden sunulur, panel tabanlı bölünmüş)
 - **Backend:** Node.js + Express 5 REST API
 - **Veritabanı:** MySQL (XAMPP ile yerel)
 - **Kimlik Doğrulama:** Session-based + Google/Apple OAuth
@@ -47,12 +47,39 @@
 
 ### 2.1 Sunum Katmanı (Frontend)
 
+**Mimari Yaklaşım:** Panel tabanlı bölünmüş HTML (C# WinForms benzeri).
+Geliştirme parçalarda yapılır, `build.js` ile tek `index.html`'e birleştirilir.
+
+```
+┌─────────────────────────────────────────────────┐
+│                 GELİŞTİRME                       │
+│  html/                                           │
+│  ├── _header.html            (panel ayrı)         │
+│  ├── _customer-panel.html    (panel ayrı)         │
+│  ├── _business-panel.html    (panel ayrı)         │
+│  ├── _modals.html            (panel ayrı)         │
+│  ├── _footer.html            (panel ayrı)         │
+│  └── build.js          → index.html (derlenmiş)   │
+└─────────────────────────────────────────────────┘
+```
+
 **Dosyalar:**
-| Dosya | Rol |
-|-------|-----|
-| `index.html` | Sayfa yapısı, modal'lar, formlar, butonlar (~1000 satır) |
-| `style.css` | Tüm görsel stil, animasyonlar, responsive tasarım (~2200 satır) |
-| `script.js` | Tüm iş mantığı, API çağrıları, DOM manipülasyonu (~3400 satır) |
+| Dosya | Rol | Satır |
+|-------|-----|-------|
+| `html/_header.html` | `<head>`, meta, CSS, header, navigasyon | ~100 |
+| `html/_customer-panel.html` | Müşteri paneli (booking, players, matches, teams) | ~293 |
+| `html/_business-panel.html` | İşletme paneli (stats, reservations, debts, settings) | ~377 |
+| `html/_modals.html` | Tüm modal'lar (login, register, profile, confirm) | ~395 |
+| `html/_footer.html` | Script bağlantısı, kapanış tag'leri | ~7 |
+| `html/build.js` | Parçaları birleştirir → `index.html` | |
+| `index.html` | **Derlenen çıktı** (düzenlenmez) | ~1171 |
+| `style.css` | Tüm görsel stil, animasyonlar, responsive tasarım | ~2200 |
+| `script.js` | Tüm iş mantığı, API çağrıları, DOM manipülasyonu | ~3400 |
+
+**Build Komutu:**
+```bash
+npm run build    # → html/build.js → index.html
+```
 
 **Önemli Global Değişkenler:**
 ```
@@ -304,31 +331,54 @@ const resLimitPerSec = rateLimit({
 ### 7.1 Sayfa Yapısı
 
 ```
-index.html
-├── Üst Menü (logo, navigasyon, kullanıcı bilgisi)
-├── Müşteri Paneli (default)
-│   ├── Saha Seçimi (fieldsGrid → field-card)
-│   └── Rezervasyon Paneli (bookingPanel)
-│       ├── Tarih Seçici (datePicker)
-│       ├── Saha Seçici (pitchSelector)
-│       ├── Saat Grid'i (hoursGrid)
-│       └── Turnstile + Gönder
-├── Forum / Maç Bul / Oyuncu Bul (tab'lar)
-├── Profil Paneli (modal)
-│   ├── Profil Düzenleme (isim, yaş, boy, kilo, mevki, tecrübe)
-│   └── Rezervasyon Geçmişi (aktif/geçmiş/borç/yorum)
-├── İşletme Paneli (admin)
-│   ├── İstatistikler
-│   ├── Rezervasyonlar (filtre: tümü/normal/abone)
-│   ├── Borç Yönetimi
-│   ├── Saha Ayarları (fiyat, saat, kara liste)
-│   ├── Abonelikler
-│   └── Müşteri Yorumları
-└── Modal'lar
-    ├── Giriş/Kayıt
-    ├── Oyuncu Profili
-    ├── OTP Doğrulama
-    └── Profil Tamamlama
+index.html (build.js tarafından derlenir, düzenlenmez)
+├── _header.html
+│   ├── Logo + KSK başlık
+│   ├── Hava durumu widget'ı
+│   ├── Giriş/Kayıt butonları (kullanıcı)
+│   └── İşletme girişi / çıkış butonları
+│
+├── _customer-panel.html (MÜŞTERİ)
+│   ├── Sekme menüsü: Rezervasyon / Oyuncu Bul / Maç Bul / Takım Bul
+│   ├── Sekme 1: Rezervasyon
+│   │   ├── Saha Seçimi (fieldsGrid → field-card)
+│   │   ├── Tarih Seçici (datePicker)
+│   │   ├── Saha Seçici (pitchSelector)
+│   │   ├── Fiyat önizleme
+│   │   ├── Saat Grid'i (hoursGrid)
+│   │   └── Turnstile + Gönder butonu
+│   ├── Sekme 2: Oyuncu Bul (forum form + ilan listesi)
+│   ├── Sekme 3: Maç Bul (maç arayan formu + ilan listesi)
+│   └── Sekme 4: Takım Bul (takım formu + ilan listesi)
+│
+├── _business-panel.html (İŞLETME)
+│   ├── Sekme menüsü: İstatistik/Rezervasyon/Borç/Yorum/Kara Liste/
+│   │                     Fiyat/Saat&Engel/Abonelik/Ayarlar
+│   ├── İstatistikler (toplam/bu ay/bugün/son 7 gün + kazanç)
+│   ├── Rezervasyonlar (grid görünüm + erteleme/iptal)
+│   ├── Borç Yönetimi (filtre: tümü/bugün/haftalık/aylık)
+│   ├── Yorum Yönetimi (cevaplama)
+│   ├── Kara Liste (telefon bazlı engelleme)
+│   ├── Fiyat Tarifesi (gündüz/akşam ayrı)
+│   ├── Saat & Engel Ayarları (günlük saat, kilit)
+│   ├── Abonelik Yönetimi (oluştur/sil)
+│   └── İşletme Ayarları (iletişim, servis, koordinat)
+│
+├── _modals.html
+│   ├── Kullanıcı Giriş (email + şifre / Google / Apple)
+│   ├── Kullanıcı Kayıt (isim, telefon, email, şifre)
+│   ├── İşletme Giriş (saha key + şifre)
+│   ├── OTP Doğrulama
+│   ├── Profil Tamamlama (OAuth sonrası)
+│   ├── Oyuncu Profili + Değerlendirme
+│   ├── Kullanıcı Profili (düzenleme + geçmiş)
+│   ├── Rezervasyon Başarı
+│   ├── Rezervasyon Onay
+│   ├── Saat Engelleme
+│   └── Genel Onay
+│
+└── _footer.html
+    └── script.js bağlantısı
 ```
 
 ### 7.2 CSS Bileşenleri
@@ -421,11 +471,14 @@ npm install
 
 ### 9.3 Çalıştırma
 ```bash
-# 1. XAMPP'te MySQL'i başlat
-# 2. Node.js sunucusunu başlat
-npm start        # → http://127.0.0.1:5000
+# 1. HTML parçalarını derle (geliştirme sırasında her değişiklikten sonra)
+npm run build    # → html/build.js → index.html
 
-# 3. index.html'i aç (dosya sistemi veya Live Server ile)
+# 2. XAMPP'te MySQL'i başlat
+# 3. Node.js sunucusunu başlat
+npm start        # → API: http://127.0.0.1:5000
+
+# 4. index.html'i aç (dosya sistemi veya Live Server ile)
 #    Örn: file:///C:/Users/.../index.html
 #    Veya: http://127.0.0.1:5500/index.html (Live Server)
 ```
@@ -444,7 +497,31 @@ mysql -u root halisaha_kiralama < database_complete.sql
 
 ---
 
-## 10. Önemli Notlar ve Kısıtlamalar
+## 10. Build Pipeline
+
+```
+html/_header.html
+html/_customer-panel.html
+html/_business-panel.html        build.js        index.html
+html/_modals.html           ──→  (birleştir)  ──→  (derlenmiş)
+html/_footer.html
+
+Geliştirme akışı:
+1. html/ içindeki parçalarda düzenleme yap
+2. npm run build  (veya: node html/build.js)
+3. index.html güncellenir
+4. Live Server ile test et
+```
+
+**Neden bu yaklaşım?**
+- C# WinForms'taki gibi her panel ayrı dosyada → okunurluk artar
+- Mevcut mimari değişmez (hala statik HTML + fetch API)
+- script.js'de tek satır değişiklik gerekmez
+- `init.js` ile mevcut index.html'den parçalar tekrar çıkarılabilir
+
+---
+
+## 11. Önemli Notlar ve Kısıtlamalar
 
 1. **Express 5 Kullanımı:** Express 5'in varsayılan hata yönetimi HTML döndürür. Bu nedenle global JSON hata middleware'i eklenmiştir.
 2. **Plain Text Şifreler:** Şu an için şifreler plain text saklanmaktadır. Üretim ortamı için bcrypt önerilir.

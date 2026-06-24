@@ -16,7 +16,7 @@
 
     <header>
         <div class="logo-area">
-            <button class="hamburger-btn" id="mobileHamburgerBtn" style="display: none;" onclick="document.querySelector('.header-actions').classList.toggle('open')">
+            <button class="hamburger-btn" id="mobileHamburgerBtn" onclick="toggleMobileMenu()">
                 <svg viewBox="0 0 24 24" width="28" height="28" stroke="white" stroke-width="2" fill="none">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
                     <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -65,7 +65,13 @@
             </div>
         </div>
 
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
         <div class="header-actions">
+            <button class="menu-close-btn" onclick="closeMobileMenu()" aria-label="Menüyü Kapat">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="#10b981" stroke-width="3" fill="none">
+                    <polyline points="15,18 9,12 15,6"></polyline>
+                </svg>
+            </button>
             <!-- Kullanıcı Giriş -->
             <div id="userAuthSection" class="user-auth-zone">
                 <button class="nav-btn" onclick="openModal('loginModal')">GİRİS YAP</button>
@@ -97,7 +103,6 @@
         <div class="text-divider">
             <span class="text-divider-title">KOLAY SAHA KİRALAMA</span>
         </div>
-
         <!-- KULLANICI DETAY PANELİ: SEKMELİ DÜZEN -->
         <div id="customerContainer" style="width: 100%;">
             <!-- MÜŞTERİ SEKME MENÜSÜ -->
