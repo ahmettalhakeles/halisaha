@@ -3,6 +3,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -56,8 +57,6 @@ const db = mysql.createPool({
 db.getConnection((err, connection) => {
     if (err) return console.error('❌ MySQL Bağlantı Hatası:', err.message);
     console.log('🚀 XAMPP MySQL Veritabanına başarıyla bağlanıldı!');
-    
-    const fs = require('fs');
     
     // Run database migration (safe - uses IF NOT EXISTS)
     const migrationSql = fs.readFileSync(__dirname + '/database_complete.sql', 'utf8');
