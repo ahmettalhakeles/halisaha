@@ -4,115 +4,772 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KSK - KOLAY SAHA KIRALAMA</title>
+    <meta name="description" content="KSK - Kolay Saha Kiralama. Amasya halı saha rezervasyon ve oyuncu arama platformu.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
 </head>
 <body>
+    <div id="toastContainer"></div>
 
     <header>
         <div class="logo-area">
-            <h1>KSK</h1>
-            <p id="secretLogoTrigger" onclick="handleSecretLogoClick()" style="cursor: default;">KOLAY SAHA KIRALAMA</p>
-        </div>
-        
-        <div class="weather-container">
-            <div class="weather-title">AMASYA 7 GUNLUK HAVA TAHMINI</div>
-            <div class="weather-days" id="weatherDisplay">
+            <button class="hamburger-btn" id="mobileHamburgerBtn" style="display: none;" onclick="document.querySelector('.header-actions').classList.toggle('open')">
+                <svg viewBox="0 0 24 24" width="28" height="28" stroke="white" stroke-width="2" fill="none">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo-row">
+                <svg class="football-logo" viewBox="0 0 100 100" width="52" height="52">
+                    <circle cx="50" cy="50" r="46" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
+                    <path d="M 50.00 64.00 Q 42.17 60.78 36.69 54.33 Q 37.33 45.88 41.77 38.67 Q 50.00 36.67 58.23 38.67 Q 62.67 45.88 63.31 54.33 Q 57.83 60.78 50.00 64.00 Z" fill="#10b981" stroke="#10b981" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M 43.77100646790537 37.67376207875074 Q 50.5 37.17376207875074 59.22899353209462 40.173762078750734 Q 60.771892380113385 48 61.31479122813215 55.82623792124926" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+                    <path d="M 50.00 79.00 Q 35.33 70.19 22.42 58.96 L 11.86 75.72 A 46 46 0 0 0 37.32 94.22 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="50.00" y1="64.00" x2="50.00" y2="79.00" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="50.00" y1="79.00" x2="50.00" y2="96.00" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 22.42 58.96 Q 26.26 42.29 32.95 26.54 L 13.75 21.68 A 46 46 0 0 0 4.03 51.61 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="36.69" y1="54.33" x2="22.42" y2="58.96" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="22.42" y1="58.96" x2="6.25" y2="64.21" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 6.56 47.72 A 43.5 43.5 0 0 1 13.52 26.31" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M 32.95 26.54 Q 50.00 25.04 67.05 26.54 L 65.73 6.77 A 46 46 0 0 0 34.27 6.77 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="41.77" y1="38.67" x2="32.95" y2="26.54" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="32.95" y1="26.54" x2="22.96" y2="12.79" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 38.74 7.98 A 43.5 43.5 0 0 1 61.26 7.98" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M 67.05 26.54 Q 73.74 42.29 77.58 58.96 L 95.97 51.61 A 46 46 0 0 0 86.25 21.68 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="58.23" y1="38.67" x2="67.05" y2="26.54" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="67.05" y1="26.54" x2="77.04" y2="12.79" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 77.58 58.96 Q 64.67 70.19 50.00 79.00 L 62.68 94.22 A 46 46 0 0 0 88.14 75.72 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="63.31" y1="54.33" x2="77.58" y2="58.96" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="77.58" y1="58.96" x2="93.75" y2="64.21" stroke="#10b981" stroke-width="2.5"/>
+                </svg>
+                <div>
+                    <h1>KSK</h1>
+                    <p>KOLAY SAHA KIRALAMA</p>
                 </div>
+            </div>
+        </div>
+
+        <div class="weather-container">
+            <div class="weather-title">AMASYA 7 GÜNLÜK HAVA TAHMINI</div>
+            <div class="weather-days" id="weatherDisplay">
+            </div>
+            <div class="sunset-visual-box" id="sunsetWidget">
+                <svg class="sunset-svg-icon" viewBox="0 0 24 24">
+                    <path d="M12.005 16.002a4 4 0 0 0 3.995-3.8l.005-.2a4 4 0 0 0-4-4c-2.1 0-3.824 1.62-3.99 3.692l-.01.308a4 4 0 0 0 4 4zM2.005 19.002h20v2h-20zm3.293-10.707 1.414 1.414 1.414-1.414-1.414-1.414zm13.414 0 1.414 1.414 1.414-1.414-1.414-1.414zM11.005 3.002h2v4h-2zm-9 9h4v-2h-4zm16 0h4v-2h-4z" />
+                </svg>
+                <span class="sunset-time-label" id="sunsetText">--:-- GÜN BATIMI</span>
+            </div>
         </div>
 
         <div class="header-actions">
+            <!-- Kullanıcı Giriş -->
             <div id="userAuthSection" class="user-auth-zone">
-                <button class="nav-btn" onclick="openModal('loginModal')">GIRIS YAP</button>
+                <button class="nav-btn" onclick="openModal('loginModal')">GİRİS YAP</button>
                 <button class="nav-btn green-btn" onclick="openModal('registerModal')">KAYIT OL</button>
+            </div>
+
+            <!-- İşletme Giriş -->
+            <div id="businessAuthSection" class="user-auth-zone">
+                <button class="nav-btn" onclick="openBusinessLogin()" style="border-color: var(--warning-orange); color: var(--warning-orange);">İŞLETME GİRİŞİ</button>
+            </div>
+
+            <!-- Çıkış Butonları -->
+            <div id="userLogoutSection" class="user-auth-zone" style="display: none;">
+                <span id="welcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px; align-self: center;"></span>
+                <button class="nav-btn profile-nav-btn" onclick="openProfilePanel()">PROFİLİM</button>
+                <button class="nav-btn red-btn" onclick="handleUserLogout()">ÇIKIŞ</button>
+            </div>
+
+            <!-- İşletme Çıkış -->
+            <div id="businessLogoutSection" class="user-auth-zone" style="display: none;">
+                <span id="businessWelcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px;"></span>
+                <button class="nav-btn red-btn" onclick="handleBusinessLogout()">ÇIKIŞ</button>
             </div>
         </div>
     </header>
 
     <main>
-        <section class="fields-section">
-            <h2 class="section-title">HALISAHA SECIMI</h2>
-            <div class="fields-grid" id="fieldsGrid">
-                </div>
-        </section>
+        <!-- ORTA KISIM BÖLÜCÜ -->
+        <div class="text-divider">
+            <span class="text-divider-title">KOLAY SAHA KİRALAMA</span>
+        </div>
 
-        <section class="booking-section">
-            <h2 class="section-title">REZERVASYON PANELI</h2>
-            
-            <div id="placeholderText" class="placeholder-text">
-                ISLEM YAPMAK ICIN SOL TARAFDAN BIR HALISAHA SECINIZ.
+        <!-- KULLANICI DETAY PANELİ: SEKMELİ DÜZEN -->
+        <div id="customerContainer" style="width: 100%;">
+            <!-- MÜŞTERİ SEKME MENÜSÜ -->
+            <div class="customer-tabs" id="customerTabsRow">
+                <button class="tab-btn active" id="customer-tab-btn-booking" onclick="switchCustomerTab('booking')">REZERVASYON YAP</button>
+                <button class="tab-btn" id="customer-tab-btn-players" onclick="switchCustomerTab('players')">OYUNCU BUL</button>
+                <button class="tab-btn" id="customer-tab-btn-matches" onclick="switchCustomerTab('matches')">MAÇ BUL</button>
+                <button class="tab-btn" id="customer-tab-btn-teams" onclick="switchCustomerTab('teams')">TAKIM BUL</button>
             </div>
 
-            <div id="bookingPanel" class="booking-panel">
-                <div id="authRequiredAlert" class="auth-alert-message">
-                    REZERVASYON YAPABILMEK ICIN LUFTEN KULLANICI GIRISI YAPIN
-                </div>
-                
-                <div class="form-group">
-                    <label for="datePicker">TARIH SECIN</label>
-                    <select id="datePicker" class="form-control" onchange="onDateOrFieldChange()"></select>
-                </div>
+            <!-- TAB 1: REZERVASYON YAP -->
+            <div id="customer-tab-booking" class="customer-tab-content">
+                <div class="customer-booking-layout" id="customerBookingGridLayout">
+                    <!-- HALISAHA SEÇİMİ -->
+                    <section class="fields-section" id="customerFieldsSection" style="margin-bottom: 0;">
+                        <h2 class="section-title">HALISAHA SECIMI</h2>
+                        <div class="fields-grid" id="fieldsGrid"></div>
+                    </section>
+                    <!-- KULLANICI REZERVASYON PANELİ -->
+                    <section class="booking-section" id="customerBookingPanel" style="margin-bottom: 0;">
+                        <h2 class="section-title">REZERVASYON PANELİ</h2>
+                        <div id="placeholderText" class="placeholder-text">
+                            ISLEM YAPMAK ICIN SOL TARAFDAN BIR HALISAHA SECINIZ.
+                        </div>
+                        <div id="bookingPanel" class="booking-panel" style="display: none;">
+                            <div id="authRequiredAlert" class="auth-alert-message">
+                                REZERVASYON YAPABILMEK ICIN LUFTEN KULLANICI GIRISI YAPIN
+                            </div>
+                            <div class="form-group" id="pitchSelectorGroup">
+                                <label for="pitchSelector">SAHA SECIN (Saha 1 / Saha 2)</label>
+                                <select id="pitchSelector" class="form-control" onchange="onDateOrFieldChange()" disabled>
+                                    <option value="">Lütfen önce saha seçin...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="text-transform: uppercase;">TARIH SECIN</label>
+                                <select id="datePicker" class="form-control" onchange="onDateOrFieldChange()"></select>
+                            </div>
+                            <div class="form-group" id="customerPricePreviewZone" style="display: none; background: rgba(16, 185, 129, 0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.15);">
+                                <label style="margin-bottom: 2px;">SEÇİLİ SAHA TARİFESİ</label>
+                                <div style="font-weight: bold; color: var(--neon-green); font-size: 1.1rem;" id="customerPriceText">-</div>
+                            </div>
+                            <p class="sub-label">MUSAIT MAC SAATLERI</p>
+                            <div class="hours-grid" id="hoursGrid"></div>
+                            
+                            <!-- Cloudflare Turnstile Container -->
+                            <div class="form-group" id="turnstileContainer" style="display: none; margin-top: 15px; margin-bottom: 15px; text-align: center;">
+                                <div id="bookingTurnstile" class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-callback="onTurnstileSuccess"></div>
+                            </div>
 
-                <p class="sub-label">MUSAIT MAC SAATLERI</p>
-                <div class="hours-grid" id="hoursGrid">
+                            <button id="submitBtn" class="action-btn" onclick="completeBooking()">REZERVASYON YAP</button>
+
+                            
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- TAB 2: OYUNCU BUL -->
+            <div id="customer-tab-players" class="customer-tab-content" style="display: none; width: 100%;">
+                <div class="forum-block card-block">
+                    <div class="forum-layout">
+                        <div class="forum-form-container mobile-collapsible" id="playersFormContainer">
+                            <!-- Giriş Yapılmamışsa Kilit Ekranı -->
+                            <div class="form-lock-overlay" id="playersFormLock" style="display: none;">
+                                <p>OYUNCU ARAMA İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
+                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                            </div>
+                            <h3>YENİ OYUNCU İLANI OLUŞTUR</h3>
+                            <div class="form-group">
+                                <label>MAÇ TARİHİ</label>
+                                <select id="forumDate" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>MAÇ SAATİ</label>
+                                <select id="forumHour" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>ARANILAN MEVKİ</label>
+                                <select id="forumPosition" class="form-control">
+                                    <option value="KALECI">KALECI</option>
+                                    <option value="DEFANS">DEFANS</option>
+                                    <option value="ORTA SAHA">ORTA SAHA</option>
+                                    <option value="FORVET">FORVET</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>UCRET DURUMU</label>
+                                <select id="forumPayment" class="form-control">
+                                    <option value=" UCRET KARSILANACAK"> UCRET KARSILANACAK</option>
+                                    <option value=" UCRET KARSILANMAYACAK"> UCRET KARSILANMAYACAK</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>KAPTAN TELEFON (WHATSAPP - OPSİYONEL)</label>
+                                <input type="text" id="forumPhone" class="form-control" placeholder="+905XXXXXXXXX (Opsiyonel)">
+                            </div>
+                            <div class="form-group">
+                                <label>EKSTRA MESAJ</label>
+                                <textarea id="forumMessage" class="form-control" rows="2" placeholder="NOTUNUZU YAZIN"></textarea>
+                            </div>
+                            <button class="action-btn" onclick="createForumPost()">ILANI YAYINLA</button>
+                        </div>
+                        <div class="forum-wall">
+                            <div class="mobile-listing-header">
+                                <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">⚽ AKTİF OYUNCU İLANLARI</h2>
+                                <button class="mobile-create-btn" onclick="toggleMobileForm('playersFormContainer')">+ İlan Ver</button>
+                            </div>
+                            <div class="posts-container" id="postsContainer"></div>
+                        </div>
                     </div>
-
-                <button id="submitBtn" class="action-btn" onclick="completeBooking()">REZERVASYON YAP</button>
-            </div>
-        </section>
-    </main>
-
-    <section class="forum-section">
-        <h2 class="section-title">OYUNCU ARAMA FORUMU</h2>
-        
-        <div class="forum-layout">
-            <div class="forum-form-container">
-                <h3>YENI OYUNCU ILANI OLUSTUR</h3>
-                <div class="form-group">
-                    <label>MAC TARIHI</label>
-                    <select id="forumDate" class="form-control"></select>
                 </div>
-                <div class="form-group">
-                    <label>MAC SAATI</label>
-                    <select id="forumHour" class="form-control"></select>
-                </div>
-                <div class="form-group">
-                    <label>ARANILAN MEVKI</label>
-                    <select id="forumPosition" class="form-control">
-                        <option value="KALECI">KALECI</option>
-                        <option value="DEFANS">DEFANS</option>
-                        <option value="ORTA SAHA">ORTA SAHA</option>
-                        <option value="FORVET">FORVET</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>UCRET DURUMU</label>
-                    <select id="forumPayment" class="form-control">
-                        <option value=" UCRET KARSILANACAK">UCRET KARSILANACAK</option>
-                        <option value=" UCRET KARSILANMAYACAK">UCRET KARSILANMAYACAK</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>KAPTAN TELEFON (WHATSAPP)</label>
-                    <input type="text" id="forumPhone" class="form-control" placeholder="5XXXXXXXXX">
-                </div>
-                <div class="form-group">
-                    <label>EKSTRA MESAJ</label>
-                    <textarea id="forumMessage" class="form-control" rows="2" placeholder="NOTUNUZU YAZIN"></textarea>
-                </div>
-                <button class="action-btn" onclick="createForumPost()">ILANI YAYINLA</button>
             </div>
 
-            <div class="forum-wall">
-                <h3>AKTIF ILANLAR</h3>
-                <div class="posts-container" id="postsContainer">
+            <!-- TAB 3: MAÇ BUL -->
+            <div id="customer-tab-matches" class="customer-tab-content" style="display: none; width: 100%;">
+                <div class="forum-block card-block">
+                    <div class="forum-layout">
+                        <div class="forum-form-container mobile-collapsible" id="matchesFormContainer">
+                            <!-- Giriş Yapılmamışsa Kilit Ekranı -->
+                            <div class="form-lock-overlay" id="matchesFormLock" style="display: none;">
+                                <p>MAÇ ARAMA İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
+                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                            </div>
+                            <h3>MAÇ ARAMA İLANI OLUŞTUR</h3>
+                            <div class="form-group">
+                                <label>AD SOYAD</label>
+                                <input type="text" id="matchName" class="form-control" placeholder="İsim Soyisim">
+                            </div>
+                            <div class="form-group">
+                                <label>YAŞ</label>
+                                <input type="number" id="matchAge" class="form-control" placeholder="25" min="10" max="65">
+                            </div>
+                            <div class="form-group">
+                                <label>BOY (cm)</label>
+                                <input type="number" id="matchHeight" class="form-control" min="100" max="250" placeholder="175">
+                            </div>
+                            <div class="form-group">
+                                <label>KİLO (kg)</label>
+                                <input type="number" id="matchWeight" class="form-control" min="30" max="250" placeholder="70">
+                            </div>
+                            <div class="form-group">
+                                <label>MEVKİ</label>
+                                <select id="matchPosition" class="form-control">
+                                    <option value="KALECI">KALECI</option>
+                                    <option value="DEFANS">DEFANS</option>
+                                    <option value="ORTA SAHA">ORTA SAHA</option>
+                                    <option value="FORVET">FORVET</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>TELEFON (OPSİYONEL - Sadece anlaşma sonrası paylaşılır)</label>
+                                <input type="text" id="matchPhone" class="form-control" placeholder="+905XXXXXXXXX (Opsiyonel)">
+                            </div>
+                            <div class="form-group">
+                                <label>MÜSAİT OLDUĞUNUZ TARİHLER (ÇOKLU SEÇİM)</label>
+                                <div class="date-checkbox-grid" id="matchDateCheckboxes"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>MÜSAİT OLDUĞUNUZ SAATLER (ÇOKLU SEÇİM)</label>
+                                <div class="hour-checkbox-grid" id="matchHourCheckboxes"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>İSTEDİĞİNİZ ÜCRET (TL)</label>
+                                <select id="matchFee" class="form-control">
+                                    <option value="ÜCRETSIZ">ÜCRETSIZ (BEKLENTIM YOK)</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="150">150</option>
+                                    <option value="200">200</option>
+                                    <option value="250">250</option>
+                                    <option value="300">300</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>EKSTRA MESAJ</label>
+                                <textarea id="matchMsg" class="form-control" rows="2" placeholder="Kendinizi kısaca tanıtın..."></textarea>
+                            </div>
+                            <button class="action-btn" onclick="createMatchSeeker()">İLANI YAYINLA</button>
+                        </div>
+                        <div class="forum-wall">
+                            <div class="mobile-listing-header">
+                                <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">🏟️ AKTİF MAÇ ARAYAN İLANLARI</h2>
+                                <button class="mobile-create-btn" onclick="toggleMobileForm('matchesFormContainer')">+ İlan Ver</button>
+                            </div>
+                            <div class="filter-bar" id="matchFilterBar">
+                                <div class="filter-row">
+                                    <select id="filterPosition" class="filter-control" onchange="loadMatchSeekers()">
+                                        <option value="">TÜM MEVKİLER</option>
+                                        <option value="KALECI">KALECI</option>
+                                        <option value="DEFANS">DEFANS</option>
+                                        <option value="ORTA SAHA">ORTA SAHA</option>
+                                        <option value="FORVET">FORVET</option>
+                                    </select>
+                                    <input type="number" id="filterMinAge" class="filter-control" placeholder="Min Yaş" min="10" max="65" onchange="loadMatchSeekers()">
+                                    <input type="number" id="filterMaxAge" class="filter-control" placeholder="Max Yaş" min="10" max="65" onchange="loadMatchSeekers()">
+                                </div>
+                                <div class="filter-row" style="margin-top: 5px;">
+                                    <select id="filterDate" class="filter-control" onchange="loadMatchSeekers()">
+                                        <option value="">TÜM TARİHLER</option>
+                                    </select>
+                                    <select id="filterHour" class="filter-control" onchange="loadMatchSeekers()">
+                                        <option value="">TÜM SAATLER</option>
+                                    </select>
+                                    <select id="filterFee" class="filter-control" onchange="loadMatchSeekers()">
+                                        <option value="">TÜM ÜCRETLER</option>
+                                        <option value="0">ÜCRETSIZ</option>
+                                        <option value="50">0-50 TL</option>
+                                        <option value="100">0-100 TL</option>
+                                        <option value="200">0-200 TL</option>
+                                        <option value="300">0-300 TL</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="posts-container" id="matchSeekersContainer"></div>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: TAKIM BUL -->
+            <div id="customer-tab-teams" class="customer-tab-content" style="display: none; width: 100%;">
+                <div class="forum-block card-block">
+                    <div class="forum-layout">
+                        <div class="forum-form-container mobile-collapsible" id="teamsFormContainer">
+                            <div class="form-lock-overlay" id="teamsFormLock" style="display: none;">
+                                <p>TAKIM İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
+                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                            </div>
+                            <h3>TAKIM ARAMA İLANI OLUŞTUR</h3>
+                            <div class="form-group">
+                                <label>TAKIM ADI</label>
+                                <input type="text" id="teamName" class="form-control" placeholder="Takım Adı">
+                            </div>
+                            <div class="form-group">
+                                <label>TAKIM YAŞ ORTALAMASI</label>
+                                <select id="teamAgeGroup" class="form-control">
+                                    <option value="">Seçiniz</option>
+                                    <option value="Lise (15-18)">Lise (15-18)</option>
+                                    <option value="Genç (18-25)">Genç (18-25)</option>
+                                    <option value="Orta (26-35)">Orta (26-35)</option>
+                                    <option value="Olgun (36+)">Olgun (36+)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>KAÇ KİŞİLİK MAÇ?</label>
+                                <select id="teamMatchSize" class="form-control">
+                                    <option value="">Seçiniz</option>
+                                    <option value="6v6">6v6</option>
+                                    <option value="7v7">7v7</option>
+                                    <option value="8v8">8v8</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>OYUN SEVİYESİ</label>
+                                <select id="teamSkillLevel" class="form-control">
+                                    <option value="">Seçiniz</option>
+                                    <option value="Amatör">Amatör</option>
+                                    <option value="Orta">Orta</option>
+                                    <option value="Profesyonel">Profesyonel</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>MAÇ YAPILABİLECEK GÜNLER</label>
+                                <div class="date-checkbox-grid" id="teamDayCheckboxes"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>İSTEDİĞİNİZ SAAT ARALIĞI (ÇOKLU SEÇİM)</label>
+                                <div class="hour-checkbox-grid" id="teamHourCheckboxes"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>KAPTAN ADI</label>
+                                <input type="text" id="teamCaptainName" class="form-control" placeholder="Kaptan Adı Soyadı">
+                            </div>
+                            <div class="form-group">
+                                <label>EKSTRA MESAJ</label>
+                                <textarea id="teamMessage" class="form-control" rows="2" placeholder="Takımınızı kısaca tanıtın..."></textarea>
+                            </div>
+                            <button class="action-btn" onclick="createTeamSeeker()">İLANI YAYINLA</button>
+                        </div>
+                        <div class="forum-wall">
+                            <div class="mobile-listing-header">
+                                <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">🏟️ AKTİF TAKIM ARAYAN İLANLARI</h2>
+                                <button class="mobile-create-btn" onclick="toggleMobileForm('teamsFormContainer')">+ İlan Ver</button>
+                            </div>
+                            <div class="posts-container" id="teamSeekersContainer"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </section>
 
+        <!-- İŞLETME PANELİ -->
+        <section class="business-panel" id="businessPanel" style="display: none;">
+            <h2 class="section-title" id="businessPanelTitle">İŞLETME PANELİ</h2>
+
+            <!-- İŞLETME SEKME MENÜSÜ -->
+            <div class="business-tabs">
+                <button class="tab-btn active" id="tab-btn-stats" onclick="switchBusinessTab('stats')">İSTATİSTİKLER</button>
+                <button class="tab-btn" id="tab-btn-reservations" onclick="switchBusinessTab('reservations')">REZERVASYONLAR</button>
+                <button class="tab-btn" id="tab-btn-debts" onclick="switchBusinessTab('debts')">BORÇLAR</button>
+                <button class="tab-btn" id="tab-btn-comments" onclick="switchBusinessTab('comments')">YORUMLAR</button>
+                <button class="tab-btn" id="tab-btn-blacklist" onclick="switchBusinessTab('blacklist')">KARA LİSTE</button>
+                <button class="tab-btn" id="tab-btn-pricing" onclick="switchBusinessTab('pricing')">FİYAT TARİFESİ</button>
+                <button class="tab-btn" id="tab-btn-hours" onclick="switchBusinessTab('hours')">SAAT & ENGEL AYARLARI</button>
+                <button class="tab-btn" id="tab-btn-subscriptions" onclick="switchBusinessTab('subscriptions')">ABONELİK YÖNETİMİ</button>
+                <button class="tab-btn" id="tab-btn-settings" onclick="switchBusinessTab('settings')">İŞLETME AYARLARI</button>
+            </div>
+
+            <!-- TAB 1: İSTATİSTİKLER -->
+            <div id="tab-stats" class="tab-content-zone">
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <h3>TOPLAM REZERVASYON</h3>
+                        <div class="stat-value" id="statTotal">-</div>
+                        <div class="stat-earnings" id="earnTotal">-</div>
+                        <p class="stat-label">Tüm zamanlar</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>BU AY</h3>
+                        <div class="stat-value" id="statMonth">-</div>
+                        <div class="stat-earnings" id="earnMonth">-</div>
+                        <p class="stat-label">Ay bazında</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>BUGÜN</h3>
+                        <div class="stat-value" id="statToday">-</div>
+                        <div class="stat-earnings" id="earnToday">-</div>
+                        <p class="stat-label">Günlük</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>SON 7 GÜN</h3>
+                        <div class="stat-value" id="statLast7Days">-</div>
+                        <div class="stat-earnings" id="earnLast7Days">-</div>
+                        <p class="stat-label">Haftalık</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: REZERVASYONLAR -->
+            <div id="tab-reservations" class="tab-content-zone" style="display: none;">
+                <div class="reservations-list-container">
+                    <h3 class="section-subtitle">REZERVASYON GRİD GÖRÜNÜMÜ</h3>
+                    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                        <select id="businessGridDateSelect" class="form-control" style="max-width:200px;padding:6px 10px;font-size:0.8rem;" onchange="renderBusinessHoursGrid()"></select>
+                        <button class="btn-filter-res active" id="bizGridFilterAll" onclick="filterBusinessGrid('all')" style="background:var(--primary-green);color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">TÜMÜ</button>
+                        <button class="btn-filter-res" id="bizGridFilterNormal" onclick="filterBusinessGrid('normal')" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">NORMAL</button>
+                        <button class="btn-filter-res" id="bizGridFilterAbone" onclick="filterBusinessGrid('abone')" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
+                    </div>
+                    <div id="businessHoursGrid" class="hours-grid" style="margin-bottom:20px;"></div>
+                    <div id="businessGridSelectedInfo" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:15px;margin-bottom:20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <strong id="bizGridSelName" style="font-size:1.1rem;"></strong><br>
+                                <small id="bizGridSelDetail" style="color:var(--text-muted);"></small>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="action-btn" style="background:var(--primary-green);color:#000;padding:6px 14px;font-size:0.75rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;" onclick="quickBusinessWhatsApp()">📱 MESAJ GÖNDER</button>
+                                <button class="btn-danger-sm" onclick="quickBusinessCancel()">İPTAL</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="section-subtitle">AKTİF REZERVASYONLAR VE ERTELEME</h3>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                        <button class="btn-filter-res active" id="resFilterAll" onclick="filterBusinessReservations('all')" style="background:var(--primary-green);color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">TÜMÜ</button>
+                        <button class="btn-filter-res" id="resFilterNormal" onclick="filterBusinessReservations('normal')" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">NORMAL</button>
+                        <button class="btn-filter-res" id="resFilterAbone" onclick="filterBusinessReservations('abone')" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
+                    </div>
+                    <div id="businessActiveReservationsContainer" class="reservations-scroll" style="margin-bottom: 25px;">
+                    </div>
+                    
+                    <h3 class="section-subtitle" style="margin-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px;">GEÇMİŞ REZERVASYONLAR</h3>
+                    <div id="businessPastReservationsContainer" class="reservations-scroll" style="opacity: 0.75;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: BORÇLAR -->
+            <div id="tab-debts" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <h3 class="section-subtitle" style="margin-bottom: 5px;">💰 BORÇ YÖNETİMİ</h3>
+                            <p class="section-desc" style="margin-bottom: 0;">Rezervasyon yapan kişilerin ödeme durumlarını buradan yönetin.</p>
+                        </div>
+                        <div id="debtsSummaryStats" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 12px 18px; border-radius: 8px; font-size: 0.95rem; color: #fff; min-width: 220px; box-shadow: var(--shadow-sm); backdrop-filter: blur(5px);">
+                            <div style="font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 5px; font-size: 0.85rem; color: rgba(255,255,255,0.6); text-transform: uppercase;">Dönem Toplamı</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Ödenen:</span>
+                                <strong style="color: var(--neon-green);"><span id="debtsSumPaid">0</span> TL</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Ödenmeyen:</span>
+                                <strong style="color: #fca5a5;"><span id="debtsSumUnpaid">0</span> TL</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="debt-filter-bar" style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+                        <button class="tab-btn active" id="debt-filter-all" onclick="loadBusinessDebts('all')">TÜMÜ</button>
+                        <button class="tab-btn" id="debt-filter-daily" onclick="loadBusinessDebts('daily')">BUGÜN</button>
+                        <button class="tab-btn" id="debt-filter-weekly" onclick="loadBusinessDebts('weekly')">SON 7 GÜN</button>
+                        <button class="tab-btn" id="debt-filter-monthly" onclick="loadBusinessDebts('monthly')">SON 30 GÜN</button>
+                    </div>
+                    <div class="debt-status-filter-bar" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+                        <button class="tab-btn active" id="debt-status-all" onclick="setDebtStatusFilter('all')">TÜM ÖDEMELER</button>
+                        <button class="tab-btn" id="debt-status-unpaid" onclick="setDebtStatusFilter('unpaid')">⚠️ ÖDENMEDİ</button>
+                        <button class="tab-btn" id="debt-status-paid" onclick="setDebtStatusFilter('paid')">✅ ÖDENDİ</button>
+                        <button class="tab-btn" id="debt-sort-toggle" onclick="toggleDebtSortOrder()" style="margin-left:auto;background:rgba(255,255,255,0.08);">⬇️ YENİDEN ESKİYE</button>
+                    </div>
+                    
+                    <div id="businessDebtsContainer" class="reservations-scroll"></div>
+                </div>
+            </div>
+
+            <!-- TAB: YORUMLAR -->
+            <div id="tab-comments" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">💬 YORUM YÖNETİMİ</h3>
+                    <p class="section-desc">Müşterilerinizin yaptığı yorumları inceleyin ve cevaplayın.</p>
+                    
+                    <div class="debt-status-filter-bar" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+                        <button class="tab-btn active" id="comment-filter-all" onclick="setBusinessCommentFilter('all')">TÜM YORUMLAR</button>
+                        <button class="tab-btn" id="comment-filter-unanswered" onclick="setBusinessCommentFilter('unanswered')">⚠️ CEVAPLANMAMIŞ</button>
+                        <button class="tab-btn" id="comment-filter-answered" onclick="setBusinessCommentFilter('answered')">✅ CEVAPLANMIŞ</button>
+                    </div>
+
+                    <div id="businessCommentsList" style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- Dinamik yorumlar buraya eklenecek -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: KARA LİSTE -->
+            <div id="tab-blacklist" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">🚫 SAHA KARA LİSTESİ</h3>
+                    <p class="section-desc">Maça gelmeyen veya sorun çıkaran kullanıcıları bu listeden engelleyebilirsiniz. Bir kullanıcı 3 farklı saha tarafından engellenirse sistem genelinde küresel olarak engellenir (Globally Banned).</p>
+                    
+                    <div class="settings-grid" style="max-width: 400px; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px;">
+                        <div class="form-group">
+                            <label for="blacklistPhoneInput">ENGELLEYECEK TELEFON NUMARASI</label>
+                            <input type="text" id="blacklistPhoneInput" class="form-control" placeholder="(0555) 555 5555">
+                        </div>
+                        <button class="action-btn" onclick="addToBusinessBlacklist()" style="margin-top: 10px;">NUMARAYI ENGELLE</button>
+                    </div>
+
+                    <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 12px; font-weight: 600;">ENGENENEN NUMARALAR</h4>
+                    <div id="businessBlacklistContainer" class="reservations-scroll">
+                        <!-- Kara liste kayıtları buraya eklenecek -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: FİYAT TARİFESİ -->
+            <div id="tab-pricing" class="tab-content-zone" style="display: none;">
+                <div class="pricing-calendar card-block">
+                    <h3 class="section-subtitle">FİYAT AYARLARI</h3>
+                    
+                    <div id="pricingPitchSelectorZone" class="form-group" style="display: none; max-width: 300px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 15px;">
+                        <label for="pricingPitchSelect">AYARLANACAK SAHA SEÇİN</label>
+                        <select id="pricingPitchSelect" class="form-control" onchange="loadPricingForSelectedPitch()">
+                            <option value="">Lütfen saha seçin...</option>
+                            <option value="1">Saha 1</option>
+                            <option value="2">Saha 2</option>
+                        </select>
+                    </div>
+
+                    <div id="pricingInputsZone">
+                        <div class="pricing-inputs">
+                            <div class="form-group">
+                                <label>SABAH SAATLERİ FİYATI (Örn: 2500)</label>
+                                <input type="number" id="businessPriceMorning" class="form-control" placeholder="2500">
+                            </div>
+                            <div class="form-group">
+                                <label>AKŞAM SAATLERİ FİYATI (Örn: 3000)</label>
+                                <input type="number" id="businessPriceEvening" class="form-control" placeholder="3000">
+                            </div>
+                        </div>
+                        <div class="pricing-preview">
+                            <p class="section-desc">Seçili Saha Fiyatı: <strong id="businessCurrentPricePreview" style="color: var(--neon-green); font-size: 1.5rem;">-</strong></p>
+                        </div>
+                        <button class="action-btn" onclick="savePricingSchedule()">FİYAT TARİFESİNİ KAYDET</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: ÇALIŞMA SAATLERİ VE ENGELLER -->
+            <div id="tab-hours" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">ÇALIŞMA SAATLERİ VE SAAT KİLİTLEME</h3>
+                    
+                    <div id="hoursPitchSelectorZone" class="form-group" style="display: none; max-width: 300px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 15px;">
+                        <label for="hoursPitchSelect">AYARLANACAK SAHA SEÇİN</label>
+                        <select id="hoursPitchSelect" class="form-control" onchange="loadHoursForSelectedPitch()">
+                            <option value="">Lütfen saha seçin...</option>
+                            <option value="1">Saha 1</option>
+                            <option value="2">Saha 2</option>
+                        </select>
+                    </div>
+
+                    <div id="hoursInputsZone">
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                            <div class="toggle-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="fieldClosureToggle" onchange="toggleFieldClosure()">
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="toggle-text"><strong>Tüm Günleri Kapat (Komple Bakım)</strong></span>
+                            </div>
+
+                            <div class="toggle-container" id="weekdayClosureContainer" style="display: none;">
+                                <label class="switch">
+                                    <input type="checkbox" id="weekdayClosureToggle" onchange="toggleWeekdayClosure()">
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="toggle-text"><strong>Seçili Günü Kapat (<span id="selectedClosureDayName">PAZARTESİ</span>)</strong></span>
+                            </div>
+                        </div>
+
+                        <div class="admin-time-range" style="border-top: none; margin-top: 15px; padding-top: 0;">
+                            <div class="inline-inputs" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                                <div>
+                                    <label>HAFTANIN GÜNÜ</label>
+                                    <select id="adminHoursDaySelect" class="form-control" onchange="onAdminHoursDayChange()">
+                                        <option value="all">TÜM GÜNLER (GENEL)</option>
+                                        <option value="1">PAZARTESİ</option>
+                                        <option value="2">SALI</option>
+                                        <option value="3">ÇARŞAMBA</option>
+                                        <option value="4">PERŞEMBE</option>
+                                        <option value="5">CUMA</option>
+                                        <option value="6">CUMARTESİ</option>
+                                        <option value="0">PAZAR</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>AÇILIŞ SAATİ</label>
+                                    <select id="adminOpeningHour" class="form-control"></select>
+                                </div>
+                                <div>
+                                    <label>KAPANIŞ SAATİ</label>
+                                    <select id="adminClosingHour" class="form-control"></select>
+                                </div>
+                            </div>
+                            <button class="action-btn" onclick="saveOperatingHours()" style="margin-top: 15px; max-width: 300px;">ÇALIŞMA SAATLERİNİ KAYDET</button>
+                        </div>
+
+                        <div class="admin-hours-section card-block" style="margin-top: 20px;">
+                            <h3>CALISMA SAATLERI & ENGELLER</h3>
+                            <p class="section-desc">KİLİTLEMEK VEYA BOŞALTMAK İSTEDİĞİNİZ SAATİN ÜZERİNE TIKLAYIN</p>
+                            <div class="hours-grid" id="adminHoursGrid">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: ABONELİK YÖNETİMİ -->
+            <div id="tab-subscriptions" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">YENİ ABONELİK TANIMLA</h3>
+                    <div class="settings-grid">
+                        <div class="form-group" id="subPitchSelectZone">
+                            <label for="subPitchSelect">SAHA SEÇİN</label>
+                            <select id="subPitchSelect" class="form-control">
+                                <option value="1">Saha 1</option>
+                                <option value="2">Saha 2</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="subDaySelect">HAFTANIN GÜNÜ SEÇİN</label>
+                            <select id="subDaySelect" class="form-control">
+                                <option value="PAZARTESİ">PAZARTESİ</option>
+                                <option value="SALI">SALI</option>
+                                <option value="ÇARŞAMBA">ÇARŞAMBA</option>
+                                <option value="PERŞEMBE">PERŞEMBE</option>
+                                <option value="CUMA">CUMA</option>
+                                <option value="CUMARTESİ">CUMARTESİ</option>
+                                <option value="PAZAR">PAZAR</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="subHourSelect">SAAT DİLİMİ SEÇİN</label>
+                            <select id="subHourSelect" class="form-control">
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="subNameInput">ABONE İSİM SOYİSİM</label>
+                            <input type="text" id="subNameInput" class="form-control" placeholder="Ahmet Yılmaz">
+                        </div>
+                        <div class="form-group">
+                            <label for="subPhoneInput">ABONE TELEFON (WHATSAPP)</label>
+                            <input type="tel" id="subPhoneInput" class="form-control" placeholder="Telefon Numarası (Zorunlu)" required>
+                        </div>
+                    </div>
+                    <button class="action-btn" onclick="saveSubscription()" style="max-width: 300px;">ABONELİK OLUŞTUR</button>
+                </div>
+
+                <div class="reservations-list-container" style="margin-top: 20px; max-height: 400px;">
+                    <h3 class="section-subtitle">AKTİF HAFTALIK ABONELİKLER</h3>
+                    <div id="businessSubscriptionsContainer" class="reservations-scroll">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: İŞLETME AYARLARI -->
+            <div id="tab-settings" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">İŞLETME GENEL AYARLARI</h3>
+                    <p class="section-desc">İşletmenizin genel ayarlarını, iletişim ve servis bilgilerini, harita koordinatlarını bu alandan düzenleyebilirsiniz.</p>
+                    
+                    <div class="settings-grid-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; margin-bottom: 25px;">
+                        <div class="form-group">
+                            <label>HALI SAHA SAYISI</label>
+                            <select id="businessSettingFieldCount" class="form-control" onchange="onAdminFieldCountChange()">
+                                <option value="1">1 Saha</option>
+                                <option value="2">2 Saha (Saha 1 & Saha 2)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>TELEFON NUMARASI</label>
+                            <input type="text" id="businessSettingPhone" class="form-control" placeholder="+905XXXXXXXXX">
+                        </div>
+                        <div class="form-group">
+                            <label>SERVİS HİZMETİ</label>
+                            <select id="businessSettingService" class="form-control">
+                                <option value="Servis: Var">SERVİS: VAR</option>
+                                <option value="Servis: Yok">SERVİS: YOK</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>KRAMPON KİRALAMA</label>
+                            <select id="businessSettingCleats" class="form-control">
+                                <option value="Krampon Kiralanır">KRAMPON KİRALANIR</option>
+                                <option value="Krampon Kiralanmaz">KRAMPON KİRALANMAZ</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>DUŞ HİZMETİ</label>
+                            <select id="businessSettingShower" class="form-control">
+                                <option value="Duş Var">DUŞ VAR</option>
+                                <option value="Duş Yok">DUŞ YOK</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>MARKET HİZMETİ</label>
+                            <select id="businessSettingMarket" class="form-control">
+                                <option value="Market Var">MARKET VAR</option>
+                                <option value="Market Yok">MARKET YOK</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>İKRAMLAR (Virgülle Ayırın)</label>
+                            <input type="text" id="businessSettingRefreshments" class="form-control" placeholder="Örn: Çay, gofret, kraker">
+                        </div>
+                        <div class="form-group">
+                            <label>HARİTA KOORDİNATLARI (Google Maps)</label>
+                            <input type="text" id="businessSettingCoordinates" class="form-control" placeholder="Örn: 40.6558,35.8272">
+                        </div>
+                    </div>
+                    
+                    <button class="action-btn" onclick="saveAllBusinessSettings()" style="max-width: 300px;">BİLGİLERİ KAYDET</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- BOTTOM GRADIENT LINE -->
+        <div class="bottom-gradient-line"></div>
+    </main>
+
+    <!-- MODALLER -->
     <div class="modal-overlay" id="loginModal">
         <div class="modal-card mini-modal">
             <div class="modal-header">
@@ -121,19 +778,38 @@
             </div>
             <div class="form-group">
                 <label>MAIL ADRESI</label>
-                <input type="email" id="loginEmail" class="form-control">
+                <input type="email" id="loginEmail" class="form-control" onkeypress="if(event.key === 'Enter') handleUserLogin()">
             </div>
             <div class="form-group">
                 <label>SIFRE</label>
-                <input type="password" id="loginPassword" class="form-control">
+                <input type="password" id="loginPassword" class="form-control" onkeypress="if(event.key === 'Enter') handleUserLogin()">
             </div>
             <button class="action-btn" onclick="handleUserLogin()">GIRIS YAP</button>
+
+            <!-- Google ve Apple ile Giriş Butonları -->
+            <div class="oauth-buttons">
+                <button class="oauth-btn google-btn" onclick="openOAuth('google')">
+                    <svg class="oauth-icon" viewBox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                    Google ile Giriş Yap
+                </button>
+                <button class="oauth-btn apple-btn" onclick="openOAuth('apple')">
+                    <svg class="oauth-icon" viewBox="0 0 170 170" fill="#ffffff">
+                        <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.13-1.92-14.34-6.15-3.11-2.52-6.94-7.08-11.51-13.7-7.7-10.98-13.63-23.75-17.78-38.31-4.14-14.56-6.22-28.59-6.22-42.08 0-14.74 3.56-26.65 10.66-35.73 7.1-9.08 16.14-13.68 27.13-13.79 5.8 0 11.99 1.62 18.57 4.88 6.57 3.25 11.13 4.89 13.68 4.89 2.13 0 6.64-1.57 13.52-4.7 6.89-3.13 12.87-4.63 17.95-4.5 14.34.38 25.26 5.66 32.74 15.86-11.99 7.37-17.89 17.59-17.7 30.68.19 10.37 4.1 19.01 11.72 25.92 7.63 6.9 16.89 10.67 27.78 11.3-3.11 9.08-6.98 17.71-11.62 25.92zm-23.95-103.5c0-8.5 3.01-16.13 9.04-22.9 6.03-6.77 13.43-10.77 22.2-11.99.19 1.06.28 2.06.28 3 .06 8.06-2.92 15.54-8.92 22.42-6.02 6.88-13.59 10.98-22.7 12.27-.69-1.25-.9-1.93-.9-2.8z"/>
+                    </svg>
+                    Apple ile Giriş Yap
+                </button>
+            </div>
         </div>
     </div>
 
     <div class="modal-overlay" id="registerModal">
         <div class="modal-card mini-modal">
-            <form id="registerForm" onsubmit="handleUserRegister(event)">  
+            <form id="registerForm" onsubmit="handleUserRegister(event)">
                 <div class="modal-header">
                     <h2>KAYIT OL</h2>
                     <button type="button" class="close-modal" onclick="closeModal('registerModal')">X</button>
@@ -144,7 +820,7 @@
                 </div>
                 <div class="form-group">
                     <label>TELEFON NUMARASI</label>
-                    <input type="text" id="regPhone" class="form-control" placeholder="5XXXXXXXXX" required>
+                    <input type="text" id="regPhone" class="form-control" placeholder="+905XXXXXXXXX" required>
                 </div>
                 <div class="form-group">
                     <label>MAIL ADRESI</label>
@@ -156,78 +832,39 @@
                     <small class="help-text">EN AZ 6 HANELI, BUYUK HARF, RAKAM VE SEMBOL ICERMELIDIR.</small>
                 </div>
                 <button type="submit" class="action-btn">KAYIT OL</button>
+
+                <!-- Google ve Apple ile Giriş Butonları -->
+                <div class="oauth-buttons">
+                    <button type="button" class="oauth-btn google-btn" onclick="openOAuth('google')">
+                        <svg class="oauth-icon" viewBox="0 0 24 24">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                        </svg>
+                        Google ile Kayıt Ol
+                    </button>
+                    <button type="button" class="oauth-btn apple-btn" onclick="openOAuth('apple')">
+                        <svg class="oauth-icon" viewBox="0 0 170 170" fill="#ffffff">
+                            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.13-1.92-14.34-6.15-3.11-2.52-6.94-7.08-11.51-13.7-7.7-10.98-13.63-23.75-17.78-38.31-4.14-14.56-6.22-28.59-6.22-42.08 0-14.74 3.56-26.65 10.66-35.73 7.1-9.08 16.14-13.68 27.13-13.79 5.8 0 11.99 1.62 18.57 4.88 6.57 3.25 11.13 4.89 13.68 4.89 2.13 0 6.64-1.57 13.52-4.7 6.89-3.13 12.87-4.63 17.95-4.5 14.34.38 25.26 5.66 32.74 15.86-11.99 7.37-17.89 17.59-17.7 30.68.19 10.37 4.1 19.01 11.72 25.92 7.63 6.9 16.89 10.67 27.78 11.3-3.11 9.08-6.98 17.71-11.62 25.92zm-23.95-103.5c0-8.5 3.01-16.13 9.04-22.9 6.03-6.77 13.43-10.77 22.2-11.99.19 1.06.28 2.06.28 3 .06 8.06-2.92 15.54-8.92 22.42-6.02 6.88-13.59 10.98-22.7 12.27-.69-1.25-.9-1.93-.9-2.8z"/>
+                        </svg>
+                        Apple ile Kayıt Ol
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
-    <div class="modal-overlay" id="adminAuthModal">
-        <div class="modal-card mini-modal">
-            <div class="modal-header">
-                <h2>GUVENLI ISLETME GIRISI</h2>
-                <button type="button" class="close-modal" onclick="closeModal('adminAuthModal')">X</button>
-            </div>
-            <div class="form-group">
-                <label>ISLETME SIFRESI</label>
-                <input type="password" id="adminToken" class="form-control" placeholder="YONETILECEK SAHA ADI">
-            </div>
-            <button class="action-btn" onclick="handleAdminLogin()">PANELI AC</button>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="adminDashboardModal">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2 id="adminPanelTitle">ISLETME YONETIM DASHBOARD</h2>
-                <button type="button" class="close-modal" onclick="closeModal('adminDashboardModal')">X</button>
-            </div>
-            
-            <div class="toggle-container">
-                <label class="switch">
-                    <input type="checkbox" id="fieldClosureToggle" onchange="toggleFieldClosure()">
-                    <span class="slider"></span>
-                </label>
-                <span class="toggle-text"><strong>BUGUN KAPALIYIZ / BAKIM VAR MODU</strong></span>
-            </div>
-
-            <div class="admin-time-range">
-                <h3>CALISMA SAAT AYARLARI (24 SAAT ESNEK)</h3>
-                <div class="inline-inputs">
-                    <div class="flex-1">
-                        <label>ACILIS SAATI</label>
-                        <select id="adminOpeningHour" class="form-control" onchange="updateOperatingHours()"></select>
-                    </div>
-                    <div class="flex-1">
-                        <label>KAPANIS SAATI</label>
-                        <select id="adminClosingHour" class="form-control" onchange="updateOperatingHours()"></select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="admin-hours-section">
-                <h3>CALISMA SAATLERI & ENGELLER</h3>
-                <p class="section-desc">KILITLEMEK VEYA ISLEM YAPMAK ISTEDIGINIZ SAATIN UZERINE TIKLAYIN</p>
-                <div class="hours-grid" id="adminHoursGrid">
-                    </div>
-            </div>
-
-            <div class="admin-reservations-list">
-                <h3>MEVCUT REZERVASYONLAR VE ERTELEME</h3>
-                <div id="adminReservationsContainer">
-                    </div>
-            </div>
-        </div>
-    </div>
-
+    <!-- Saat Engelleme Modalı (ABONE SEÇENEĞİ KALDIRILDI) -->
     <div class="modal-overlay" id="hourActionModal" style="z-index: 1100;">
         <div class="modal-card mini-modal">
             <div class="modal-header">
-                <h2>SAAT YONETIMI</h2>
+                <h2 id="hourActionTitle">SAAT YONETIMI</h2>
                 <button type="button" class="close-modal" onclick="closeModal('hourActionModal')">X</button>
             </div>
             <div class="form-group">
                 <label>YAPILACAK ISLEM</label>
                 <select id="hourActionSelect" class="form-control">
-                    <option value="ABONE">BU SAATE HAFTALIK SABIT ABONE TANIMLA</option>
                     <option value="KAPAT">BU SAATI GENEL KULLANIMA KAPAT/ENGELLE</option>
                     <option value="TEMIZLE">SAATI TEMIZLE/BOSA CIKAR</option>
                 </select>
@@ -236,6 +873,299 @@
         </div>
     </div>
 
+    <!-- İşletme Giriş Modalı -->
+    <div class="modal-overlay" id="businessLoginModal" style="z-index: 1200;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>İŞLETME GİRİŞİ</h2>
+                <button type="button" class="close-modal" onclick="closeModal('businessLoginModal')">X</button>
+            </div>
+            <div class="form-group">
+                <label>İŞLETME ADI / SAHA KEY</label>
+                <input type="text" id="businessKey" class="form-control" placeholder="Örn: final, arena" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
+            </div>
+            <div class="form-group">
+                <label>ŞİFRE</label>
+                <input type="password" id="businessPassword" class="form-control" placeholder="İşletme şifresi" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
+            </div>
+            <button class="action-btn" onclick="handleBusinessLogin()">GİRİŞ YAP</button>
+            <p class="section-desc">Demo şifreler: final123, arena123, ciragan123, olimpiyat123, sporium123, ziyaret123</p>
+        </div>
+    </div>
+
+    <!-- E-posta OTP Doğrulama Modalı -->
+    <div class="modal-overlay" id="otpVerificationModal" style="z-index: 1500;">
+        <div class="modal-card mini-modal">
+            <div class="modal-header">
+                <h2>E-POSTA DOĞRULAMA</h2>
+                <button type="button" class="close-modal" onclick="closeModal('otpVerificationModal')">×</button>
+            </div>
+            <p class="section-desc" style="margin-bottom: 15px; text-align: center;">E-posta adresinize gönderilen 6 haneli doğrulama kodunu girin.</p>
+            <input type="hidden" id="otpUserId">
+            <input type="hidden" id="otpEmail">
+            <div class="form-group">
+                <label>DOĞRULAMA KODU (OTP)</label>
+                <input type="text" id="otpCodeInput" class="form-control" placeholder="123456" maxlength="6" style="text-align: center; font-size: 1.5rem; letter-spacing: 5px;" onkeypress="if(event.key === 'Enter') submitOTPVerification()">
+            </div>
+            <button class="action-btn" onclick="submitOTPVerification()">KODU DOĞRULA</button>
+        </div>
+    </div>
+
+    <!-- Sosyal Giriş Profil Tamamlama Modalı (Telefon numarası eksikse) -->
+    <div class="modal-overlay" id="socialCompleteProfileModal" style="z-index: 1500; display: none;">
+        <div class="modal-card mini-modal">
+            <div class="modal-header">
+                <h2>PROFİLİ TAMAMLA</h2>
+            </div>
+            <p class="section-desc" style="margin-bottom: 15px; text-align: center;">Sosyal medya hesabınızla ilk kez giriş yapıyorsunuz. Rezervasyon yapabilmek için lütfen telefon numaranızı tanımlayın.</p>
+            <input type="hidden" id="completeProfileUserId">
+            <div class="form-group">
+                <label>TELEFON NUMARASI</label>
+                <input type="text" id="completeProfilePhone" class="form-control" placeholder="(0555) 555 5555" onkeypress="if(event.key === 'Enter') submitCompleteProfile()">
+            </div>
+            <button class="action-btn" onclick="submitCompleteProfile()">PROFİLİ TAMAMLA & GİRİŞ YAP</button>
+        </div>
+    </div>
+
+    <!-- Oyuncu Değerlendirme & Profil Modalı -->
+    <div class="modal-overlay" id="playerProfileModal" style="z-index: 1300;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>OYUNCU PROFİLİ</h2>
+                <button type="button" class="close-modal" onclick="closeModal('playerProfileModal')">X</button>
+            </div>
+            <div class="player-profile-modal-body">
+                <div class="player-info-section">
+                    <div class="player-details">
+                        <h3 id="profilePlayerName">-</h3>
+                        <p id="profilePlayerSubText">-</p>
+                    </div>
+                    <div class="player-avg-rating">
+                        <div class="avg-stars" id="profileAvgStars">0.0 ★</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);" id="profileReviewCount">0 Değerlendirme</div>
+                    </div>
+                </div>
+
+                <div class="reviews-list-container">
+                    <h3 class="section-subtitle">DEĞERLENDİRMELER VE YORUMLAR</h3>
+                    <div id="playerReviewsContainer" class="reviews-scroll">
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Henüz değerlendirme yapılmamış.</p>
+                    </div>
+                </div>
+
+                <div class="add-review-section" id="addReviewSection" style="display: none;">
+                    <h3 class="section-subtitle">OYUNCUYU PUANLA</h3>
+                    <div class="form-group" style="margin-bottom: 5px;">
+                        <label>PUAN VERİN</label>
+                        <div class="rating-stars-select" id="ratingStarsSelect">
+                            <span class="star-option active" data-value="1" onclick="selectRatingStar(1)">★</span>
+                            <span class="star-option active" data-value="2" onclick="selectRatingStar(2)">★</span>
+                            <span class="star-option active" data-value="3" onclick="selectRatingStar(3)">★</span>
+                            <span class="star-option active" data-value="4" onclick="selectRatingStar(4)">★</span>
+                            <span class="star-option active" data-value="5" onclick="selectRatingStar(5)">★</span>
+                        </div>
+                        <input type="hidden" id="reviewRatingInput" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label>YORUMUNUZ (OPSİYONEL)</label>
+                        <textarea id="reviewCommentInput" class="form-control" rows="2" placeholder="Oyuncu hakkındaki görüşlerinizi yazın..."></textarea>
+                    </div>
+                    <button class="action-btn" onclick="submitPlayerReview()">DEĞERLENDİRMEYİ YAYINLA</button>
+                </div>
+
+                <div id="reviewAuthAlert" class="auth-alert-message" style="display: block; margin-top: 10px;">
+                    OYUNCUYU PUANLAYABİLMEK İÇİN LÜTFEN KULLANICI GİRİŞİ YAPIN.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kullanıcı Kendi Profil Modalı -->
+    <div class="modal-overlay" id="userProfileModal" style="z-index: 1400;">
+        <div class="modal-card user-profile-card">
+            <div class="modal-header">
+                <h2>PROFİLİM</h2>
+                <button type="button" class="close-modal" onclick="closeModal('userProfileModal')">X</button>
+            </div>
+            
+            <div class="profile-layout-container">
+                <!-- Sol Taraf: Profil Düzenleme Formu -->
+                <div class="profile-edit-section">
+                    <h3 class="section-subtitle">PROFİL BİLGİLERİ</h3>
+                    <div class="form-group">
+                        <label>İSİM SOYİSİM</label>
+                        <input type="text" id="profileNameInput" class="form-control" placeholder="İsim Soyisim">
+                    </div>
+                    <div class="form-group">
+                        <label>TELEFON NUMARASI</label>
+                        <input type="text" id="profilePhoneInput" class="form-control" placeholder="+905XXXXXXXXX">
+                    </div>
+                    <div class="form-group">
+                        <label>YAŞ</label>
+                        <input type="number" id="profileAgeInput" class="form-control" min="10" max="70" placeholder="Yaş">
+                    </div>
+                    <div class="form-group">
+                        <label>BOY (cm)</label>
+                        <input type="number" id="profileHeightInput" class="form-control" min="100" max="250" placeholder="175">
+                    </div>
+                    <div class="form-group">
+                        <label>KİLO (kg)</label>
+                        <input type="number" id="profileWeightInput" class="form-control" min="30" max="250" placeholder="70">
+                    </div>
+                    <div class="form-group">
+                        <label>MEVKİ</label>
+                        <select id="profilePositionInput" class="form-control">
+                            <option value="">SEÇİNİZ...</option>
+                            <option value="KALECI">KALECİ</option>
+                            <option value="DEFANS">DEFANS</option>
+                            <option value="ORTA SAHA">ORTA SAHA</option>
+                            <option value="FORVET">FORVET</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TECRÜBE SEVİYESİ</label>
+                        <select id="profileExperienceInput" class="form-control">
+                            <option value="">SEÇİNİZ...</option>
+                            <option value="Amatör">Amatör</option>
+                            <option value="Orta Seviye">Orta Seviye</option>
+                            <option value="Tecrübeli">Tecrübeli</option>
+                            <option value="Profesyonel">Lisanslı / Profesyonel</option>
+                        </select>
+                    </div>
+                    <button class="action-btn" onclick="saveUserProfile()">PROFİLİ KAYDET</button>
+                </div>
+
+                <!-- Sağ Taraf: Rezervasyonlar, Yorumlar -->
+                <div class="profile-details-section">
+                    <div class="profile-tabs">
+                        <button class="profile-tab-btn active" id="profile-tab-btn-active-res" onclick="switchProfileSection('active-res')">AKTİF REZERVASYONLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-past-res" onclick="switchProfileSection('past-res')">GEÇMİŞ REZERVASYONLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-debts" onclick="switchProfileSection('debts')">💳 BORÇLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-my-reviews" onclick="switchProfileSection('my-reviews')">YORUMLAR & PUAN</button>
+                    </div>
+
+                    <!-- Rezervasyonlar Listeleri -->
+                    <div id="profile-sec-active-res" class="profile-tab-content-zone">
+                        <div class="reservations-scroll" id="profileActiveReservationsContainer">
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">Aktif rezervasyonunuz bulunmamaktadır.</p>
+                        </div>
+                    </div>
+
+                    <div id="profile-sec-past-res" class="profile-tab-content-zone" style="display: none;">
+                        <div class="reservations-scroll" id="profilePastReservationsContainer">
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">Geçmiş rezervasyonunuz bulunmamaktadır.</p>
+                        </div>
+                    </div>
+
+                    <!-- Borçlar Listesi -->
+                    <div id="profile-sec-debts" class="profile-tab-content-zone" style="display: none;">
+                        <div id="profileDebtsContainer" class="reservations-scroll">
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">Bekleyen borcunuz bulunmamaktadır.</p>
+                        </div>
+                    </div>
+
+                    <!-- Yorumlar Listesi -->
+                    <div id="profile-sec-my-reviews" class="profile-tab-content-zone" style="display: none;">
+                        <div class="my-reviews-summary" style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+                            <div class="avg-stars" id="profileMyAvgStars" style="font-size: 1.5rem; color: #fbbf24; font-weight: bold;">0.0 ★</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);" id="profileMyReviewCount">0 Değerlendirme</div>
+                        </div>
+                        <div class="reviews-scroll" id="profileMyReviewsContainer">
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">Henüz değerlendirilmediniz.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rezervasyon Başarı Modalı -->
+    <div class="modal-overlay" id="bookingSuccessModal" style="z-index: 2000;">
+        <div class="modal-card success-card">
+            <button type="button" class="close-modal success-close-btn" onclick="closeModal('bookingSuccessModal')">×</button>
+            <div class="success-icon-container">
+                <svg class="success-checkmark" viewBox="0 0 52 52">
+                    <circle class="success-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="success-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+            <h2 style="color: var(--neon-green); text-shadow: 0 0 15px rgba(52, 211, 153, 0.4); text-align: center; margin-bottom: 20px;">REZERVASYONUNUZ OLUŞTURULDU!</h2>
+            <div class="success-details">
+                <div class="detail-item">
+                    <span class="detail-label">SAHA:</span>
+                    <span class="detail-value" id="successFieldName">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">YER / ADRES:</span>
+                    <span class="detail-value" id="successFieldAddress">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">TARİH & SAAT:</span>
+                    <span class="detail-value" id="successBookingTime">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">ÜCRET:</span>
+                    <span class="detail-value" id="successBookingPrice">-</span>
+                </div>
+            </div>
+            <div class="success-message">
+                <p>İyi Oyunlar! ⚽</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rezervasyon Onay Modalı -->
+    <div class="modal-overlay" id="bookingConfirmModal" style="z-index: 2100;">
+        <div class="modal-card mini-modal" style="text-align:center;max-width:480px;">
+            <div class="modal-header">
+                <h2>REZERVASYON ONAYI</h2>
+                <button type="button" class="close-modal" onclick="closeBookingConfirmModal(false)">X</button>
+            </div>
+            <div style="padding:15px 0;">
+                <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:15px;margin-bottom:12px;">
+                    <div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;">SAHA</div>
+                    <div style="font-size:1.2rem;font-weight:700;color:#fff;" id="bookingConfirmField">-</div>
+                </div>
+                <div style="display:flex;gap:10px;margin-bottom:12px;">
+                    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;">
+                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">TARİH</div>
+                        <div style="font-size:1rem;font-weight:700;color:#fff;" id="bookingConfirmDate">-</div>
+                    </div>
+                    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;">
+                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">SAAT</div>
+                        <div style="font-size:1rem;font-weight:700;color:#fff;" id="bookingConfirmHour">-</div>
+                    </div>
+                </div>
+                <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:12px;margin-bottom:18px;">
+                    <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">ÜCRET</div>
+                    <div style="font-size:1.6rem;font-weight:800;color:var(--neon-green);" id="bookingConfirmPrice">-</div>
+                </div>
+                <p style="color:var(--text-muted);font-size:0.95rem;margin-bottom:20px;">Seçtiğiniz bilgilerle rezervasyonunuzu onaylıyor musunuz?</p>
+            </div>
+            <div style="display:flex;gap:15px;justify-content:center;">
+                <button id="bookingConfirmYesBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#10b981;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">EVET, ONAYLA</button>
+                <button id="bookingConfirmNoBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:transparent;color:var(--text-muted);font-weight:700;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;text-align:center;">VAZGEÇ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal" style="z-index: 1500;">
+        <div class="modal-card mini-modal" style="text-align:center;">
+            <div class="modal-header">
+                <h2>ONAY</h2>
+                <button type="button" class="close-modal" onclick="closeConfirmModal(false)">X</button>
+            </div>
+            <p id="confirmModalMessage" style="font-size:1.1rem;margin:20px 0;color:#fff;">Emin misiniz?</p>
+            <div style="display:flex;gap:15px;justify-content:center;">
+                <button id="confirmYesBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#10b981;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">EVET</button>
+                <button id="confirmNoBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#ef4444;color:#fff;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">HAYIR</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
+
+
