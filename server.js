@@ -9,6 +9,11 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(__dirname));
+
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
 
 // Body parsing error handler - always return JSON
 app.use((err, req, res, next) => {
@@ -546,17 +551,17 @@ function handleSocialAuthSuccess(req, res, provider, providerId, email, name) {
     // 1. Kullanıcı e-postasıyla kayıtlı mı kontrol et
     const selectSql = 'SELECT * FROM users WHERE email = ?';
     db.query(selectSql, [email], (err, results) => {
-        if (err) return res.redirect('http://localhost:5500/?error=database_error');
+        if (err) return res.redirect('/?error=database_error');
         
         if (results.length > 0) {
             const user = results[0];
             if (user.status === 'globally_banned') {
-                return res.redirect('http://localhost:5500/?error=globally_banned');
+                return res.redirect('/?error=globally_banned');
             }
             
             // Eğer telefon numarası yoksa profil tamamlama ekranına gönder
             if (!user.phone) {
-                return res.redirect(`http://localhost:5500/?needs_phone=true&email=${encodeURIComponent(email)}&userId=${user.id}`);
+                return res.redirect(`/?needs_phone=true&email=${encodeURIComponent(email)}&userId=${user.id}`);
             }
             
             // Sosyal ID güncelle
@@ -568,7 +573,7 @@ function handleSocialAuthSuccess(req, res, provider, providerId, email, name) {
             // Giriş yaptır ve token ver
             const jwt = require('jsonwebtoken');
             const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, process.env.JWT_SECRET || 'jwt_key');
-            return res.redirect(`http://localhost:5500/?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`);
+            return res.redirect(`/?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`);
         } else {
             // Yeni kullanıcı oluştur (pasif ve telefon yok)
             const idCol = provider === 'google' ? 'google_id' : 'apple_id';
@@ -576,10 +581,10 @@ function handleSocialAuthSuccess(req, res, provider, providerId, email, name) {
             db.query(insertSql, [name, email, providerId], (insErr, result) => {
                 if (insErr) {
                     console.error("OAuth Register Error:", insErr);
-                    return res.redirect('http://localhost:5500/?error=oauth_registration_failed');
+                    return res.redirect('/?error=oauth_registration_failed');
                 }
                 const newUserId = result.insertId;
-                return res.redirect(`http://localhost:5500/?needs_phone=true&email=${encodeURIComponent(email)}&userId=${newUserId}`);
+                return res.redirect(`/?needs_phone=true&email=${encodeURIComponent(email)}&userId=${newUserId}`);
             });
         }
     });
@@ -771,7 +776,7 @@ app.get(['/api/auth/google', '/api/auth/Google'], (req, res) => {
 app.get(['/api/auth/google/callback', '/api/auth/Google/callback'], async (req, res) => {
     const code = req.query.code;
     if (!code) {
-        return res.redirect('http://localhost:5500/?error=no_code');
+        return res.redirect('/?error=no_code');
     }
 
     let googleUser = {
@@ -801,7 +806,7 @@ app.get(['/api/auth/google/callback', '/api/auth/Google/callback'], async (req, 
             }
         } catch (e) {
             console.error("Google Token Exchange error:", e);
-            return res.redirect('http://localhost:5500/?error=google_auth_failed');
+            return res.redirect('/?error=google_auth_failed');
         }
     } else {
         if (code === 'mock_google_code') {
@@ -850,10 +855,10 @@ app.all(['/api/auth/apple/callback', '/api/auth/Apple/callback'], express.urlenc
             }
         } catch (err) {
             console.error("Apple Token Decode Error:", err);
-            return res.redirect('http://localhost:5500/?error=apple_auth_failed');
+            return res.redirect('/?error=apple_auth_failed');
         }
     } else {
-        return res.redirect('http://localhost:5500/?error=apple_auth_failed');
+        return res.redirect('/?error=apple_auth_failed');
     }
 
     handleSocialAuthSuccess(req, res, 'apple', appleUser.id, appleUser.email, appleUser.name);

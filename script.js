@@ -260,7 +260,7 @@ async function handleUserRegister(event) {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/register', {
+        const response = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, phone, email, password: pass })
@@ -310,7 +310,7 @@ async function handleUserLogin() {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/login', {
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password: pass })
@@ -445,7 +445,7 @@ async function loadBusinessDashboard() {
 
 async function loadBusinessStats() {
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/stats-content/${currentBusinessFieldKey}`);
+        const response = await fetch(`/api/stats-content/${currentBusinessFieldKey}`);
         const result = await response.json();
         if (result.success) {
             const data = result.data;
@@ -521,7 +521,7 @@ async function saveBusinessFieldCount() {
     const count = parseInt(document.getElementById('businessSettingFieldCount').value);
     const field = fieldsData[currentBusinessFieldKey];
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/pitch-settings/${currentBusinessFieldKey}`, {
+        const response = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -538,7 +538,7 @@ async function saveBusinessFieldCount() {
         if (result.success) {
             alert("Saha sayısı başarıyla güncellendi!");
             field.pitchCount = count;
-            const listResp = await fetch('http://127.0.0.1:5000/api/pitch-list');
+            const listResp = await fetch('/api/pitch-list');
             const listResult = await listResp.json();
             if (listResult.success) pitchObjectsList = listResult.data;
             onAdminFieldCountChange();
@@ -580,7 +580,7 @@ async function savePricingSchedule() {
     const pitch = pitchObjectsList.find(p => p.fieldKey === currentBusinessFieldKey && p.pitchNumber === pitchNum) || {};
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
+        const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -602,7 +602,7 @@ async function savePricingSchedule() {
             const field = fieldsData[currentBusinessFieldKey];
             field.pricing = `${morningPrice}/${eveningPrice}`;
             if (pitchNum === 1) {
-                await fetch(`http://127.0.0.1:5000/api/pitch-settings/${currentBusinessFieldKey}`, {
+                await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -633,7 +633,7 @@ async function loadHoursForSelectedPitch() {
     if (daySelect) daySelect.value = 'all';
 
     try {
-        const dhResp = await fetch(`http://127.0.0.1:5000/api/field-daily-hours/${currentBusinessFieldKey}`);
+        const dhResp = await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`);
         const dhResult = await dhResp.json();
         if (dhResult.success) {
             currentPitchDailyHours = dhResult.data;
@@ -722,7 +722,7 @@ async function toggleWeekdayClosure() {
     }
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
+        const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 isClosed: pitch.isClosed || 0, 
@@ -892,7 +892,7 @@ async function saveOperatingHours() {
 
     try {
         if (dayVal === 'all') {
-            const response = await fetch(`http://127.0.0.1:5000/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
+            const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ isClosed: pitch.isClosed || 0, openingHour: openHour, closingHour: closeHour, disabledHours: JSON.stringify(pitch.disabledHours || []), aboneHours: JSON.stringify(pitch.aboneHours || []), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
             });
@@ -906,7 +906,7 @@ async function saveOperatingHours() {
             } else { alert("Hata: " + result.message); }
         } else {
             const dayInt = parseInt(dayVal);
-            const response = await fetch(`http://127.0.0.1:5000/api/field-daily-hours/${currentBusinessFieldKey}`, {
+            const response = await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     days: [{ dayOfWeek: dayInt, openingHour: openHour, closingHour: closeHour }]
@@ -945,7 +945,7 @@ async function toggleFieldClosure() {
     const isClosed = document.getElementById('fieldClosureToggle').checked ? 1 : 0;
     const pitch = pitchObjectsList.find(p => p.fieldKey === currentBusinessFieldKey && p.pitchNumber === pitchNum) || {};
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
+        const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ isClosed, openingHour: pitch.openingHour || '09:00', closingHour: pitch.closingHour || '23:00', disabledHours: JSON.stringify(pitch.disabledHours || []), aboneHours: JSON.stringify(pitch.aboneHours || []), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
         });
@@ -978,7 +978,7 @@ async function saveHourAction() {
     // TEMIZLE durumunda sadece filtreleme yeterli
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
+        const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ isClosed: pitch.isClosed || 0, openingHour: pitch.openingHour || '09:00', closingHour: pitch.closingHour || '23:00', disabledHours: JSON.stringify(pitch.disabledHours), aboneHours: JSON.stringify(pitch.aboneHours), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
         });
@@ -993,7 +993,7 @@ async function saveHourAction() {
 // =======================================================
 async function loadBusinessReservations() {
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/business-reservations/${currentBusinessFieldKey}`);
+        const response = await fetch(`/api/business-reservations/${currentBusinessFieldKey}`);
         const result = await response.json();
         if (result.success) {
             currentBusinessReservations = result.data;
@@ -1243,7 +1243,7 @@ async function updateReservation(id) {
     const newHour = document.getElementById(`newHour_${id}`).value;
     if (!confirm(`Rezervasyonu ${newDate} saat ${newHour} dilimine ertelemek istiyor musunuz?`)) return;
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/reservations/${id}`, {
+        const response = await fetch(`/api/reservations/${id}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dateText: newDate, hourText: newHour, pitchNumber: newPitch })
         });
@@ -1257,7 +1257,7 @@ async function removeReservation(id) {
     const confirmed = await showConfirmModal("Bu rezervasyonu silmek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/reservations/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+        const response = await fetch(`/api/reservations/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
         const result = await response.json();
         if (result.success) { alert("Rezervasyon başarıyla iptal edildi!"); await loadBusinessReservations(); await loadBusinessStats(); await loadReservationsFromServer(); renderBusinessHoursGrid(); if (currentSelectedFieldKey) onDateOrFieldChange(); }
         else { alert("Hata: " + result.message); }
@@ -1269,7 +1269,7 @@ async function removeReservation(id) {
 // =======================================================
 async function loadBusinessSubscriptions() {
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/subscriptions/${currentBusinessFieldKey}`);
+        const response = await fetch(`/api/subscriptions/${currentBusinessFieldKey}`);
         const result = await response.json();
         const container = document.getElementById('businessSubscriptionsContainer');
         if (!container) return;
@@ -1365,7 +1365,7 @@ async function saveSubscription() {
     phoneInput.classList.remove('input-error');
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/subscriptions', {
+        const response = await fetch('/api/subscriptions', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fieldKey: currentBusinessFieldKey, pitchNumber: pitchNum, dayOfWeek, hourText: hour, subscriberName: name, subscriberPhone: phone })
         });
@@ -1375,7 +1375,7 @@ async function saveSubscription() {
             document.getElementById('subNameInput').value = "";
             document.getElementById('subPhoneInput').value = "";
             document.getElementById('subHourSelect').value = "";
-            const listResp = await fetch('http://127.0.0.1:5000/api/pitch-list');
+            const listResp = await fetch('/api/pitch-list');
             const listResult = await listResp.json();
             if (listResult.success) pitchObjectsList = listResult.data;
             await loadBusinessSubscriptions();
@@ -1388,11 +1388,11 @@ async function deleteSubscription(id) {
     const confirmed = await showConfirmModal("Bu haftalık aboneliği silmek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/subscriptions/${id}`, { method: 'DELETE' });
+        const response = await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
             alert("Abonelik başarıyla silindi ve saat boşa çıkarıldı!");
-            const listResp = await fetch('http://127.0.0.1:5000/api/pitch-list');
+            const listResp = await fetch('/api/pitch-list');
             const listResult = await listResp.json();
             if (listResult.success) pitchObjectsList = listResult.data;
             await loadBusinessSubscriptions();
@@ -1477,7 +1477,7 @@ function translateWeatherCode(code) {
 // =======================================================
 async function initPitchSelector() {
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/pitch-list');
+        const response = await fetch('/api/pitch-list');
         const result = await response.json();
         if (result.success && result.data.length > 0) {
             pitchObjectsList = result.data;
@@ -1502,7 +1502,7 @@ async function initPitchSelector() {
 
 async function loadPitchSettingsFromDatabase() {
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/pitch-settings');
+        const response = await fetch('/api/pitch-settings');
         const result = await response.json();
         if (result.success) {
             result.data.forEach(setting => {
@@ -2061,7 +2061,7 @@ async function executePendingBooking() {
     pendingBookingData = null;
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/reservations', {
+        const response = await fetch('/api/reservations', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
@@ -2119,7 +2119,7 @@ function closeBookingConfirmModal(confirmed) {
 // =======================================================
 async function loadReservationsFromServer() {
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/reservations');
+        const response = await fetch('/api/reservations');
         const result = await response.json();
         if (result.success) {
             userReservations = result.data.filter(r => r.status !== 'cancelled');
@@ -2130,7 +2130,7 @@ async function loadReservationsFromServer() {
 
 async function loadForumPostsFromServer() {
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/forum');
+        const response = await fetch('/api/forum');
         const result = await response.json();
         if (result.success) {
             forumPosts = result.data;
@@ -2153,7 +2153,7 @@ async function createForumPost() {
     const msg = document.getElementById('forumMessage').value.trim() || "EKİP TAMAMLANIYOR.";
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/forum', {
+        const response = await fetch('/api/forum', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, phone, msg, user_id: currentUser.id })
         });
@@ -2319,7 +2319,7 @@ async function createTeamSeeker() {
     if (hourCheckboxes.length === 0) { alert("Lütfen en az bir müsait saat seçin!"); return; }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/team-seekers', {
+        const response = await fetch('/api/team-seekers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2379,7 +2379,7 @@ async function createMatchSeeker() {
     if (availableHours.length === 0) { alert("Lütfen en az bir müsait saat seçin!"); return; }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/match-seekers', {
+        const response = await fetch('/api/match-seekers', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ playerName, age: parseInt(age), height: height ? parseInt(height) : null, weight: weight ? parseInt(weight) : null, position, phone, availableHours: JSON.stringify(availableHours), availableDates: JSON.stringify(availableDates), requestedFee, msg, user_id: currentUser.id })
         });
@@ -2419,7 +2419,7 @@ async function loadMatchSeekers() {
     if (feeFilter) params.append('maxFee', feeFilter);
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/match-seekers?${params.toString()}`);
+        const response = await fetch(`/api/match-seekers?${params.toString()}`);
         const result = await response.json();
 
         if (result.success) {
@@ -2496,7 +2496,7 @@ async function loadTeamSeekers() {
     if (!container) return;
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/team-seekers');
+        const response = await fetch('/api/team-seekers');
         const result = await response.json();
 
         if (result.success) {
@@ -2559,7 +2559,7 @@ async function markTeamFound(id) {
     const confirmed = await showConfirmModal("Bu ilanı 'Bulundu' olarak işaretlemek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/team-seekers/${id}/found`, {
+        const response = await fetch(`/api/team-seekers/${id}/found`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: currentUser.id })
@@ -2700,7 +2700,7 @@ async function loadPlayerReviews(phone) {
     if (!reviewsContainer) return;
     
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/player-reviews/${phone}`);
+        const response = await fetch(`/api/player-reviews/${phone}`);
         const result = await response.json();
         
         if (result.success) {
@@ -2737,7 +2737,7 @@ async function submitPlayerReview() {
     if (!currentActiveProfilePhone) return;
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/player-reviews', {
+        const response = await fetch('/api/player-reviews', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2947,7 +2947,7 @@ async function loadProfileReservations() {
     let userSubscriptions = [];
     if (currentUser.phone) {
         try {
-            const subResp = await fetch(`http://127.0.0.1:5000/api/subscriptions/by-phone/${encodeURIComponent(currentUser.phone)}`);
+            const subResp = await fetch(`/api/subscriptions/by-phone/${encodeURIComponent(currentUser.phone)}`);
             const subResult = await subResp.json();
             if (subResult.success) userSubscriptions = subResult.data;
         } catch (e) { console.error("Abonelikler çekilemedi:", e); }
@@ -3093,7 +3093,7 @@ async function loadProfileReviews() {
     if (!reviewsContainer || !currentUser) return;
     
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/player-reviews/${currentUser.phone}`);
+        const response = await fetch(`/api/player-reviews/${currentUser.phone}`);
         const result = await response.json();
         
         if (result.success) {
@@ -3148,7 +3148,7 @@ async function saveUserProfile() {
     };
     
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/users/profile', {
+        const response = await fetch('/api/users/profile', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData)
@@ -3361,7 +3361,7 @@ async function saveAllBusinessSettings() {
     try {
         // 1. Saha Sayısını Kaydet
         const field = fieldsData[currentBusinessFieldKey];
-        const resSettings = await fetch(`http://127.0.0.1:5000/api/pitch-settings/${currentBusinessFieldKey}`, {
+        const resSettings = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3382,7 +3382,7 @@ async function saveAllBusinessSettings() {
         }
         
         // 2. İletişim, Servis ve Konum Ayarlarını Kaydet
-        const response = await fetch(`http://127.0.0.1:5000/api/business-profile/${currentBusinessFieldKey}`, {
+        const response = await fetch(`/api/business-profile/${currentBusinessFieldKey}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone, hasService, coordinates, refreshments, cleats, shower, market })
@@ -3401,7 +3401,7 @@ async function saveAllBusinessSettings() {
             fieldsData[currentBusinessFieldKey].market = market;
             
             // pitchObjectsList güncellemek için sunucudan son listeyi çek
-            const listResp = await fetch('http://127.0.0.1:5000/api/pitch-list');
+            const listResp = await fetch('/api/pitch-list');
             const listResult = await listResp.json();
             if (listResult.success) {
                 pitchObjectsList = listResult.data;
@@ -3422,7 +3422,7 @@ async function saveAllBusinessSettings() {
 
 async function loadDailyHoursList() {
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/all-daily-hours');
+        const response = await fetch('/api/all-daily-hours');
         const result = await response.json();
         if (result.success) {
             dailyHoursList = result.data;
@@ -3436,14 +3436,14 @@ async function cancelMySubscription(id) {
     const confirmed = await showConfirmModal("Bu haftalık aboneliğinizi iptal etmek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/subscriptions/${id}`, {
+        const response = await fetch(`/api/subscriptions/${id}`, {
             method: 'DELETE'
         });
         const result = await response.json();
         if (result.success) {
             alert("Aboneliğiniz başarıyla iptal edildi!");
             await loadReservationsFromServer();
-            const listResp = await fetch('http://127.0.0.1:5000/api/pitch-list');
+            const listResp = await fetch('/api/pitch-list');
             const listResult = await listResp.json();
             if (listResult.success) pitchObjectsList = listResult.data;
             loadProfileReservations();
@@ -3461,7 +3461,7 @@ async function cancelMyReservation(id) {
     const confirmed = await showConfirmModal("Rezervasyonunuzu iptal etmek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/reservations/${id}`, {
+        const response = await fetch(`/api/reservations/${id}`, {
             method: 'DELETE'
         });
         const result = await response.json();
@@ -3514,7 +3514,7 @@ async function loadBusinessDebts(filter = 'all') {
     if (!container) return;
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/business-debts/${currentBusinessFieldKey}?filter=${filter}`);
+        const response = await fetch(`/api/business-debts/${currentBusinessFieldKey}?filter=${filter}`);
         const result = await response.json();
         if (result.success) {
             let debts = result.data;
@@ -3596,7 +3596,7 @@ async function loadBusinessDebts(filter = 'all') {
 
 async function togglePaymentStatus(id, newStatus, currentFilter) {
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/reservations/${id}/payment`, {
+        const response = await fetch(`/api/reservations/${id}/payment`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ payment_status: newStatus })
@@ -3619,7 +3619,7 @@ async function markForumFound(id) {
     const confirmed = await showConfirmModal("Bu ilanı 'Bulundu' olarak işaretlemek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/forum/${id}/found`, {
+        const response = await fetch(`/api/forum/${id}/found`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: currentUser.id })
@@ -3640,7 +3640,7 @@ async function markMatchFound(id) {
     const confirmed = await showConfirmModal("Bu ilanı 'Bulundu' olarak işaretlemek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/match-seekers/${id}/found`, {
+        const response = await fetch(`/api/match-seekers/${id}/found`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: currentUser.id })
@@ -3674,7 +3674,7 @@ async function loadForumComments(type, postId) {
     if (!listContainer) return;
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/forum-comments/${type}/${postId}`);
+        const response = await fetch(`/api/forum-comments/${type}/${postId}`);
         const result = await response.json();
         if (result.success) {
             const comments = result.data;
@@ -3718,7 +3718,7 @@ async function submitForumComment(type, postId) {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/forum-comments', {
+        const response = await fetch('/api/forum-comments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ post_type: type, post_id: postId, commenter_name, comment })
@@ -3753,7 +3753,7 @@ async function loadFieldCardReviews(fieldKey) {
     if (!listContainer) return;
     
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/field-comments/${fieldKey}`);
+        const response = await fetch(`/api/field-comments/${fieldKey}`);
         const result = await response.json();
         if (result.success) {
             const comments = result.data;
@@ -3796,7 +3796,7 @@ async function submitFieldCardComment(fieldKey, event) {
     }
     
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/field-comments', {
+        const response = await fetch('/api/field-comments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fieldKey, commenter_name: loggedInUser, comment })
@@ -3829,7 +3829,7 @@ async function submitOTPVerification() {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/auth/verify-otp', {
+        const response = await fetch('/api/auth/verify-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, email, otpCode })
@@ -3867,7 +3867,7 @@ async function submitCompleteProfile() {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/auth/complete-profile', {
+        const response = await fetch('/api/auth/complete-profile', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, phone })
@@ -3897,9 +3897,9 @@ async function submitCompleteProfile() {
 // OAUTH PENCERESİ AÇMA
 function openOAuth(provider) {
     if (provider === 'google') {
-        window.location.href = 'http://127.0.0.1:5000/api/auth/google';
+        window.location.href = '/api/auth/google';
     } else if (provider === 'apple') {
-        window.location.href = 'http://127.0.0.1:5000/api/auth/apple/callback?code=mock_apple_code';
+        window.location.href = '/api/auth/apple/callback?code=mock_apple_code';
     }
 }
 
@@ -3929,7 +3929,7 @@ async function loadFieldReviews(fieldKey) {
     document.getElementById('fieldReviewsSection').style.display = 'block';
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/reviews/${fieldKey}`);
+        const response = await fetch(`/api/reviews/${fieldKey}`);
         const result = await response.json();
         
         if (result.success) {
@@ -4051,7 +4051,7 @@ async function submitFieldReview() {
     if (!resId) return;
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/reviews', {
+        const response = await fetch('/api/reviews', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4097,7 +4097,7 @@ async function loadBusinessComments() {
     if (!container) return;
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/reviews/${currentBusinessFieldKey}`);
+        const response = await fetch(`/api/reviews/${currentBusinessFieldKey}`);
         const result = await response.json();
         if (result.success) {
             let reviews = result.data;
@@ -4182,7 +4182,7 @@ async function submitOwnerReply(id) {
     }
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/reviews/${id}/reply`, {
+        const response = await fetch(`/api/reviews/${id}/reply`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ owner_reply: replyText })
@@ -4207,7 +4207,7 @@ async function loadUserBlacklist() {
         return;
     }
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/blacklists/by-phone/${encodeURIComponent(currentUser.phone)}`);
+        const response = await fetch(`/api/blacklists/by-phone/${encodeURIComponent(currentUser.phone)}`);
         const result = await response.json();
         if (result.success) {
             userBlacklistedFields = result.data;
@@ -4223,7 +4223,7 @@ async function loadBusinessBlacklist() {
     if (!container) return;
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/blacklist/${currentBusinessFieldKey}`);
+        const response = await fetch(`/api/blacklist/${currentBusinessFieldKey}`);
         const result = await response.json();
         if (result.success) {
             const blacklist = result.data;
@@ -4253,7 +4253,7 @@ async function addToBusinessBlacklist() {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/blacklist', {
+        const response = await fetch('/api/blacklist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fieldKey: currentBusinessFieldKey, phone_number: phone })
@@ -4276,7 +4276,7 @@ async function deleteFromBusinessBlacklist(phone) {
     if (!confirm(`${phone} numarasının engelini kaldırmak istediğinize emin misiniz?`)) return;
 
     try {
-        const response = await fetch(`http://127.0.0.1:5000/api/blacklist/${currentBusinessFieldKey}/${encodeURIComponent(phone)}`, {
+        const response = await fetch(`/api/blacklist/${currentBusinessFieldKey}/${encodeURIComponent(phone)}`, {
             method: 'DELETE'
         });
         const result = await response.json();
