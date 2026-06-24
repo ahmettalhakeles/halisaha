@@ -57,8 +57,9 @@ db.getConnection((err, connection) => {
     if (err) return console.error('❌ MySQL Bağlantı Hatası:', err.message);
     console.log('🚀 XAMPP MySQL Veritabanına başarıyla bağlanıldı!');
     
-    // Run database migration (safe - uses IF NOT EXISTS)
     const fs = require('fs');
+    
+    // Run database migration (safe - uses IF NOT EXISTS)
     const migrationSql = fs.readFileSync(__dirname + '/database_complete.sql', 'utf8');
     connection.query(migrationSql, (migrateErr) => {
         if (migrateErr) console.error('❌ Migration hatası:', migrateErr.message);
@@ -425,7 +426,6 @@ db.getConnection((err, connection) => {
     // Expired posts update handled safely inside column checks above
 
     // One-time migration to clear all reservations/subscriptions and set default operating hours
-    const fs = require('fs');
     const path = require('path');
     const markerFile = path.join(__dirname, '.db_migrated');
     if (!fs.existsSync(markerFile)) {
