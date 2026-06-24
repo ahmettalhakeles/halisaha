@@ -2,10 +2,9 @@
   "name": "halisaha",
   "version": "1.0.0",
   "description": "",
-  "main": "script.js",
+  "main": "server.js",
   "scripts": {
-    "build": "node html/build.js",
-    "watch": "node -e \"const fs=require('fs');const p=require('path');const d='html';fs.watch(d,(e,f)=>{if(f!='build.js'&&f.endsWith('.html')){require(p.join(__dirname,d,'build.js'));console.log('rebuild: '+f)}})\"",
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
