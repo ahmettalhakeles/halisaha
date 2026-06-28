@@ -434,8 +434,7 @@ main {
 .field-info-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 20px;
 }
 
@@ -473,6 +472,7 @@ main {
     flex-direction: column;
     gap: 12px;
     align-items: flex-end;
+    flex-shrink: 0;
 }
 
 .map-link {
@@ -2896,6 +2896,7 @@ main.business-mode {
     .field-info-row {
         flex-direction: row;
         justify-content: space-between;
+        align-items: flex-start;
         gap: 5px;
     }
     .field-main-details {
