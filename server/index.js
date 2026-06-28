@@ -27,6 +27,8 @@ const { initForumRoutes } = require('./routes/forum');
 const { initSubscriptionRoutes } = require('./routes/subscriptions');
 const { initBusinessRoutes } = require('./routes/business');
 const { initReviewRoutes } = require('./routes/reviews');
+const { initPlayerReviewRoutes } = require('./routes/playerReviews');
+const { initFieldCommentRoutes } = require('./routes/fieldComments');
 const { initBlacklistRoutes } = require('./routes/blacklist');
 
 initAuthRoutes(app, db);
@@ -36,6 +38,8 @@ initForumRoutes(app, db);
 initSubscriptionRoutes(app, db);
 initBusinessRoutes(app, db);
 initReviewRoutes(app, db);
+initPlayerReviewRoutes(app, db);
+initFieldCommentRoutes(app, db);
 initBlacklistRoutes(app, db);
 
 // DB bağlantısını başlat + migration

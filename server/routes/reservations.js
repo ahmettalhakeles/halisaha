@@ -1,20 +1,13 @@
 function initReservationRoutes(app, db) {
     const { resLimitPerMin, resLimitPerSec } = require('../middleware/rateLimiter');
 
-    // Get reservations
+    // Get all reservations
     app.get('/api/reservations', (req, res) => {
-        const { fieldKey, date } = req.query;
-        if (!fieldKey || !date) return res.status(400).json({ success: false, message: 'fieldKey ve date parametreleri zorunludur!' });
-        db.query(
-            `SELECT r.id, r.fieldKey, r.pitchNumber, r.dateText, r.hourText, r.user_name, r.user_id, u.phone AS user_phone, r.reservation_price, r.payment_status, r.status, r.is_bot, r.type
-             FROM reservations r LEFT JOIN users u ON r.user_id = u.id
-             WHERE r.fieldKey = ? AND r.dateText = ? AND r.status IN ('active', 'blocked', 'blocked_yuksek')`,
-            [fieldKey, date],
-            (err, results) => {
-                if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-                res.json(results);
-            }
-        );
+        const sqlQuery = 'SELECT * FROM reservations ORDER BY created_at DESC';
+        db.query(sqlQuery, (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, data: results });
+        });
     });
 
     // Create reservation
@@ -194,29 +187,83 @@ function initReservationRoutes(app, db) {
         );
     });
 
-    // Schedule game
-    app.post('/api/schedule-game', (req, res) => {
-        const { fieldKey, pitchNumber, dateText, hourText, user_name, user_id, playerCount } = req.body;
-        if (!fieldKey || !dateText || !hourText || !user_name) {
-            return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
-        }
+    // Business debts (path param version)
+    app.get('/api/business-debts/:fieldKey', (req, res) => {
+        const { fieldKey } = req.params;
+        const { filter } = req.query;
 
-        db.query('SELECT id, phone, status FROM users WHERE id = ?', [user_id], (errUser, userResult) => {
-            if (errUser) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            if (userResult.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
-            if (userResult[0].status === 'globally_banned') return res.status(403).json({ success: false, message: 'Hesabınız askıya alınmıştır!' });
+        db.query(`SELECT * FROM reservations WHERE fieldKey = ? AND status != 'cancelled' ORDER BY dateText ASC, hourText ASC`, [fieldKey], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
 
-            db.query('SELECT COUNT(*) AS cnt FROM reservations WHERE fieldKey = ? AND dateText = ? AND hourText = ?', [fieldKey, dateText, hourText], (errCheck, existing) => {
-                if (errCheck) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-                if (existing[0].cnt > 0) return res.status(409).json({ success: false, message: 'Bu saat dilimi dolu!' });
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-                db.query('INSERT INTO match_seekers (fieldKey, pitchNumber, dateText, hourText, user_id, user_name, phone, playerCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [fieldKey, pitchNumber || 1, dateText, hourText, user_id, user_name, userResult[0].phone, playerCount || 10], (errInsert) => {
-                    if (errInsert) return res.status(500).json({ success: false, message: 'Maç oluşturulamadı!' });
-                    res.json({ success: true, message: 'Maç başarıyla oluşturuldu!' });
+            if (filter === 'daily') {
+                const filtered = results.filter(r => {
+                    const d = getActualPlayDate(r.dateText, r.hourText);
+                    return d && d.toDateString() === now.toDateString();
                 });
-            });
+                return res.json({ success: true, data: filtered });
+            } else if (filter === 'weekly') {
+                const weekAgo = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const filtered = results.filter(r => {
+                    const d = getActualPlayDate(r.dateText, r.hourText);
+                    return d && d >= weekAgo && d <= now;
+                });
+                return res.json({ success: true, data: filtered });
+            } else if (filter === 'monthly') {
+                const monthAgo = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+                const filtered = results.filter(r => {
+                    const d = getActualPlayDate(r.dateText, r.hourText);
+                    return d && d >= monthAgo && d <= now;
+                });
+                return res.json({ success: true, data: filtered });
+            }
+
+            res.json({ success: true, data: results });
         });
     });
+
+    // Business reservations (path param version)
+    app.get('/api/business-reservations/:fieldKey', (req, res) => {
+        const { fieldKey } = req.params;
+        db.query('SELECT * FROM reservations WHERE fieldKey = ? ORDER BY dateText ASC, hourText ASC', [fieldKey], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, data: results });
+        });
+    });
+
+    // Update payment status
+    app.put('/api/reservations/:id/payment', (req, res) => {
+        const { id } = req.params;
+        const { payment_status } = req.body;
+        if (!['odenmedi', 'odendi'].includes(payment_status)) {
+            return res.status(400).json({ success: false, message: 'Geçersiz ödeme durumu!' });
+        }
+        db.query('UPDATE reservations SET payment_status = ? WHERE id = ?', [payment_status, id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, message: 'Ödeme durumu güncellendi!' });
+        });
+    });
+}
+
+function getActualPlayDate(dateText, hourText) {
+    try {
+        const months = {
+            'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3, 'MAYIS': 4, 'HAZİRAN': 5,
+            'TEMMUZ': 6, 'AĞUSTOS': 7, 'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
+        };
+        const parts = dateText.split(' ');
+        if (parts.length < 3) return null;
+        const day = parseInt(parts[0]);
+        const monthName = parts[1].toLocaleUpperCase('tr-TR');
+        const year = parseInt(parts[2]);
+        const month = months[monthName];
+        if (isNaN(day) || month === undefined || isNaN(year)) return null;
+        return new Date(year, month, day);
+    } catch (e) {
+        return null;
+    }
 }
 
 module.exports = { initReservationRoutes };
