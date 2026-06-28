@@ -1,8 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
-const fs = require('fs');
 
 const db = require('./db');
 const errorHandler = require('./middleware/errorHandler');
@@ -12,10 +12,34 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..')));
+
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            scriptSrc: ["'self'", "https://challenges.cloudflare.com"],
+            frameSrc: ["'self'", "https://challenges.cloudflare.com"],
+            imgSrc: ["'self'", "data:", "https://www.google.com"],
+            connectSrc: ["'self'"],
+            formAction: ["'self'"],
+        },
+    },
+    crossOriginEmbedderPolicy: false,
+}));
+
+app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https' && process.env.NODE_ENV === 'production') {
+        return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+});
+
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'index.html'));
+    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
 app.use(errorHandler);
@@ -42,30 +66,29 @@ initPlayerReviewRoutes(app, db);
 initFieldCommentRoutes(app, db);
 initBlacklistRoutes(app, db);
 
-// DB bağlantısını başlat + migration
-const connection = db.promise();
+// DB baglantisini baslat + migration
 (async () => {
     try {
         const conn = await db.promise().getConnection();
-        console.log('MySQL veritabanına başarıyla bağlanıldı!');
+        console.log('MySQL veritabanina basariyla baglanildi!');
 
         const { initDatabase } = require('./initDb');
         await initDatabase(conn);
 
         conn.release();
     } catch (err) {
-        console.error('MySQL bağlantı hatası:', err.message);
+        console.error('MySQL baglanti hatasi:', err.message);
     }
 })();
 
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error('Sunucu Hatası:', err);
-    res.status(500).json({ success: false, message: 'Sunucu hatası oluştu!' });
+    console.error('Sunucu Hatasi:', err);
+    res.status(500).json({ success: false, message: 'Sunucu hatasi olustu!' });
 });
 
 // Cron job: weekly subscriptions
-const dayNames = ["PAZAR","PAZARTESİ","SALI","ÇARŞAMBA","PERŞEMBE","CUMA","CUMARTESİ"];
+const dayNames = ["PAZAR","PAZARTESI","SALI","CARSAMBA","PERSEMBE","CUMA","CUMARTESI"];
 async function processWeeklySubscriptions() {
     const now = new Date();
     const todayName = dayNames[now.getDay()];
@@ -79,12 +102,12 @@ async function processWeeklySubscriptions() {
             await db.promise().query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")', [sub.fieldKey, sub.pitchNumber, dateText, sub.hourText, sub.subscriberName, sub.user_id]);
         }
     } catch (err) {
-        console.error('Cron: Abonelik hatası:', err);
+        console.error('Cron: Abonelik hatasi:', err);
     }
 }
 processWeeklySubscriptions();
 setInterval(processWeeklySubscriptions, 60 * 60 * 1000);
 
 app.listen(port, () => {
-    console.log(`Sunucu http://127.0.0.1:${port} adresinde çalışıyor!`);
+    console.log(`Sunucu http://127.0.0.1:${port} adresinde calisiyor!`);
 });
