@@ -4,3 +4,9 @@ node_modules/
 dist/
 build/
 html/init.js
+console.log*
+fix_mysql97.*
+init_mysql.*
+install_mysql97_service.*
+mysql_data/
+sync.js
