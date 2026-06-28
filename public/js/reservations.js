@@ -276,7 +276,7 @@ document.addEventListener('click', function(e) {
 // =======================================================
 function selectField(key) {
     if (currentUser && userBlacklistedFields.includes(key)) {
-        alert("Bu hal� saha taraf�ndan engellendi�iniz i�in i�lem yapamazs�n�z!");
+        alert("Bu halı saha tarafından engellendiğiniz için işlem yapamazsınız!");
         return;
     }
     currentSelectedFieldKey = key;
@@ -288,7 +288,7 @@ function selectField(key) {
     const bookingPanel = document.getElementById('bookingPanel');
     bookingPanel.style.display = 'block';
     
-    // Mobil i�in accordion etkisi (Saha kart�n�n alt�na ta��)
+    // Mobil için accordion etkisi (Saha kartının altına taşı)
     if (window.innerWidth <= 768 && card) {
         const panel = document.getElementById('customerBookingPanel');
         panel.classList.add('mobile-open');
@@ -299,7 +299,7 @@ function selectField(key) {
         layout.appendChild(panel);
     }
 
-    // Saha yorumlar�n� y�kle
+    // Saha yorumlarını yükle
     loadFieldReviews(key);
 
     const field = fieldsData[key];

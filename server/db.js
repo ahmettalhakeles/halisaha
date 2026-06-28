@@ -11,7 +11,8 @@ const pool = mysql.createPool({
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
-    multipleStatements: true
+    multipleStatements: true,
+    charset: 'utf8mb4_unicode_ci'
 });
 
 module.exports = pool;

@@ -501,7 +501,7 @@ function showToast(message, type = 'success') {
 window.alert = function(msg) {
     if (typeof msg !== 'string') msg = String(msg);
     const lowerMsg = msg.toLowerCase();
-    if (lowerMsg.includes('hata') || lowerMsg.includes('ba�ar�s�z') || lowerMsg.includes('l�tfen') || lowerMsg.includes('kilitli')) {
+    if (lowerMsg.includes('hata') || lowerMsg.includes('başarısız') || lowerMsg.includes('lütfen') || lowerMsg.includes('kilitli')) {
         showToast(msg, 'error');
     } else if (lowerMsg.includes('emin misiniz')) {
         showToast(msg, 'info');
@@ -523,7 +523,7 @@ function toggleMobileForm(formId) {
         formContainer.classList.remove('anim-slide-fade-in');
         formContainer.classList.add('anim-slide-fade-out');
         
-        if (btn) btn.innerText = '+ �lan Ver';
+        if (btn) btn.innerText = '+ İlan Ver';
         
         // Animasyon bitince display none yap
         setTimeout(() => {
@@ -533,7 +533,7 @@ function toggleMobileForm(formId) {
             }
         }, 300);
     } else {
-        // A�
+        // Aç
         formContainer.style.display = 'block';
         formContainer.classList.remove('anim-slide-fade-out');
         formContainer.classList.add('anim-slide-fade-in');

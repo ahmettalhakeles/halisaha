@@ -207,7 +207,7 @@ async function loadMatchSeekers() {
         const reviewCount = parseInt(s.reviewCount) || 0;
         const ratingHtml = reviewCount > 0 ? `<span style="color:#fbbf24; font-weight:700; font-size:0.75rem;">? ${avgRating.toFixed(1)} (${reviewCount} Oy)</span>` : `<span style="color:var(--text-muted); font-size:0.7rem;">? Yeni Oyuncu</span>`;
         const isOwner = currentUser && s.user_id && s.user_id === currentUser.id;
-        const foundBadge = s.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLA�MA SA�LANDI</div>' : '';
+        const foundBadge = s.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLAŞMA SAĞLANDI</div>' : '';
         const posClass = s.position.replace(/\s+/g, '-');
         
         return `
@@ -225,9 +225,9 @@ async function loadMatchSeekers() {
             
             <!-- Bottom Left: Details -->
             <div style="grid-column: 1; grid-row: 2; font-size: 0.8rem; display: flex; flex-direction: column; gap: 4px;">
-                <div style="font-weight:bold;">${s.playerName} <span style="color:var(--text-muted); font-weight:normal; font-size:0.75rem;">(${s.age} Ya�${s.height ? `, ${s.height}cm` : ''}${s.weight ? `, ${s.weight}kg` : ''})</span></div>
+                <div style="font-weight:bold;">${s.playerName} <span style="color:var(--text-muted); font-weight:normal; font-size:0.75rem;">(${s.age} Yaş${s.height ? `, ${s.height}cm` : ''}${s.weight ? `, ${s.weight}kg` : ''})</span></div>
                 ${ratingHtml}
-                <div style="color:var(--neon-green); font-size:0.75rem;">${feeText ? '�CRET: ' + feeText : '�CRETS�Z'}</div>
+                <div style="color:var(--neon-green); font-size:0.75rem;">${feeText ? 'ÜCRET: ' + feeText : 'ÜCRETSİZ'}</div>
                 ${s.msg ? `<div style="font-style:italic; font-size:0.75rem;">"${s.msg.toLocaleUpperCase('tr-TR')}"</div>` : ''}
             </div>
             
@@ -235,17 +235,17 @@ async function loadMatchSeekers() {
             <div style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 5px;">
                 ${foundBadge}
                 ${isOwner && s.status !== 'bulundu' ? '<button class="action-btn" style="padding:4px 12px;font-size:0.75rem;background:#f59e0b;color:#000;white-space:nowrap;border-radius:4px;border:none;cursor:pointer;" onclick="markMatchFound(' + s.id + ')">BULUNDU</button>' : ''}
-                <button class="profile-btn" style="padding:4px 12px;font-size:0.75rem;border-radius:4px;" onclick="openPlayerProfile(${s.user_id || 0}, '${s.playerName.replace(/'/g, "\\'")}', ${s.age}, '${s.position}')">PROF�L</button>
+                <button class="profile-btn" style="padding:4px 12px;font-size:0.75rem;border-radius:4px;" onclick="openPlayerProfile(${s.user_id || 0}, '${s.playerName.replace(/'/g, "\\'")}', ${s.age}, '${s.position}')">PROFİL</button>
             </div>
             
             <!-- Comments -->
             <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
-                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('match_seeker', ${s.id})">�LET���M / YORUMLAR</div>
+                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('match_seeker', ${s.id})">İLETİŞİM / YORUMLAR</div>
                 <div id="forum-comments-match_seeker-${s.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                     <div id="forum-comments-list-match_seeker-${s.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                     <div style="display:flex;gap:5px;align-items:center;">
-                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz�l�r...' : 'Giri� yap�n...'}" ${loggedInUser ? '' : 'disabled'}>
-                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('match_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>G�NDER</button>
+                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
+                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('match_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
                     </div>
                 </div>
             </div>
@@ -307,12 +307,12 @@ async function loadTeamSeekers() {
             
             <!-- Comments -->
             <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
-                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('team_seeker', ${s.id})">�LET���M / YORUMLAR</div>
+                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('team_seeker', ${s.id})">İLETİŞİM / YORUMLAR</div>
                 <div id="forum-comments-team_seeker-${s.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                     <div id="forum-comments-list-team_seeker-${s.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                     <div style="display:flex;gap:5px;align-items:center;">
-                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz�l�r...' : 'Giri� yap�n...'}" ${loggedInUser ? '' : 'disabled'}>
-                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('team_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>G�NDER</button>
+                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
+                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('team_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
                     </div>
                 </div>
             </div>
@@ -431,7 +431,7 @@ function switchCustomerTab(tabName) {
                 form.style.display = 'none';
                 form.classList.remove('anim-slide-fade-in', 'anim-slide-fade-out');
                 const btn = form.nextElementSibling?.querySelector('.mobile-create-btn');
-                if (btn) btn.innerText = '+ �lan Ver';
+                if (btn) btn.innerText = '+ İlan Ver';
             }
         });
     }

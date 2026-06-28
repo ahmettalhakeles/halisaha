@@ -68,15 +68,15 @@ function renderForumWall() {
 
         container.innerHTML = activePosts.map(post => {
     const isOwner = currentUser && post.user_id && post.user_id === currentUser.id;
-    const foundBadge = post.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLA�MA SA�LANDI</div>' : '';
+    const foundBadge = post.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLAŞMA SAĞLANDI</div>' : '';
     return `
     <div class="post-card" id="forum-post-${post.id}" style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; padding: 12px;">
-        <!-- Tarih (Sol �st) -->
+        <!-- Tarih (Sol Üst) -->
         <div style="grid-column: 1; grid-row: 1; font-size: 0.85rem; color: var(--text-muted);">
             ${post.dateText} - ${post.hourText}
         </div>
         
-        <!-- Aran�lan Mevki (Sa� �st) -->
+        <!-- Aranılan Mevki (Sağ Üst) -->
         <div style="grid-column: 2; grid-row: 1; text-align: right;">
             <span class="post-pos-badge" style="font-size: 0.75rem; padding: 2px 6px;">ARANAN: ${post.position}</span>
         </div>
@@ -87,7 +87,7 @@ function renderForumWall() {
             <div style="font-style: italic;">"${(post.msg || '').toLocaleUpperCase('tr-TR')}"</div>
         </div>
         
-        <!-- Butonlar (Sa� Alt) -->
+        <!-- Butonlar (Sağ Alt) -->
         <div style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 5px;">
             ${foundBadge}
             ${isOwner && post.status !== 'bulundu' ? '<button class="action-btn" style="padding:4px 12px;font-size:0.75rem;background:#f59e0b;color:#000;white-space:nowrap;border-radius:4px;border:none;cursor:pointer;" onclick="markForumFound(${post.id})">BULUNDU</button>' : ''}
@@ -96,13 +96,13 @@ function renderForumWall() {
         <!-- Yorumlar -->
         <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
             <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('forum', ${post.id})">
-                �LET���M / YORUMLAR
+                İLETİŞİM / YORUMLAR
             </div>
             <div id="forum-comments-forum-${post.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                 <div id="forum-comments-list-forum-${post.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                 <div style="display:flex;gap:5px;align-items:center;">
-                    <input type="text" id="forum-comment-text-${post.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz�l�r...' : 'Giri� yap�n...'}" ${loggedInUser ? '' : 'disabled'}>
-                    <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('forum', ${post.id})" ${loggedInUser ? '' : 'disabled'}>G�NDER</button>
+                    <input type="text" id="forum-comment-text-${post.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
+                    <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('forum', ${post.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
                 </div>
             </div>
         </div>
