@@ -161,9 +161,9 @@ async function initWeatherWidget() {
             forecasts.push({ day: dayName, minTemp, maxTemp, condition, isBad });
         }
 
-        container.innerHTML = forecasts.map(w => `
-            <div class="weather-day-item ${w.isBad ? 'bad-weather' : ''}">
-                <span>${w.day}</span>
+        container.innerHTML = forecasts.map((w, i) => `
+            <div class="weather-day-item ${w.isBad ? 'bad-weather' : ''} ${i === 0 ? 'today' : ''}">
+                <span>${i === 0 ? 'BUGÜN' : w.day}</span>
                 <strong>${w.minTemp}° / ${w.maxTemp}°C</strong>
                 <small>${w.condition}</small>
             </div>
@@ -185,7 +185,7 @@ async function initWeatherWidget() {
         container.innerHTML = daysShort.map((day, idx) => {
             const min = 12 + idx;
             const max = 22 + idx * 2;
-            return `<div class="weather-day-item"><span>${day}</span><strong>${min}° / ${max}°C</strong><small>BULUTLU</small></div>`;
+            return `<div class="weather-day-item ${idx === 0 ? 'today' : ''}"><span>${idx === 0 ? 'BUGÜN' : day}</span><strong>${min}° / ${max}°C</strong><small>BULUTLU</small></div>`;
         }).join('');
     }
 }
