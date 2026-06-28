@@ -194,12 +194,11 @@ db.getConnection((err, connection) => {
         }
     });
 
-    // Add payment_status, reservation_price, user_id, user_phone to reservations
+    // Add payment_status, reservation_price, user_id to reservations
     const reservationCols = [
         { col: 'payment_status', def: "ALTER TABLE reservations ADD COLUMN payment_status ENUM('odenmedi','odendi') DEFAULT 'odenmedi'" },
         { col: 'reservation_price', def: 'ALTER TABLE reservations ADD COLUMN reservation_price INT DEFAULT 0' },
-        { col: 'user_id', def: 'ALTER TABLE reservations ADD COLUMN user_id INT DEFAULT NULL' },
-        { col: 'user_phone', def: 'ALTER TABLE reservations ADD COLUMN user_phone VARCHAR(20) DEFAULT NULL' }
+        { col: 'user_id', def: 'ALTER TABLE reservations ADD COLUMN user_id INT DEFAULT NULL' }
     ];
     reservationCols.forEach(({ col, def }) => {
         connection.query(`SHOW COLUMNS FROM reservations LIKE '${col}'`, (ec, r) => {
@@ -424,32 +423,6 @@ db.getConnection((err, connection) => {
     });
 
     // Expired posts update handled safely inside column checks above
-
-    // One-time migration to clear all reservations/subscriptions and set default operating hours
-    const path = require('path');
-    const markerFile = path.join(__dirname, '.db_migrated');
-    if (!fs.existsSync(markerFile)) {
-        connection.query('DELETE FROM reservations', (err) => {
-            if (!err) console.log('✅ Tüm rezervasyonlar temizlendi.');
-            else console.error("❌ Rezervasyon silme hatası:", err);
-        });
-        connection.query('DELETE FROM subscriptions', (err) => {
-            if (!err) console.log('✅ Tüm abonelikler temizlendi.');
-            else console.error("❌ Abonelik silme hatası:", err);
-        });
-        connection.query("UPDATE pitch_objects SET openingHour='15:00', closingHour='02:00'", (err) => {
-            if (!err) console.log('✅ pitch_objects saatleri güncellendi.');
-        });
-        connection.query("UPDATE pitch_settings SET openingHour='15:00', closingHour='02:00'", (err) => {
-            if (!err) console.log('✅ pitch_settings saatleri güncellendi.');
-        });
-        try {
-            fs.writeFileSync(markerFile, 'done');
-            console.log('✅ Veritabanı temizleme ve saat ayarlama markeri oluşturuldu.');
-        } catch (fErr) {
-            console.error("❌ Marker dosyası oluşturulamadı:", fErr);
-        }
-    }
 
     connection.release();
 
@@ -1176,7 +1149,7 @@ function getTurkishDayName(date) {
 
 // YENİ REZERVASYON EKLEME (GÜVENLİK, LİMİT VE BAN KONTROLLERİ DAHİL)
 app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
-    const { fieldKey, pitchNumber, dateText, hourText, user_name, user_id, user_phone, reservation_price, turnstileToken } = req.body;
+    const { fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, turnstileToken } = req.body;
 
     if (!fieldKey || !pitchNumber || !dateText || !hourText || !user_name) {
         return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
@@ -1217,7 +1190,10 @@ app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
             }
 
             // 3. Yerel Kara Liste (Blacklist) Kontrolü
-            db.query('SELECT id FROM field_blacklists WHERE fieldKey = ? AND phone_number = ?', [fieldKey, user_phone], (errBlack, blackResults) => {
+            db.query('SELECT phone FROM users WHERE id = ?', [user_id], (errPhone, phoneResults) => {
+                if (errPhone) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                const currentPhone = (phoneResults.length > 0) ? phoneResults[0].phone : '';
+                db.query('SELECT id FROM field_blacklists WHERE fieldKey = ? AND phone_number = ?', [fieldKey, currentPhone], (errBlack, blackResults) => {
                 if (errBlack) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
                 if (blackResults.length > 0) {
                     return res.status(403).json({ success: false, message: 'Bu halı saha tarafından engellendiğiniz için rezervasyon yapamazsınız!' });
@@ -1314,8 +1290,8 @@ app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
                                         if (!finalPrice) finalPrice = 2500;
 
                                         // 7. Rezervasyonu Kaydet
-                                        const sqlQuery = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, user_phone, reservation_price, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
-                                        db.query(sqlQuery, [fieldKey, pitchNumber, dateText, hourText, user_name, user_id, user_phone || null, finalPrice, 'odenmedi'], (errInsert, result) => {
+                                        const sqlQuery = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+                                        db.query(sqlQuery, [fieldKey, pitchNumber, dateText, hourText, user_name, user_id, finalPrice, 'odenmedi'], (errInsert, result) => {
                                             if (errInsert) {
                                                 console.error("SQL Ekleme Hatası:", errInsert);
                                                 return res.status(500).json({ success: false, message: 'Rezervasyon kaydedilemedi!' });
@@ -1328,6 +1304,7 @@ app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
                         });
                     });
                     });
+                });
                 });
             });
         })
@@ -1486,10 +1463,10 @@ app.delete('/api/reservations/:id', (req, res) => {
 // =======================================================
 
 app.post('/api/forum', (req, res) => {
-    const { dateText, hourText, position, payment, phone, msg, user_id } = req.body;
+    const { dateText, hourText, position, payment, msg, user_id } = req.body;
 
-    const sqlQuery = 'INSERT INTO forum_posts (dateText, hourText, position, payment, phone, msg, user_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-    db.query(sqlQuery, [dateText, hourText, position, payment, phone || null, msg, user_id || null, 'aktif'], (err, result) => {
+    const sqlQuery = 'INSERT INTO forum_posts (dateText, hourText, position, payment, msg, user_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    db.query(sqlQuery, [dateText, hourText, position, payment, msg, user_id || null, 'aktif'], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: 'İlan kaydedilemedi!' });
         res.json({ success: true, message: 'İlan başarıyla eklendi!', id: result.insertId });
     });
@@ -1586,41 +1563,32 @@ app.get('/api/subscriptions/:fieldKey', (req, res) => {
     });
 });
 
-function normalizePhone(phone) {
-    if (!phone) return '';
-    let cleaned = phone.replace(/\D/g, '');
-    if (cleaned.startsWith('90') && cleaned.length > 10) cleaned = cleaned.slice(2);
-    if (cleaned.startsWith('0')) cleaned = cleaned.slice(1);
-    return cleaned;
-}
-
-// Kullanıcının telefonuna göre aboneliklerini getir (normalize edilmiş karşılaştırma)
-app.get('/api/subscriptions/by-phone/:phone', (req, res) => {
-    const inputPhone = normalizePhone(req.params.phone);
-    const sqlQuery = 'SELECT * FROM subscriptions ORDER BY FIELD(dayOfWeek, "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ", "PAZAR"), hourText ASC';
-    db.query(sqlQuery, (err, results) => {
+// Kullanıcının aboneliklerini getir (user_id ile)
+app.get('/api/subscriptions/by-user/:userId', (req, res) => {
+    const { userId } = req.params;
+    const sqlQuery = 'SELECT * FROM subscriptions WHERE user_id = ? ORDER BY FIELD(dayOfWeek, "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ", "PAZAR"), hourText ASC';
+    db.query(sqlQuery, [parseInt(userId)], (err, results) => {
         if (err) {
             console.error("Abonelikleri çekme hatası:", err);
             return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
         }
-        const matched = results.filter(sub => normalizePhone(sub.subscriberPhone) === inputPhone);
-        res.json({ success: true, data: matched });
+        res.json({ success: true, data: results });
     });
 });
 
 // Yeni abonelik oluştur
 app.post('/api/subscriptions', (req, res) => {
-    const { fieldKey, pitchNumber, dayOfWeek, hourText, subscriberName, subscriberPhone } = req.body;
+    const { fieldKey, pitchNumber, dayOfWeek, hourText, subscriberName, subscriberPhone, user_id } = req.body;
 
-    if (!fieldKey || !pitchNumber || !hourText || !subscriberName || !subscriberPhone) {
+    if (!fieldKey || !pitchNumber || !hourText || !subscriberName) {
         return res.status(400).json({ success: false, message: 'Lütfen tüm alanları doldurunuz!' });
     }
 
     const subDay = dayOfWeek || 'PAZARTESİ';
 
     // 1. Aboneliği veritabanına ekle
-    const sqlInsert = 'INSERT INTO subscriptions (fieldKey, pitchNumber, dayOfWeek, hourText, subscriberName, subscriberPhone) VALUES (?, ?, ?, ?, ?, ?)';
-    db.query(sqlInsert, [fieldKey, pitchNumber, subDay, hourText, subscriberName, subscriberPhone], (err) => {
+    const sqlInsert = 'INSERT INTO subscriptions (fieldKey, pitchNumber, dayOfWeek, hourText, subscriberName, subscriberPhone, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    db.query(sqlInsert, [fieldKey, pitchNumber, subDay, hourText, subscriberName, subscriberPhone || null, user_id ? parseInt(user_id) : null], (err) => {
         if (err) {
             console.error("Abonelik ekleme hatası:", err);
             if (err.code === 'ER_DUP_ENTRY') {
@@ -1663,8 +1631,8 @@ app.post('/api/subscriptions', (req, res) => {
             nextDate.setDate(now.getDate() + daysUntil);
             const dateText = nextDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toLocaleUpperCase('tr-TR');
 
-            const insResSql = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_phone, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")';
-            db.query(insResSql, [fieldKey, pitchNumber, dateText, hourText, subscriberName, subscriberPhone], (insErr) => {
+            const insResSql = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")';
+            db.query(insResSql, [fieldKey, pitchNumber, dateText, hourText, subscriberName, parseInt(user_id)], (insErr) => {
                 if (insErr) console.error("Abone rezervasyon kaydı oluşturma hatası:", insErr);
             });
 
@@ -1740,10 +1708,10 @@ app.get('/api/match-seekers', (req, res) => {
                COALESCE(avg_table.review_count, 0) as reviewCount
         FROM match_seekers ms
         LEFT JOIN (
-            SELECT playerPhone, AVG(rating) as avg_rating, COUNT(*) as review_count
+            SELECT player_id, AVG(rating) as avg_rating, COUNT(*) as review_count
             FROM player_reviews
-            GROUP BY playerPhone
-        ) avg_table ON ms.phone = avg_table.playerPhone
+            GROUP BY player_id
+        ) avg_table ON ms.user_id = avg_table.player_id
         WHERE 1=1
     `;
     const params = [];
@@ -1795,15 +1763,15 @@ app.get('/api/match-seekers', (req, res) => {
 
 // Yeni maç arayan ilanı oluştur
 app.post('/api/match-seekers', (req, res) => {
-    const { playerName, age, position, phone, availableHours, availableDates, requestedFee, msg, user_id, height, weight } = req.body;
+    const { playerName, age, position, availableHours, availableDates, requestedFee, msg, user_id, height, weight } = req.body;
 
     if (!playerName || !age || !position || !availableHours || !availableDates) {
         return res.status(400).json({ success: false, message: 'Lütfen zorunlu alanları doldurunuz!' });
     }
 
-    const sqlInsert = `INSERT INTO match_seekers (playerName, age, position, phone, availableHours, availableDates, requestedFee, msg, user_id, status, height, weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sqlInsert = `INSERT INTO match_seekers (playerName, age, position, availableHours, availableDates, requestedFee, msg, user_id, status, height, weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     db.query(sqlInsert, [
-        playerName, parseInt(age), position, phone || null,
+        playerName, parseInt(age), position,
         typeof availableHours === 'string' ? availableHours : JSON.stringify(availableHours),
         typeof availableDates === 'string' ? availableDates : JSON.stringify(availableDates),
         requestedFee || 'ÜCRETSIZ',
@@ -1996,9 +1964,9 @@ app.post('/api/oauth-login', (req, res) => {
 // =======================================================
 // OYUNCU PUANLAMA VE YORUM (PLAYER RATINGS) API
 // =======================================================
-app.get('/api/player-reviews/:phone', (req, res) => {
-    const { phone } = req.params;
-    db.query('SELECT * FROM player_reviews WHERE playerPhone = ? ORDER BY created_at DESC', [phone], (err, results) => {
+app.get('/api/player-reviews/:playerId', (req, res) => {
+    const { playerId } = req.params;
+    db.query('SELECT * FROM player_reviews WHERE player_id = ? ORDER BY created_at DESC', [parseInt(playerId)], (err, results) => {
         if (err) {
             console.error("Yorum çekme hatası:", err);
             return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
@@ -2011,7 +1979,7 @@ app.get('/api/player-reviews/:phone', (req, res) => {
         res.json({
             success: true,
             data: {
-                phone: phone,
+                playerId: parseInt(playerId),
                 reviews: results,
                 averageRating: averageRating,
                 reviewCount: results.length
@@ -2021,8 +1989,8 @@ app.get('/api/player-reviews/:phone', (req, res) => {
 });
 
 app.post('/api/player-reviews', (req, res) => {
-    const { playerPhone, reviewerName, rating, comment } = req.body;
-    if (!playerPhone || !reviewerName || !rating) {
+    const { player_id, reviewerName, rating, comment } = req.body;
+    if (!player_id || !reviewerName || !rating) {
         return res.status(400).json({ success: false, message: 'Lütfen zorunlu alanları doldurunuz!' });
     }
 
@@ -2031,8 +1999,8 @@ app.post('/api/player-reviews', (req, res) => {
         return res.status(400).json({ success: false, message: 'Puan 1-5 arasında olmalıdır!' });
     }
 
-    const sqlInsert = 'INSERT INTO player_reviews (playerPhone, reviewerName, rating, comment) VALUES (?, ?, ?, ?)';
-    db.query(sqlInsert, [playerPhone, reviewerName, ratingVal, comment || ''], (err) => {
+    const sqlInsert = 'INSERT INTO player_reviews (player_id, reviewerName, rating, comment) VALUES (?, ?, ?, ?)';
+    db.query(sqlInsert, [parseInt(player_id), reviewerName, ratingVal, comment || ''], (err) => {
         if (err) {
             console.error("Yorum ekleme hatası:", err);
             return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
@@ -2145,7 +2113,7 @@ app.get('/api/business-stats/:fieldKey', (req, res) => {
 // Rezervasyon detaylarını getir
 app.get('/api/business-reservations/:fieldKey', (req, res) => {
     const { fieldKey } = req.params;
-    const sqlQuery = 'SELECT * FROM reservations WHERE fieldKey = ? ORDER BY dateText ASC, hourText ASC';
+    const sqlQuery = 'SELECT r.*, u.phone AS user_phone FROM reservations r LEFT JOIN users u ON r.user_id = u.id WHERE r.fieldKey = ? ORDER BY r.dateText ASC, r.hourText ASC';
     db.query(sqlQuery, [fieldKey], (err, results) => {
         if (err) {
             console.error("SQL Hatası:", err);
@@ -2160,7 +2128,7 @@ app.get('/api/business-debts/:fieldKey', (req, res) => {
     const { fieldKey } = req.params;
     const { filter } = req.query; // 'daily', 'weekly', 'monthly', 'all'
     
-    const sqlQuery = `SELECT * FROM reservations WHERE fieldKey = ? AND status != 'cancelled' ORDER BY dateText ASC, hourText ASC`;
+    const sqlQuery = `SELECT r.*, u.phone AS user_phone FROM reservations r LEFT JOIN users u ON r.user_id = u.id WHERE r.fieldKey = ? AND r.status != 'cancelled' ORDER BY r.dateText ASC, r.hourText ASC`;
     db.query(sqlQuery, [fieldKey], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
         
@@ -2584,8 +2552,8 @@ function processWeeklySubscriptions() {
                 if (checkErr) { console.error("Cron: Çakışma kontrolü hatası:", checkErr); return; }
                 if (existing.length > 0) return; // Already exists
 
-                const insertSql = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_phone, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")';
-                db.query(insertSql, [sub.fieldKey, sub.pitchNumber, dateText, sub.hourText, sub.subscriberName, sub.subscriberPhone], (insErr) => {
+                const insertSql = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")';
+                db.query(insertSql, [sub.fieldKey, sub.pitchNumber, dateText, sub.hourText, sub.subscriberName, sub.user_id], (insErr) => {
                     if (insErr) console.error("Cron: Abone rezervasyon kaydı oluşturma hatası:", insErr);
                     else console.log(`Cron: Abone kaydı oluşturuldu - ${sub.subscriberName} ${dateText} ${sub.hourText}`);
                 });

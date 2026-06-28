@@ -1367,7 +1367,7 @@ async function saveSubscription() {
     try {
         const response = await fetch('/api/subscriptions', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fieldKey: currentBusinessFieldKey, pitchNumber: pitchNum, dayOfWeek, hourText: hour, subscriberName: name, subscriberPhone: phone })
+            body: JSON.stringify({ fieldKey: currentBusinessFieldKey, pitchNumber: pitchNum, dayOfWeek, hourText: hour, subscriberName: name, subscriberPhone: phone, user_id: currentUser?.id || null })
         });
         const result = await response.json();
         if (result.success) {
@@ -2040,7 +2040,6 @@ async function completeBooking() {
         hourText: hour, 
         user_name: loggedInUser,
         user_id: currentUser.id,
-        user_phone: currentUser.phone,
         reservation_price: price,
         turnstileToken: turnstileToken
     };
@@ -2149,18 +2148,16 @@ async function createForumPost() {
     const hour = document.getElementById('forumHour').value;
     const pos = document.getElementById('forumPosition').value;
     const payment = document.getElementById('forumPayment').value;
-    const phone = document.getElementById('forumPhone')?.value?.trim() || null;
     const msg = document.getElementById('forumMessage').value.trim() || "EKİP TAMAMLANIYOR.";
 
     try {
         const response = await fetch('/api/forum', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, phone, msg, user_id: currentUser.id })
+            body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, msg, user_id: currentUser.id })
         });
         const result = await response.json();
         if (result.success) {
             alert("İlanınız başarıyla yayınlandı!");
-            if (document.getElementById('forumPhone')) document.getElementById('forumPhone').value = "";
             document.getElementById('forumMessage').value = "";
             await loadForumPostsFromServer();
         } else { alert("Hata: " + result.message); }
@@ -2364,7 +2361,6 @@ async function createMatchSeeker() {
     const height = document.getElementById('matchHeight').value.trim();
     const weight = document.getElementById('matchWeight').value.trim();
     const position = document.getElementById('matchPosition').value;
-    const phone = document.getElementById('matchPhone').value.trim() || null;
     const requestedFee = document.getElementById('matchFee').value;
     const msg = document.getElementById('matchMsg').value.trim();
 
@@ -2381,7 +2377,7 @@ async function createMatchSeeker() {
     try {
         const response = await fetch('/api/match-seekers', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerName, age: parseInt(age), height: height ? parseInt(height) : null, weight: weight ? parseInt(weight) : null, position, phone, availableHours: JSON.stringify(availableHours), availableDates: JSON.stringify(availableDates), requestedFee, msg, user_id: currentUser.id })
+            body: JSON.stringify({ playerName, age: parseInt(age), height: height ? parseInt(height) : null, weight: weight ? parseInt(weight) : null, position, availableHours: JSON.stringify(availableHours), availableDates: JSON.stringify(availableDates), requestedFee, msg, user_id: currentUser.id })
         });
         const result = await response.json();
         if (result.success) {
@@ -2467,7 +2463,7 @@ async function loadMatchSeekers() {
             <div style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 5px;">
                 ${foundBadge}
                 ${isOwner && s.status !== 'bulundu' ? '<button class="action-btn" style="padding:4px 12px;font-size:0.75rem;background:#f59e0b;color:#000;white-space:nowrap;border-radius:4px;border:none;cursor:pointer;" onclick="markMatchFound(' + s.id + ')">BULUNDU</button>' : ''}
-                <button class="profile-btn" style="padding:4px 12px;font-size:0.75rem;border-radius:4px;" onclick="openPlayerProfile('${s.phone || ''}', '${s.playerName.replace(/'/g, "\\'")}', ${s.age}, '${s.position}')">PROF�L</button>
+                <button class="profile-btn" style="padding:4px 12px;font-size:0.75rem;border-radius:4px;" onclick="openPlayerProfile(${s.user_id || 0}, '${s.playerName.replace(/'/g, "\\'")}', ${s.age}, '${s.position}')">PROF�L</button>
             </div>
             
             <!-- Comments -->
@@ -2579,7 +2575,7 @@ async function markTeamFound(id) {
 // =======================================================
 // OYUNCU PUANLAMA & SEKME / OAUTH YARDIMCILARI
 // =======================================================
-let currentActiveProfilePhone = "";
+let currentActiveProfileId = null;
 
 function updateLoginUIVisibility() {
     const playersLock = document.getElementById('playersFormLock');
@@ -2680,12 +2676,12 @@ function selectRatingStar(val) {
     document.getElementById('reviewRatingInput').value = val;
 }
 
-async function openPlayerProfile(phone, name, age, position) {
-    currentActiveProfilePhone = phone;
+async function openPlayerProfile(playerId, name, age, position) {
+    currentActiveProfileId = playerId;
     document.getElementById('profilePlayerName').innerText = name.toLocaleUpperCase('tr-TR');
     document.getElementById('profilePlayerSubText').innerText = `${age} YAŞ | MEVKİ: ${position}`;
     
-    await loadPlayerReviews(phone);
+    if (playerId) await loadPlayerReviews(playerId);
     
     selectRatingStar(5);
     document.getElementById('reviewCommentInput').value = "";
@@ -2695,12 +2691,12 @@ async function openPlayerProfile(phone, name, age, position) {
     openModal('playerProfileModal');
 }
 
-async function loadPlayerReviews(phone) {
+async function loadPlayerReviews(playerId) {
     const reviewsContainer = document.getElementById('playerReviewsContainer');
     if (!reviewsContainer) return;
     
     try {
-        const response = await fetch(`/api/player-reviews/${phone}`);
+        const response = await fetch(`/api/player-reviews/${playerId}`);
         const result = await response.json();
         
         if (result.success) {
@@ -2734,14 +2730,14 @@ async function submitPlayerReview() {
         alert("Puanlama yapmak için giriş yapmalısınız!");
         return;
     }
-    if (!currentActiveProfilePhone) return;
+    if (!currentActiveProfileId) return;
 
     try {
         const response = await fetch('/api/player-reviews', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                playerPhone: currentActiveProfilePhone,
+                player_id: currentActiveProfileId,
                 reviewerName: loggedInUser,
                 rating: parseInt(rating),
                 comment: comment || 'OYUNCUYU DEĞERLENDİRDİ.'
@@ -2750,7 +2746,7 @@ async function submitPlayerReview() {
         const result = await response.json();
         if (result.success) {
             alert("Değerlendirmeniz başarıyla yayınlandı!");
-            await loadPlayerReviews(currentActiveProfilePhone);
+            await loadPlayerReviews(currentActiveProfileId);
             await loadMatchSeekers();
         } else {
             alert("Hata: " + result.message);
@@ -2945,9 +2941,9 @@ async function loadProfileReservations() {
     
     // Fetch subscriptions for this user
     let userSubscriptions = [];
-    if (currentUser.phone) {
+    if (currentUser.id) {
         try {
-            const subResp = await fetch(`/api/subscriptions/by-phone/${encodeURIComponent(currentUser.phone)}`);
+            const subResp = await fetch(`/api/subscriptions/by-user/${currentUser.id}`);
             const subResult = await subResp.json();
             if (subResult.success) userSubscriptions = subResult.data;
         } catch (e) { console.error("Abonelikler çekilemedi:", e); }
@@ -3093,7 +3089,7 @@ async function loadProfileReviews() {
     if (!reviewsContainer || !currentUser) return;
     
     try {
-        const response = await fetch(`/api/player-reviews/${currentUser.phone}`);
+        const response = await fetch(`/api/player-reviews/${currentUser.id}`);
         const result = await response.json();
         
         if (result.success) {
