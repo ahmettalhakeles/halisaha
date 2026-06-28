@@ -17,7 +17,8 @@ async function initDatabase(connection) {
         "SHOW COLUMNS FROM subscriptions LIKE 'dayOfWeek'",
         "SHOW COLUMNS FROM reservations LIKE 'payment_status'",
         "SHOW COLUMNS FROM reservations LIKE 'reservation_price'",
-        "SHOW COLUMNS FROM reservations LIKE 'user_id'"
+        "SHOW COLUMNS FROM reservations LIKE 'user_id'",
+        "SHOW COLUMNS FROM player_reviews LIKE 'player_id'"
     ];
 
     const alterStatements = {
@@ -35,7 +36,8 @@ async function initDatabase(connection) {
         dayOfWeek: "ALTER TABLE subscriptions ADD COLUMN dayOfWeek VARCHAR(50) DEFAULT 'PAZARTESİ'",
         payment_status: "ALTER TABLE reservations ADD COLUMN payment_status ENUM('odenmedi','odendi') DEFAULT 'odenmedi'",
         reservation_price: "ALTER TABLE reservations ADD COLUMN reservation_price INT DEFAULT 0",
-        user_id: "ALTER TABLE reservations ADD COLUMN user_id INT DEFAULT NULL"
+        user_id: "ALTER TABLE reservations ADD COLUMN user_id INT DEFAULT NULL",
+        player_id: "ALTER TABLE player_reviews ADD COLUMN player_id INT NOT NULL"
     };
 
     const checkMap = {
@@ -44,7 +46,8 @@ async function initDatabase(connection) {
         height_ms: 'height', weight_ms: 'weight',
         refreshments: 'refreshments', cleats: 'cleats', shower: 'shower', market: 'market',
         dayOfWeek: 'dayOfWeek',
-        payment_status: 'payment_status', reservation_price: 'reservation_price', user_id: 'user_id'
+        payment_status: 'payment_status', reservation_price: 'reservation_price', user_id: 'user_id',
+        player_id: 'player_id'
     };
 
     for (const [key, query] of Object.entries(queries)) {
