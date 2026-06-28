@@ -634,6 +634,25 @@ main {
     overflow: hidden;
 }
 
+.rate-badge {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+.rate-day {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.15);
+}
+.rate-night {
+    color: #818cf8;
+    background: rgba(129, 140, 248, 0.15);
+}
+
 .hour-btn::after {
     content: '';
     position: absolute;

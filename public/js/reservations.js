@@ -100,30 +100,9 @@ function initDateDropdowns() {
 // =======================================================
 function renderFieldsGrid() {
     const grid = document.getElementById('fieldsGrid');
-    const isMobile = window.innerWidth <= 768;
-
     grid.innerHTML = Object.keys(fieldsData).map(key => {
         const field = fieldsData[key];
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.coordinates)}`;
-
-        // Çift fiyat gösterimi
-        let priceHtml = '';
-        if (field.pitchCount >= 2) {
-            const pitch1 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 1);
-            const pitch2 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 2);
-            const p1Morning = pitch1 ? (pitch1.morningPrice || 2500) : 2500;
-            const p1Evening = pitch1 ? (pitch1.eveningPrice || 3000) : 3000;
-            const p2Morning = pitch2 ? (pitch2.morningPrice || 2500) : 2500;
-            const p2Evening = pitch2 ? (pitch2.eveningPrice || 3000) : 3000;
-            priceHtml = `
-                <div class="price-detail-line"><span class="pitch-label">SAHA 1)</span> ${p1Morning}/${p1Evening} TL</div>
-                <div class="price-detail-line"><span class="pitch-label">SAHA 2)</span> ${p2Morning}/${p2Evening} TL</div>
-            `;
-        } else {
-            const pitch1 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 1);
-            const p1Pricing = pitch1 ? `${pitch1.morningPrice || 2500}/${pitch1.eveningPrice || 3000}` : (field.pricing || '2500/3000');
-            priceHtml = `<div class="price-detail-line"><span class="pitch-label">SAHA 1)</span> ${p1Pricing} TL</div>`;
-        }
 
         const serviceStatus = (field.hasService || "Servis: Yok").toLowerCase().includes("var");
         const cleatsStatus = (field.cleats || "Krampon Kiralanmaz") === "Krampon Kiralanır";
@@ -150,19 +129,13 @@ function renderFieldsGrid() {
 
         const isBlacklisted = currentUser && userBlacklistedFields.includes(key);
 
-        if (isMobile) {
-            const cardClickHandler = isBlacklisted ? 'event.stopPropagation();' : "toggleMobileFieldCard('" + key + "')";
-            return `
-            <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
-                ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
-                <div class="field-card-header">
+        const cardClickHandler = isBlacklisted ? 'event.stopPropagation();' : ("selectField('" + key + "')");
+        return `
+        <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
+            ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
+            <div class="field-info-row">
+                <div class="field-main-details">
                     <h3>${field.name}</h3>
-                </div>
-                <div class="field-card-meta">
-                    <a href="tel:${field.phone}" class="phone-link" onclick="event.stopPropagation();">${field.phone}</a>
-                    <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
-                </div>
-                <div class="field-card-collapse">
                     <div class="pitch-badges-row">
                         ${serviceBadge}
                         ${cleatsBadge}
@@ -170,75 +143,24 @@ function renderFieldsGrid() {
                         ${marketBadge}
                     </div>
                     ${refreshmentsText ? `<div class="refreshments-display">${refreshmentsText}</div>` : ''}
-                    <div class="price-tag">${priceHtml}</div>
                 </div>
-                <div class="field-comments-section" onclick="event.stopPropagation()">
-                    <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
-                        YORUMLAR VE DEĞERLENDİRMELER 💬
-                    </div>
-                    <div id="field-reviews-container-${key}" class="field-reviews-inline-container" style="display:none; margin-top:6px;">
-                        <div id="field-reviews-list-${key}" style="max-height: 180px; overflow-y: auto; margin-bottom: 6px; display: flex; flex-direction: column; gap: 5px;"></div>
-                        <div style="display:flex; gap:6px; align-items:center;">
-                            <input type="text" id="field-comment-text-${key}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="Yorum yaz..." \${loggedInUser ? '' : 'disabled'}>
-                            <button style="padding:3px 8px; font-size:0.65rem; font-weight:700; border:none; border-radius:6px; background:var(--primary-green); color:#000; cursor:pointer; white-space:nowrap; font-family:'Montserrat',sans-serif;" onclick="submitFieldCardComment('${key}', event)" \${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
-                        </div>
-                    </div>
+                <div class="field-actions">
+                    <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
+                    <a href="tel:${field.phone}" class="phone-link" onclick="event.stopPropagation();">${field.phone}</a>
                 </div>
-            </div>`;
-        } else {
-            const cardClickHandler = isBlacklisted ? 'event.stopPropagation();' : ("selectField('" + key + "')");
-            return `
-            <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
-                ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
-                <div class="field-info-row">
-                    <div class="field-main-details">
-                        <h3>${field.name}</h3>
-                        <div class="pitch-badges-row">
-                            ${serviceBadge}
-                            ${cleatsBadge}
-                            ${showerBadge}
-                            ${marketBadge}
-                        </div>
-                        ${refreshmentsText ? `<div class="refreshments-display">${refreshmentsText}</div>` : ''}
-                    </div>
-                    <div class="field-actions">
-                        <a href="tel:${field.phone}" class="phone-link" onclick="event.stopPropagation();">${field.phone}</a>
-                        <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
-                        <div class="price-tag">${priceHtml}</div>
-                    </div>
+            </div>
+            <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
+                YORUMLAR VE DEĞERLENDİRMELER 💬 ▶
+            </div>
+            <div id="field-reviews-container-${key}" class="field-reviews-inline-container" style="display:none; margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;" onclick="event.stopPropagation()">
+                <div id="field-reviews-list-${key}" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;"></div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="field-comment-text-${key}" class="form-control" style="flex:1; padding: 10px; font-size: 0.9rem;" placeholder="Yorum yaz..." \${loggedInUser ? '' : 'disabled'}>
+                    <button style="padding:4px 10px; font-size:0.75rem; font-weight:700; border:none; border-radius:6px; background:var(--primary-green); color:#000; cursor:pointer; white-space:nowrap; font-family:'Montserrat',sans-serif;" onclick="submitFieldCardComment('${key}', event)" \${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
                 </div>
-                <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
-                    YORUMLAR VE DEĞERLENDİRMELER 💬 ▶
-                </div>
-                <div id="field-reviews-container-${key}" class="field-reviews-inline-container" style="display:none; margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;" onclick="event.stopPropagation()">
-                    <div id="field-reviews-list-${key}" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;"></div>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <input type="text" id="field-comment-text-${key}" class="form-control" style="flex:1; padding: 10px; font-size: 0.9rem;" placeholder="Yorum yaz..." \${loggedInUser ? '' : 'disabled'}>
-                        <button style="padding:4px 10px; font-size:0.75rem; font-weight:700; border:none; border-radius:6px; background:var(--primary-green); color:#000; cursor:pointer; white-space:nowrap; font-family:'Montserrat',sans-serif;" onclick="submitFieldCardComment('${key}', event)" \${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
-                    </div>
-                </div>
-            </div>`;
-        }
+            </div>
+        </div>`;
     }).join('');
-}
-
-// =======================================================
-// MOBİL KOMPAKT KART AÇ/KAPA
-// =======================================================
-function toggleMobileFieldCard(key) {
-    if (window.innerWidth > 768) {
-        selectField(key);
-        return;
-    }
-
-    const card = document.getElementById('card-' + key);
-    if (!card) return;
-
-    if (card.classList.contains('active')) {
-        closeMobileFieldPanel();
-    } else {
-        selectField(key);
-    }
 }
 
 function closeMobileFieldPanel() {
@@ -459,29 +381,34 @@ function onDateOrFieldChange() {
             if (slotStartDate <= now) isPastSlot = true;
         }
 
+        const slotStartHour = parseInt(hour.split(':')[0]);
+        const isEvening = slotStartHour >= 17 || slotStartHour < 6;
+        const rateLabel = isEvening ? 'AKŞAM' : 'GÜNDÜZ';
+        const rateBadge = `<span class="rate-badge ${isEvening ? 'rate-night' : 'rate-day'}">${rateLabel}</span>`;
+
         if (isTaken) {
             btn.classList.add('locked');
-            btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(DOLU)</span>${nextDayLabel}`;
+            btn.innerHTML = `${rateBadge}<span class="hour-time">${hour}</span><span class="hour-status">(DOLU)</span>${nextDayLabel}`;
             btn.disabled = true;
         } else if (aboneHours.includes(`${effectiveDayOfWeek} ${hour}`)) {
             btn.classList.add('abone-state');
-            btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(ABONE)</span>${nextDayLabel}`;
+            btn.innerHTML = `${rateBadge}<span class="hour-time">${hour}</span><span class="hour-status">(ABONE)</span>${nextDayLabel}`;
             btn.disabled = true;
         } else if (isPastSlot) {
             btn.classList.add('past-state');
-            btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(GEÇTİ)</span>${nextDayLabel}`;
+            btn.innerHTML = `${rateBadge}<span class="hour-time">${hour}</span><span class="hour-status">(GEÇTİ)</span>${nextDayLabel}`;
             btn.disabled = true;
         } else if (pitch.isClosed === 1 || pitch.isClosed === true || isWeekdayClosed) {
             btn.classList.add('closed-state');
-            btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(KAPALI)</span>${nextDayLabel}`;
+            btn.innerHTML = `${rateBadge}<span class="hour-time">${hour}</span><span class="hour-status">(KAPALI)</span>${nextDayLabel}`;
             btn.disabled = true;
         } else if (disabledHours.includes(hour)) {
             btn.classList.add('locked');
-            btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(DOLU)</span>${nextDayLabel}`;
+            btn.innerHTML = `${rateBadge}<span class="hour-time">${hour}</span><span class="hour-status">(DOLU)</span>${nextDayLabel}`;
             btn.disabled = true;
         } else {
             btn.classList.add('available');
-            btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(BOS)</span>${nextDayLabel}`;
+            btn.innerHTML = `${rateBadge}<span class="hour-time">${hour}</span><span class="hour-status">(BOS)</span>${nextDayLabel}`;
             if (loggedInUser) {
                 btn.onclick = async function() {
                     if (currentSelectedHourBtn) { currentSelectedHourBtn.classList.remove('selected'); currentSelectedHourBtn.classList.add('available'); }
