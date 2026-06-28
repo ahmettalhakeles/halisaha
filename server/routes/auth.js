@@ -1,5 +1,6 @@
 function initAuthRoutes(app, db) {
     const fieldsData = require('../fieldsData');
+    const { authLimiter } = require('../middleware/rateLimiter');
 
     // handleSocialAuthSuccess helper
     async function handleSocialAuthSuccess(email, name, provider, idCol, res) {
@@ -28,7 +29,7 @@ function initAuthRoutes(app, db) {
     }
 
     // Register
-    app.post('/api/register', (req, res) => {
+    app.post('/api/register', authLimiter, (req, res) => {
         const { name, phone, email, password } = req.body;
         if (!name || !phone || !email || !password) {
             return res.status(400).json({ success: false, message: 'Tüm alanları doldurunuz!' });
@@ -65,7 +66,7 @@ function initAuthRoutes(app, db) {
     });
 
     // Login
-    app.post('/api/login', (req, res) => {
+    app.post('/api/login', authLimiter, (req, res) => {
         const { email, password } = req.body;
         db.query('SELECT id, name, phone, email, age, position, experience, is_email_verified, status FROM users WHERE email = ? AND password = ?', [email, password], (err, results) => {
             if (err || results.length === 0) return res.status(401).json({ success: false, message: 'Hatalı giriş!' });

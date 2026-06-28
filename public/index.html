@@ -16,7 +16,7 @@
 
     <header>
         <div class="logo-area">
-            <button class="hamburger-btn" id="mobileHamburgerBtn" onclick="toggleMobileMenu()">
+            <button class="hamburger-btn" id="mobileHamburgerBtn" data-click="toggleMobileMenu">
                 <svg viewBox="0 0 24 24" width="28" height="28" stroke="white" stroke-width="2" fill="none">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
                     <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -65,35 +65,35 @@
             </div>
         </div>
 
-        <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay" data-click="closeMobileMenu"></div>
         <div class="header-actions">
-            <button class="menu-close-btn" onclick="closeMobileMenu()" aria-label="Menüyü Kapat">
+            <button class="menu-close-btn" data-click="closeMobileMenu" aria-label="Menüyü Kapat">
                 <svg viewBox="0 0 24 24" width="24" height="24" stroke="#10b981" stroke-width="3" fill="none">
                     <polyline points="15,18 9,12 15,6"></polyline>
                 </svg>
             </button>
             <!-- Kullanıcı Giriş -->
             <div id="userAuthSection" class="user-auth-zone">
-                <button class="nav-btn" onclick="openModal('loginModal')">GİRİS YAP</button>
-                <button class="nav-btn green-btn" onclick="openModal('registerModal')">KAYIT OL</button>
+                <button class="nav-btn" data-click="openModal-loginModal">GİRİS YAP</button>
+                <button class="nav-btn green-btn" data-click="openModal-registerModal">KAYIT OL</button>
             </div>
 
             <!-- İşletme Giriş -->
             <div id="businessAuthSection" class="user-auth-zone">
-                <button class="nav-btn" onclick="openBusinessLogin()" style="border-color: var(--warning-orange); color: var(--warning-orange);">İŞLETME GİRİŞİ</button>
+                <button class="nav-btn" data-click="openBusinessLogin" style="border-color: var(--warning-orange); color: var(--warning-orange);">İŞLETME GİRİŞİ</button>
             </div>
 
             <!-- Çıkış Butonları -->
             <div id="userLogoutSection" class="user-auth-zone" style="display: none;">
                 <span id="welcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px; align-self: center;"></span>
-                <button class="nav-btn profile-nav-btn" onclick="openProfilePanel()">PROFİLİM</button>
-                <button class="nav-btn red-btn" onclick="handleUserLogout()">ÇIKIŞ</button>
+                <button class="nav-btn profile-nav-btn" data-click="openProfilePanel">PROFİLİM</button>
+                <button class="nav-btn red-btn" data-click="handleUserLogout">ÇIKIŞ</button>
             </div>
 
             <!-- İşletme Çıkış -->
             <div id="businessLogoutSection" class="user-auth-zone" style="display: none;">
                 <span id="businessWelcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px;"></span>
-                <button class="nav-btn red-btn" onclick="handleBusinessLogout()">ÇIKIŞ</button>
+                <button class="nav-btn red-btn" data-click="handleBusinessLogout">ÇIKIŞ</button>
             </div>
         </div>
     </header>
@@ -107,10 +107,10 @@
         <div id="customerContainer" style="width: 100%;">
             <!-- MÜŞTERİ SEKME MENÜSÜ -->
             <div class="customer-tabs" id="customerTabsRow">
-                <button class="tab-btn active" id="customer-tab-btn-booking" onclick="switchCustomerTab('booking')">REZERVASYON YAP</button>
-                <button class="tab-btn" id="customer-tab-btn-players" onclick="switchCustomerTab('players')">OYUNCU BUL</button>
-                <button class="tab-btn" id="customer-tab-btn-matches" onclick="switchCustomerTab('matches')">MAÇ BUL</button>
-                <button class="tab-btn" id="customer-tab-btn-teams" onclick="switchCustomerTab('teams')">TAKIM BUL</button>
+                <button class="tab-btn active" id="customer-tab-btn-booking" data-click="switchCustomerTab-booking">REZERVASYON YAP</button>
+                <button class="tab-btn" id="customer-tab-btn-players" data-click="switchCustomerTab-players">OYUNCU BUL</button>
+                <button class="tab-btn" id="customer-tab-btn-matches" data-click="switchCustomerTab-matches">MAÇ BUL</button>
+                <button class="tab-btn" id="customer-tab-btn-teams" data-click="switchCustomerTab-teams">TAKIM BUL</button>
             </div>
 
             <!-- TAB 1: REZERVASYON YAP -->
@@ -153,7 +153,7 @@
                                 <div id="bookingTurnstile" class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-callback="onTurnstileSuccess"></div>
                             </div>
 
-                            <button id="submitBtn" class="action-btn" onclick="completeBooking()">REZERVASYON YAP</button>
+                            <button id="submitBtn" class="action-btn" data-click="completeBooking">REZERVASYON YAP</button>
 
                             
                         </div>
@@ -169,7 +169,7 @@
                             <!-- Giriş Yapılmamışsa Kilit Ekranı -->
                             <div class="form-lock-overlay" id="playersFormLock" style="display: none;">
                                 <p>OYUNCU ARAMA İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
-                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                                <button class="action-btn" data-click="openModal-loginModal" style="max-width: 200px;">GİRİŞ YAP</button>
                             </div>
                             <h3>YENİ OYUNCU İLANI OLUŞTUR</h3>
                             <div class="form-group">
@@ -204,12 +204,12 @@
                                 <label>EKSTRA MESAJ</label>
                                 <textarea id="forumMessage" class="form-control" rows="2" placeholder="NOTUNUZU YAZIN"></textarea>
                             </div>
-                            <button class="action-btn" onclick="createForumPost()">ILANI YAYINLA</button>
+                            <button class="action-btn" data-click="createForumPost">ILANI YAYINLA</button>
                         </div>
                         <div class="forum-wall">
                             <div class="mobile-listing-header">
                                 <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">⚽ AKTİF OYUNCU İLANLARI</h2>
-                                <button class="mobile-create-btn" onclick="toggleMobileForm('playersFormContainer')">+ İlan Ver</button>
+                                <button class="mobile-create-btn" data-click="toggleMobileForm-players">+ İlan Ver</button>
                             </div>
                             <div class="posts-container" id="postsContainer"></div>
                         </div>
@@ -225,7 +225,7 @@
                             <!-- Giriş Yapılmamışsa Kilit Ekranı -->
                             <div class="form-lock-overlay" id="matchesFormLock" style="display: none;">
                                 <p>MAÇ ARAMA İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
-                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                                <button class="action-btn" data-click="openModal-loginModal" style="max-width: 200px;">GİRİŞ YAP</button>
                             </div>
                             <h3>MAÇ ARAMA İLANI OLUŞTUR</h3>
                             <div class="form-group">
@@ -281,12 +281,12 @@
                                 <label>EKSTRA MESAJ</label>
                                 <textarea id="matchMsg" class="form-control" rows="2" placeholder="Kendinizi kısaca tanıtın..."></textarea>
                             </div>
-                            <button class="action-btn" onclick="createMatchSeeker()">İLANI YAYINLA</button>
+                            <button class="action-btn" data-click="createMatchSeeker">İLANI YAYINLA</button>
                         </div>
                         <div class="forum-wall">
                             <div class="mobile-listing-header">
                                 <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">🏟️ AKTİF MAÇ ARAYAN İLANLARI</h2>
-                                <button class="mobile-create-btn" onclick="toggleMobileForm('matchesFormContainer')">+ İlan Ver</button>
+                                <button class="mobile-create-btn" data-click="toggleMobileForm-matches">+ İlan Ver</button>
                             </div>
                             <div class="filter-bar" id="matchFilterBar">
                                 <div class="filter-row">
@@ -330,7 +330,7 @@
                         <div class="forum-form-container mobile-collapsible" id="teamsFormContainer">
                             <div class="form-lock-overlay" id="teamsFormLock" style="display: none;">
                                 <p>TAKIM İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
-                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                                <button class="action-btn" data-click="openModal-loginModal" style="max-width: 200px;">GİRİŞ YAP</button>
                             </div>
                             <h3>TAKIM ARAMA İLANI OLUŞTUR</h3>
                             <div class="form-group">
@@ -381,12 +381,12 @@
                                 <label>EKSTRA MESAJ</label>
                                 <textarea id="teamMessage" class="form-control" rows="2" placeholder="Takımınızı kısaca tanıtın..."></textarea>
                             </div>
-                            <button class="action-btn" onclick="createTeamSeeker()">İLANI YAYINLA</button>
+                            <button class="action-btn" data-click="createTeamSeeker">İLANI YAYINLA</button>
                         </div>
                         <div class="forum-wall">
                             <div class="mobile-listing-header">
                                 <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">🏟️ AKTİF TAKIM ARAYAN İLANLARI</h2>
-                                <button class="mobile-create-btn" onclick="toggleMobileForm('teamsFormContainer')">+ İlan Ver</button>
+                                <button class="mobile-create-btn" data-click="toggleMobileForm-teams">+ İlan Ver</button>
                             </div>
                             <div class="posts-container" id="teamSeekersContainer"></div>
                         </div>
@@ -401,15 +401,15 @@
 
             <!-- İŞLETME SEKME MENÜSÜ -->
             <div class="business-tabs">
-                <button class="tab-btn active" id="tab-btn-stats" onclick="switchBusinessTab('stats')">İSTATİSTİKLER</button>
-                <button class="tab-btn" id="tab-btn-reservations" onclick="switchBusinessTab('reservations')">REZERVASYONLAR</button>
-                <button class="tab-btn" id="tab-btn-debts" onclick="switchBusinessTab('debts')">BORÇLAR</button>
-                <button class="tab-btn" id="tab-btn-comments" onclick="switchBusinessTab('comments')">YORUMLAR</button>
-                <button class="tab-btn" id="tab-btn-blacklist" onclick="switchBusinessTab('blacklist')">KARA LİSTE</button>
-                <button class="tab-btn" id="tab-btn-pricing" onclick="switchBusinessTab('pricing')">FİYAT TARİFESİ</button>
-                <button class="tab-btn" id="tab-btn-hours" onclick="switchBusinessTab('hours')">SAAT & ENGEL AYARLARI</button>
-                <button class="tab-btn" id="tab-btn-subscriptions" onclick="switchBusinessTab('subscriptions')">ABONELİK YÖNETİMİ</button>
-                <button class="tab-btn" id="tab-btn-settings" onclick="switchBusinessTab('settings')">İŞLETME AYARLARI</button>
+                <button class="tab-btn active" id="tab-btn-stats" data-click="switchBusinessTab-stats">İSTATİSTİKLER</button>
+                <button class="tab-btn" id="tab-btn-reservations" data-click="switchBusinessTab-reservations">REZERVASYONLAR</button>
+                <button class="tab-btn" id="tab-btn-debts" data-click="switchBusinessTab-debts">BORÇLAR</button>
+                <button class="tab-btn" id="tab-btn-comments" data-click="switchBusinessTab-comments">YORUMLAR</button>
+                <button class="tab-btn" id="tab-btn-blacklist" data-click="switchBusinessTab-blacklist">KARA LİSTE</button>
+                <button class="tab-btn" id="tab-btn-pricing" data-click="switchBusinessTab-pricing">FİYAT TARİFESİ</button>
+                <button class="tab-btn" id="tab-btn-hours" data-click="switchBusinessTab-hours">SAAT & ENGEL AYARLARI</button>
+                <button class="tab-btn" id="tab-btn-subscriptions" data-click="switchBusinessTab-subscriptions">ABONELİK YÖNETİMİ</button>
+                <button class="tab-btn" id="tab-btn-settings" data-click="switchBusinessTab-settings">İŞLETME AYARLARI</button>
             </div>
 
             <!-- TAB 1: İSTATİSTİKLER -->
@@ -448,9 +448,9 @@
                     <h3 class="section-subtitle">REZERVASYON GRİD GÖRÜNÜMÜ</h3>
                     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
                         <select id="businessGridDateSelect" class="form-control" style="max-width:200px;padding:6px 10px;font-size:0.8rem;" onchange="renderBusinessHoursGrid()"></select>
-                        <button class="btn-filter-res active" id="bizGridFilterAll" onclick="filterBusinessGrid('all')" style="background:var(--primary-green);color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">TÜMÜ</button>
-                        <button class="btn-filter-res" id="bizGridFilterNormal" onclick="filterBusinessGrid('normal')" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">NORMAL</button>
-                        <button class="btn-filter-res" id="bizGridFilterAbone" onclick="filterBusinessGrid('abone')" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
+                        <button class="btn-filter-res active" id="bizGridFilterAll" data-click="filterBusinessGrid-all" style="background:var(--primary-green);color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">TÜMÜ</button>
+                        <button class="btn-filter-res" id="bizGridFilterNormal" data-click="filterBusinessGrid-normal" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">NORMAL</button>
+                        <button class="btn-filter-res" id="bizGridFilterAbone" data-click="filterBusinessGrid-abone" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
                     </div>
                     <div id="businessHoursGrid" class="hours-grid" style="margin-bottom:20px;"></div>
                     <div id="businessGridSelectedInfo" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:15px;margin-bottom:20px;">
@@ -460,17 +460,17 @@
                                 <small id="bizGridSelDetail" style="color:var(--text-muted);"></small>
                             </div>
                             <div style="display:flex;gap:8px;">
-                                <button class="action-btn" style="background:var(--primary-green);color:#000;padding:6px 14px;font-size:0.75rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;" onclick="quickBusinessWhatsApp()">📱 MESAJ GÖNDER</button>
-                                <button class="btn-danger-sm" onclick="quickBusinessCancel()">İPTAL</button>
+                                <button class="action-btn" style="background:var(--primary-green);color:#000;padding:6px 14px;font-size:0.75rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;" data-click="quickBusinessWhatsApp">📱 MESAJ GÖNDER</button>
+                                <button class="btn-danger-sm" data-click="quickBusinessCancel">İPTAL</button>
                             </div>
                         </div>
                     </div>
 
                     <h3 class="section-subtitle">AKTİF REZERVASYONLAR VE ERTELEME</h3>
                     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                        <button class="btn-filter-res active" id="resFilterAll" onclick="filterBusinessReservations('all')" style="background:var(--primary-green);color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">TÜMÜ</button>
-                        <button class="btn-filter-res" id="resFilterNormal" onclick="filterBusinessReservations('normal')" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">NORMAL</button>
-                        <button class="btn-filter-res" id="resFilterAbone" onclick="filterBusinessReservations('abone')" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
+                        <button class="btn-filter-res active" id="resFilterAll" data-click="filterBusinessReservations-all" style="background:var(--primary-green);color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">TÜMÜ</button>
+                        <button class="btn-filter-res" id="resFilterNormal" data-click="filterBusinessReservations-normal" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">NORMAL</button>
+                        <button class="btn-filter-res" id="resFilterAbone" data-click="filterBusinessReservations-abone" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
                     </div>
                     <div id="businessActiveReservationsContainer" class="reservations-scroll" style="margin-bottom: 25px;">
                     </div>
@@ -503,16 +503,16 @@
                     </div>
                     
                     <div class="debt-filter-bar" style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
-                        <button class="tab-btn active" id="debt-filter-all" onclick="loadBusinessDebts('all')">TÜMÜ</button>
-                        <button class="tab-btn" id="debt-filter-daily" onclick="loadBusinessDebts('daily')">BUGÜN</button>
-                        <button class="tab-btn" id="debt-filter-weekly" onclick="loadBusinessDebts('weekly')">SON 7 GÜN</button>
-                        <button class="tab-btn" id="debt-filter-monthly" onclick="loadBusinessDebts('monthly')">SON 30 GÜN</button>
+                        <button class="tab-btn active" id="debt-filter-all" data-click="loadBusinessDebts-all">TÜMÜ</button>
+                        <button class="tab-btn" id="debt-filter-daily" data-click="loadBusinessDebts-daily">BUGÜN</button>
+                        <button class="tab-btn" id="debt-filter-weekly" data-click="loadBusinessDebts-weekly">SON 7 GÜN</button>
+                        <button class="tab-btn" id="debt-filter-monthly" data-click="loadBusinessDebts-monthly">SON 30 GÜN</button>
                     </div>
                     <div class="debt-status-filter-bar" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-                        <button class="tab-btn active" id="debt-status-all" onclick="setDebtStatusFilter('all')">TÜM ÖDEMELER</button>
-                        <button class="tab-btn" id="debt-status-unpaid" onclick="setDebtStatusFilter('unpaid')">⚠️ ÖDENMEDİ</button>
-                        <button class="tab-btn" id="debt-status-paid" onclick="setDebtStatusFilter('paid')">✅ ÖDENDİ</button>
-                        <button class="tab-btn" id="debt-sort-toggle" onclick="toggleDebtSortOrder()" style="margin-left:auto;background:rgba(255,255,255,0.08);">⬇️ YENİDEN ESKİYE</button>
+                        <button class="tab-btn active" id="debt-status-all" data-click="setDebtStatusFilter-all">TÜM ÖDEMELER</button>
+                        <button class="tab-btn" id="debt-status-unpaid" data-click="setDebtStatusFilter-unpaid">⚠️ ÖDENMEDİ</button>
+                        <button class="tab-btn" id="debt-status-paid" data-click="setDebtStatusFilter-paid">✅ ÖDENDİ</button>
+                        <button class="tab-btn" id="debt-sort-toggle" data-click="toggleDebtSortOrder" style="margin-left:auto;background:rgba(255,255,255,0.08);">⬇️ YENİDEN ESKİYE</button>
                     </div>
                     
                     <div id="businessDebtsContainer" class="reservations-scroll"></div>
@@ -526,9 +526,9 @@
                     <p class="section-desc">Müşterilerinizin yaptığı yorumları inceleyin ve cevaplayın.</p>
                     
                     <div class="debt-status-filter-bar" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-                        <button class="tab-btn active" id="comment-filter-all" onclick="setBusinessCommentFilter('all')">TÜM YORUMLAR</button>
-                        <button class="tab-btn" id="comment-filter-unanswered" onclick="setBusinessCommentFilter('unanswered')">⚠️ CEVAPLANMAMIŞ</button>
-                        <button class="tab-btn" id="comment-filter-answered" onclick="setBusinessCommentFilter('answered')">✅ CEVAPLANMIŞ</button>
+                        <button class="tab-btn active" id="comment-filter-all" data-click="setBusinessCommentFilter-all">TÜM YORUMLAR</button>
+                        <button class="tab-btn" id="comment-filter-unanswered" data-click="setBusinessCommentFilter-unanswered">⚠️ CEVAPLANMAMIŞ</button>
+                        <button class="tab-btn" id="comment-filter-answered" data-click="setBusinessCommentFilter-answered">✅ CEVAPLANMIŞ</button>
                     </div>
 
                     <div id="businessCommentsList" style="display: flex; flex-direction: column; gap: 15px;">
@@ -548,7 +548,7 @@
                             <label for="blacklistPhoneInput">ENGELLEYECEK TELEFON NUMARASI</label>
                             <input type="text" id="blacklistPhoneInput" class="form-control" placeholder="(0555) 555 5555">
                         </div>
-                        <button class="action-btn" onclick="addToBusinessBlacklist()" style="margin-top: 10px;">NUMARAYI ENGELLE</button>
+                        <button class="action-btn" data-click="addToBusinessBlacklist" style="margin-top: 10px;">NUMARAYI ENGELLE</button>
                     </div>
 
                     <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 12px; font-weight: 600;">ENGENENEN NUMARALAR</h4>
@@ -586,7 +586,7 @@
                         <div class="pricing-preview">
                             <p class="section-desc">Seçili Saha Fiyatı: <strong id="businessCurrentPricePreview" style="color: var(--neon-green); font-size: 1.5rem;">-</strong></p>
                         </div>
-                        <button class="action-btn" onclick="savePricingSchedule()">FİYAT TARİFESİNİ KAYDET</button>
+                        <button class="action-btn" data-click="savePricingSchedule">FİYAT TARİFESİNİ KAYDET</button>
                     </div>
                 </div>
             </div>
@@ -648,7 +648,7 @@
                                     <select id="adminClosingHour" class="form-control"></select>
                                 </div>
                             </div>
-                            <button class="action-btn" onclick="saveOperatingHours()" style="margin-top: 15px; max-width: 300px;">ÇALIŞMA SAATLERİNİ KAYDET</button>
+                            <button class="action-btn" data-click="saveOperatingHours" style="margin-top: 15px; max-width: 300px;">ÇALIŞMA SAATLERİNİ KAYDET</button>
                         </div>
 
                         <div class="admin-hours-section card-block" style="margin-top: 20px;">
@@ -699,7 +699,7 @@
                             <input type="tel" id="subPhoneInput" class="form-control" placeholder="Telefon Numarası (Zorunlu)" required>
                         </div>
                     </div>
-                    <button class="action-btn" onclick="saveSubscription()" style="max-width: 300px;">ABONELİK OLUŞTUR</button>
+                    <button class="action-btn" data-click="saveSubscription" style="max-width: 300px;">ABONELİK OLUŞTUR</button>
                 </div>
 
                 <div class="reservations-list-container" style="margin-top: 20px; max-height: 400px;">
@@ -765,7 +765,7 @@
                         </div>
                     </div>
                     
-                    <button class="action-btn" onclick="saveAllBusinessSettings()" style="max-width: 300px;">BİLGİLERİ KAYDET</button>
+                    <button class="action-btn" data-click="saveAllBusinessSettings" style="max-width: 300px;">BİLGİLERİ KAYDET</button>
                 </div>
             </div>
         </section>
@@ -779,7 +779,7 @@
         <div class="modal-card mini-modal">
             <div class="modal-header">
                 <h2>KULLANICI GIRISI</h2>
-                <button type="button" class="close-modal" onclick="closeModal('loginModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-loginModal">X</button>
             </div>
             <div class="form-group">
                 <label>MAIL ADRESI</label>
@@ -789,11 +789,11 @@
                 <label>SIFRE</label>
                 <input type="password" id="loginPassword" class="form-control" onkeypress="if(event.key === 'Enter') handleUserLogin()">
             </div>
-            <button class="action-btn" onclick="handleUserLogin()">GIRIS YAP</button>
+            <button class="action-btn" data-click="handleUserLogin">GIRIS YAP</button>
 
             <!-- Google ve Apple ile Giriş Butonları -->
             <div class="oauth-buttons">
-                <button class="oauth-btn google-btn" onclick="openOAuth('google')">
+                <button class="oauth-btn google-btn" data-click="openOAuth-google">
                     <svg class="oauth-icon" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -802,7 +802,7 @@
                     </svg>
                     Google ile Giriş Yap
                 </button>
-                <button class="oauth-btn apple-btn" onclick="openOAuth('apple')">
+                <button class="oauth-btn apple-btn" data-click="openOAuth-apple">
                     <svg class="oauth-icon" viewBox="0 0 170 170" fill="#ffffff">
                         <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.13-1.92-14.34-6.15-3.11-2.52-6.94-7.08-11.51-13.7-7.7-10.98-13.63-23.75-17.78-38.31-4.14-14.56-6.22-28.59-6.22-42.08 0-14.74 3.56-26.65 10.66-35.73 7.1-9.08 16.14-13.68 27.13-13.79 5.8 0 11.99 1.62 18.57 4.88 6.57 3.25 11.13 4.89 13.68 4.89 2.13 0 6.64-1.57 13.52-4.7 6.89-3.13 12.87-4.63 17.95-4.5 14.34.38 25.26 5.66 32.74 15.86-11.99 7.37-17.89 17.59-17.7 30.68.19 10.37 4.1 19.01 11.72 25.92 7.63 6.9 16.89 10.67 27.78 11.3-3.11 9.08-6.98 17.71-11.62 25.92zm-23.95-103.5c0-8.5 3.01-16.13 9.04-22.9 6.03-6.77 13.43-10.77 22.2-11.99.19 1.06.28 2.06.28 3 .06 8.06-2.92 15.54-8.92 22.42-6.02 6.88-13.59 10.98-22.7 12.27-.69-1.25-.9-1.93-.9-2.8z"/>
                     </svg>
@@ -817,7 +817,7 @@
             <form id="registerForm" onsubmit="handleUserRegister(event)">
                 <div class="modal-header">
                     <h2>KAYIT OL</h2>
-                    <button type="button" class="close-modal" onclick="closeModal('registerModal')">X</button>
+                    <button type="button" class="close-modal" data-click="closeModal-registerModal">X</button>
                 </div>
                 <div class="form-group">
                     <label>ISIM SOYISIM</label>
@@ -840,7 +840,7 @@
 
                 <!-- Google ve Apple ile Giriş Butonları -->
                 <div class="oauth-buttons">
-                    <button type="button" class="oauth-btn google-btn" onclick="openOAuth('google')">
+                    <button type="button" class="oauth-btn google-btn" data-click="openOAuth-google">
                         <svg class="oauth-icon" viewBox="0 0 24 24">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -849,7 +849,7 @@
                         </svg>
                         Google ile Kayıt Ol
                     </button>
-                    <button type="button" class="oauth-btn apple-btn" onclick="openOAuth('apple')">
+                    <button type="button" class="oauth-btn apple-btn" data-click="openOAuth-apple">
                         <svg class="oauth-icon" viewBox="0 0 170 170" fill="#ffffff">
                             <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.13-1.92-14.34-6.15-3.11-2.52-6.94-7.08-11.51-13.7-7.7-10.98-13.63-23.75-17.78-38.31-4.14-14.56-6.22-28.59-6.22-42.08 0-14.74 3.56-26.65 10.66-35.73 7.1-9.08 16.14-13.68 27.13-13.79 5.8 0 11.99 1.62 18.57 4.88 6.57 3.25 11.13 4.89 13.68 4.89 2.13 0 6.64-1.57 13.52-4.7 6.89-3.13 12.87-4.63 17.95-4.5 14.34.38 25.26 5.66 32.74 15.86-11.99 7.37-17.89 17.59-17.7 30.68.19 10.37 4.1 19.01 11.72 25.92 7.63 6.9 16.89 10.67 27.78 11.3-3.11 9.08-6.98 17.71-11.62 25.92zm-23.95-103.5c0-8.5 3.01-16.13 9.04-22.9 6.03-6.77 13.43-10.77 22.2-11.99.19 1.06.28 2.06.28 3 .06 8.06-2.92 15.54-8.92 22.42-6.02 6.88-13.59 10.98-22.7 12.27-.69-1.25-.9-1.93-.9-2.8z"/>
                         </svg>
@@ -865,7 +865,7 @@
         <div class="modal-card mini-modal">
             <div class="modal-header">
                 <h2 id="hourActionTitle">SAAT YONETIMI</h2>
-                <button type="button" class="close-modal" onclick="closeModal('hourActionModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-hourActionModal">X</button>
             </div>
             <div class="form-group">
                 <label>YAPILACAK ISLEM</label>
@@ -874,7 +874,7 @@
                     <option value="TEMIZLE">SAATI TEMIZLE/BOSA CIKAR</option>
                 </select>
             </div>
-            <button class="action-btn" onclick="saveHourAction()">AYARLARI KAYDET</button>
+            <button class="action-btn" data-click="saveHourAction">AYARLARI KAYDET</button>
         </div>
     </div>
 
@@ -883,7 +883,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h2>İŞLETME GİRİŞİ</h2>
-                <button type="button" class="close-modal" onclick="closeModal('businessLoginModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-businessLoginModal">X</button>
             </div>
             <div class="form-group">
                 <label>İŞLETME ADI / SAHA KEY</label>
@@ -893,7 +893,7 @@
                 <label>ŞİFRE</label>
                 <input type="password" id="businessPassword" class="form-control" placeholder="İşletme şifresi" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
             </div>
-            <button class="action-btn" onclick="handleBusinessLogin()">GİRİŞ YAP</button>
+            <button class="action-btn" data-click="handleBusinessLogin">GİRİŞ YAP</button>
             <p class="section-desc">Demo şifreler: final123, arena123, ciragan123, olimpiyat123, sporium123, ziyaret123</p>
         </div>
     </div>
@@ -903,7 +903,7 @@
         <div class="modal-card mini-modal">
             <div class="modal-header">
                 <h2>E-POSTA DOĞRULAMA</h2>
-                <button type="button" class="close-modal" onclick="closeModal('otpVerificationModal')">×</button>
+                <button type="button" class="close-modal" data-click="closeModal-otpVerificationModal">×</button>
             </div>
             <p class="section-desc" style="margin-bottom: 15px; text-align: center;">E-posta adresinize gönderilen 6 haneli doğrulama kodunu girin.</p>
             <input type="hidden" id="otpUserId">
@@ -912,7 +912,7 @@
                 <label>DOĞRULAMA KODU (OTP)</label>
                 <input type="text" id="otpCodeInput" class="form-control" placeholder="123456" maxlength="6" style="text-align: center; font-size: 1.5rem; letter-spacing: 5px;" onkeypress="if(event.key === 'Enter') submitOTPVerification()">
             </div>
-            <button class="action-btn" onclick="submitOTPVerification()">KODU DOĞRULA</button>
+            <button class="action-btn" data-click="submitOTPVerification">KODU DOĞRULA</button>
         </div>
     </div>
 
@@ -928,7 +928,7 @@
                 <label>TELEFON NUMARASI</label>
                 <input type="text" id="completeProfilePhone" class="form-control" placeholder="(0555) 555 5555" onkeypress="if(event.key === 'Enter') submitCompleteProfile()">
             </div>
-            <button class="action-btn" onclick="submitCompleteProfile()">PROFİLİ TAMAMLA & GİRİŞ YAP</button>
+            <button class="action-btn" data-click="submitCompleteProfile">PROFİLİ TAMAMLA & GİRİŞ YAP</button>
         </div>
     </div>
 
@@ -937,7 +937,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h2>OYUNCU PROFİLİ</h2>
-                <button type="button" class="close-modal" onclick="closeModal('playerProfileModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-playerProfileModal">X</button>
             </div>
             <div class="player-profile-modal-body">
                 <div class="player-info-section">
@@ -963,11 +963,11 @@
                     <div class="form-group" style="margin-bottom: 5px;">
                         <label>PUAN VERİN</label>
                         <div class="rating-stars-select" id="ratingStarsSelect">
-                            <span class="star-option active" data-value="1" onclick="selectRatingStar(1)">★</span>
-                            <span class="star-option active" data-value="2" onclick="selectRatingStar(2)">★</span>
-                            <span class="star-option active" data-value="3" onclick="selectRatingStar(3)">★</span>
-                            <span class="star-option active" data-value="4" onclick="selectRatingStar(4)">★</span>
-                            <span class="star-option active" data-value="5" onclick="selectRatingStar(5)">★</span>
+                            <span class="star-option active" data-value="1" data-click="selectRatingStar-1">★</span>
+                            <span class="star-option active" data-value="2" data-click="selectRatingStar-2">★</span>
+                            <span class="star-option active" data-value="3" data-click="selectRatingStar-3">★</span>
+                            <span class="star-option active" data-value="4" data-click="selectRatingStar-4">★</span>
+                            <span class="star-option active" data-value="5" data-click="selectRatingStar-5">★</span>
                         </div>
                         <input type="hidden" id="reviewRatingInput" value="5">
                     </div>
@@ -975,7 +975,7 @@
                         <label>YORUMUNUZ (OPSİYONEL)</label>
                         <textarea id="reviewCommentInput" class="form-control" rows="2" placeholder="Oyuncu hakkındaki görüşlerinizi yazın..."></textarea>
                     </div>
-                    <button class="action-btn" onclick="submitPlayerReview()">DEĞERLENDİRMEYİ YAYINLA</button>
+                    <button class="action-btn" data-click="submitPlayerReview">DEĞERLENDİRMEYİ YAYINLA</button>
                 </div>
 
                 <div id="reviewAuthAlert" class="auth-alert-message" style="display: block; margin-top: 10px;">
@@ -990,7 +990,7 @@
         <div class="modal-card user-profile-card">
             <div class="modal-header">
                 <h2>PROFİLİM</h2>
-                <button type="button" class="close-modal" onclick="closeModal('userProfileModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-userProfileModal">X</button>
             </div>
             
             <div class="profile-layout-container">
@@ -1037,16 +1037,16 @@
                             <option value="Profesyonel">Lisanslı / Profesyonel</option>
                         </select>
                     </div>
-                    <button class="action-btn" onclick="saveUserProfile()">PROFİLİ KAYDET</button>
+                    <button class="action-btn" data-click="saveUserProfile">PROFİLİ KAYDET</button>
                 </div>
 
                 <!-- Sağ Taraf: Rezervasyonlar, Yorumlar -->
                 <div class="profile-details-section">
                     <div class="profile-tabs">
-                        <button class="profile-tab-btn active" id="profile-tab-btn-active-res" onclick="switchProfileSection('active-res')">AKTİF REZERVASYONLAR</button>
-                        <button class="profile-tab-btn" id="profile-tab-btn-past-res" onclick="switchProfileSection('past-res')">GEÇMİŞ REZERVASYONLAR</button>
-                        <button class="profile-tab-btn" id="profile-tab-btn-debts" onclick="switchProfileSection('debts')">💳 BORÇLAR</button>
-                        <button class="profile-tab-btn" id="profile-tab-btn-my-reviews" onclick="switchProfileSection('my-reviews')">YORUMLAR & PUAN</button>
+                        <button class="profile-tab-btn active" id="profile-tab-btn-active-res" data-click="switchProfileSection-active-res">AKTİF REZERVASYONLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-past-res" data-click="switchProfileSection-past-res">GEÇMİŞ REZERVASYONLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-debts" data-click="switchProfileSection-debts">💳 BORÇLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-my-reviews" data-click="switchProfileSection-my-reviews">YORUMLAR & PUAN</button>
                     </div>
 
                     <!-- Rezervasyonlar Listeleri -->
@@ -1087,7 +1087,7 @@
     <!-- Rezervasyon Başarı Modalı -->
     <div class="modal-overlay" id="bookingSuccessModal" style="z-index: 2000;">
         <div class="modal-card success-card">
-            <button type="button" class="close-modal success-close-btn" onclick="closeModal('bookingSuccessModal')">×</button>
+            <button type="button" class="close-modal success-close-btn" data-click="closeModal-bookingSuccessModal">×</button>
             <div class="success-icon-container">
                 <svg class="success-checkmark" viewBox="0 0 52 52">
                     <circle class="success-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
@@ -1124,7 +1124,7 @@
         <div class="modal-card mini-modal" style="text-align:center;max-width:480px;">
             <div class="modal-header">
                 <h2>REZERVASYON ONAYI</h2>
-                <button type="button" class="close-modal" onclick="closeBookingConfirmModal(false)">X</button>
+                <button type="button" class="close-modal" data-click="closeBookingConfirmModal-false">X</button>
             </div>
             <div style="padding:15px 0;">
                 <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:15px;margin-bottom:12px;">
@@ -1159,7 +1159,7 @@
         <div class="modal-card mini-modal" style="text-align:center;">
             <div class="modal-header">
                 <h2>ONAY</h2>
-                <button type="button" class="close-modal" onclick="closeConfirmModal(false)">X</button>
+                <button type="button" class="close-modal" data-click="closeConfirmModal-false">X</button>
             </div>
             <p id="confirmModalMessage" style="font-size:1.1rem;margin:20px 0;color:#fff;">Emin misiniz?</p>
             <div style="display:flex;gap:15px;justify-content:center;">
@@ -1169,7 +1169,16 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="js/constants.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/business.js"></script>
+    <script src="js/subscriptions.js"></script>
+    <script src="js/reservations.js"></script>
+    <script src="js/forum.js"></script>
+    <script src="js/match.js"></script>
+    <script src="js/reviews.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/bootstrap.js"></script>
 </body>
 </html>
 

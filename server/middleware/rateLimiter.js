@@ -16,4 +16,12 @@ const resLimitPerSec = rateLimit({
     legacyHeaders: false
 });
 
-module.exports = { resLimitPerMin, resLimitPerSec };
+const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { success: false, message: 'Çok fazla giriş denemesi! Lütfen 1 dakika bekleyin.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+module.exports = { resLimitPerMin, resLimitPerSec, authLimiter };
