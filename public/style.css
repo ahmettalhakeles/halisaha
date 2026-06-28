@@ -439,12 +439,13 @@ main {
 
 .field-info-row {
     display: flex;
+    flex-direction: row-reverse;
     justify-content: space-between;
     align-items: flex-start;
     gap: 20px;
 }
 
-.field-main-details h3 {
+.field-card > h3 {
     font-family: "Montserrat", sans-serif;
     font-weight: 800;
     color: var(--text-color);
@@ -2922,7 +2923,7 @@ main.business-mode {
         flex-direction: column;
         gap: 6px;
     }
-    .field-main-details h3 {
+    .field-card > h3 {
         font-size: 1.1rem;
     }
     .field-actions {
@@ -2972,7 +2973,7 @@ main.business-mode {
     .field-card {
         padding: 10px !important;
     }
-    .field-main-details h3 {
+    .field-card > h3 {
         font-size: 0.9rem;
     }
     .field-actions .map-link,
