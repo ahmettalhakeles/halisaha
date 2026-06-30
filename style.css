@@ -291,6 +291,100 @@ main {
     animation: fadeIn 0.5s ease-out;
 }
 
+/* Hamburger Menü */
+.business-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.hamburger-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.hamburger-btn span {
+    display: block;
+    width: 26px;
+    height: 3px;
+    background: var(--neon-green);
+    border-radius: 2px;
+    transition: 0.3s;
+}
+
+.hamburger-menu {
+    position: fixed;
+    top: 0;
+    right: -280px;
+    width: 260px;
+    height: 100vh;
+    background: rgba(11, 15, 25, 0.98);
+    border-left: 1px solid rgba(16, 185, 129, 0.3);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+}
+
+.hamburger-menu.open {
+    right: 0;
+}
+
+.hamburger-field-name {
+    padding: 16px 20px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--neon-green);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.hamburger-item {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 14px 24px;
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    font-family: 'Montserrat', sans-serif;
+    letter-spacing: 0.5px;
+}
+
+.hamburger-item:hover,
+.hamburger-item.active {
+    color: var(--neon-green);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.hamburger-logout {
+    margin-top: auto;
+    color: var(--danger-red) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+}
+
+/* Responsive hamburger */
+@media (max-width: 768px) {
+    .hamburger-btn {
+        display: flex;
+    }
+    .business-header-row {
+        margin-bottom: 0;
+    }
+}
+
 /* İŞLETME AYARLARI */
 .business-settings {
     background: rgba(11, 15, 25, 0.4);
@@ -1925,6 +2019,97 @@ main.business-mode {
 @media (max-width: 768px) {
     .profile-layout-container {
         grid-template-columns: 1fr;
+    }
+
+    /* Business panel responsive */
+    .business-tabs {
+        display: none;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px;
+    }
+    .stat-card {
+        padding: 12px !important;
+    }
+    .stat-card h3 {
+        font-size: 0.65rem !important;
+    }
+    .stat-value {
+        font-size: 1.2rem !important;
+    }
+    .stat-earnings {
+        font-size: 0.85rem !important;
+    }
+    .business-settings .settings-grid-row {
+        grid-template-columns: 1fr !important;
+    }
+    .tab-content-zone {
+        padding: 10px 0 !important;
+    }
+    .reservation-item {
+        flex-direction: column !important;
+        gap: 6px !important;
+        padding: 10px !important;
+    }
+    .reservations-scroll {
+        max-height: none !important;
+    }
+    .debt-item {
+        flex-direction: column !important;
+        gap: 6px !important;
+        padding: 10px !important;
+    }
+    .blacklist-item {
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+    .business-settings {
+        padding: 15px !important;
+    }
+    .pricing-inputs {
+        flex-direction: column !important;
+    }
+    .hours-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .subscription-item {
+        flex-direction: column !important;
+    }
+    #fieldPhotoGallery {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* Player find panel mobile fix */
+    .posts-container, .forum-wall {
+        width: 100% !important;
+        overflow-x: hidden !important;
+    }
+    .match-seeker-card, .team-seeker-card, .forum-post-card {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Login warning width fix */
+    .login-warning, [class*="login-warning"] {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Player profile modal mobile */
+    .player-profile-modal-body {
+        flex-direction: column !important;
+    }
+    .player-info-section {
+        flex-direction: column !important;
+        text-align: center !important;
+    }
+    #playerProfileModal .form-group {
+        width: 100% !important;
+    }
+    #playerProfileModal .form-control {
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 }
 

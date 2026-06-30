@@ -7,6 +7,7 @@ const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 5000;
+const host = '0.0.0.0';
 
 app.use(cors());
 app.use(express.json());
@@ -43,16 +44,24 @@ const resLimitPerSec = rateLimit({
 
 // MySQL Bağlantı Havuzu (Auto-Reconnect Destekli)
 const db = mysql.createPool({
-    host: process.env.DB_HOST || '127.0.0.1',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || process.env.DB_PASS || '',
-    database: process.env.DB_NAME || 'ksk_db',
+    host: process.env.DB_HOST || process.env.MYSQLHOST || '127.0.0.1',
+    user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+    password: process.env.DB_PASSWORD || process.env.DB_PASS || process.env.MYSQLPASSWORD || '',
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'ksk_db',
+    port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3306'),
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 15,
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
+    connectTimeout: 30000,
+    maxIdle: 5,
+    idleTimeout: 60000,
     multipleStatements: true
+});
+
+db.on('error', (err) => {
+    console.error('⚠️ MySQL Pool Hatası:', err.message);
 });
 
 db.getConnection((err, connection) => {
@@ -274,11 +283,37 @@ db.getConnection((err, connection) => {
         });
     });
 
+    // Add user_name, user_phone, user_email to forum_posts
+    ['forum_posts'].forEach(table => {
+        connection.query(`SHOW COLUMNS FROM ${table} LIKE 'user_name'`, (ec, r) => {
+            if (!ec && r.length === 0) {
+                connection.query(`ALTER TABLE ${table} ADD COLUMN user_name VARCHAR(100) DEFAULT NULL`, (ea) => {
+                    if (ea) console.error(`❌ ${table}.user_name eklenemedi:`, ea);
+                    else console.log(`✅ ${table}.user_name eklendi.`);
+                });
+            }
+        });
+        connection.query(`SHOW COLUMNS FROM ${table} LIKE 'user_phone'`, (ec, r) => {
+            if (!ec && r.length === 0) {
+                connection.query(`ALTER TABLE ${table} ADD COLUMN user_phone VARCHAR(20) DEFAULT NULL`, (ea) => {
+                    if (ea) console.error(`❌ ${table}.user_phone eklenemedi:`, ea);
+                    else console.log(`✅ ${table}.user_phone eklendi.`);
+                });
+            }
+        });
+        connection.query(`SHOW COLUMNS FROM ${table} LIKE 'user_email'`, (ec, r) => {
+            if (!ec && r.length === 0) {
+                connection.query(`ALTER TABLE ${table} ADD COLUMN user_email VARCHAR(100) DEFAULT NULL`, (ea) => {
+                    if (ea) console.error(`❌ ${table}.user_email eklenemedi:`, ea);
+                    else console.log(`✅ ${table}.user_email eklendi.`);
+                });
+            }
+        });
+    });
+
     // Add columns to users table
     const userCols = [
         { col: 'is_email_verified', def: 'ALTER TABLE users ADD COLUMN is_email_verified TINYINT(1) DEFAULT 0' },
-        { col: 'otp_code', def: 'ALTER TABLE users ADD COLUMN otp_code VARCHAR(6) DEFAULT NULL' },
-        { col: 'otp_expiry', def: 'ALTER TABLE users ADD COLUMN otp_expiry TIMESTAMP NULL DEFAULT NULL' },
         { col: 'google_id', def: 'ALTER TABLE users ADD COLUMN google_id VARCHAR(255) DEFAULT NULL' },
         { col: 'apple_id', def: 'ALTER TABLE users ADD COLUMN apple_id VARCHAR(255) DEFAULT NULL' },
         { col: 'status', def: "ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'" }
@@ -355,6 +390,20 @@ db.getConnection((err, connection) => {
     )`, (ec) => {
         if (ec) console.error('❌ field_blacklists tablosu oluşturulamadı:', ec);
         else console.log('✅ field_blacklists tablosu hazır.');
+    });
+
+    // Create field_photos table if not exists
+    connection.query(`CREATE TABLE IF NOT EXISTS field_photos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        fieldKey VARCHAR(50) NOT NULL,
+        url MEDIUMTEXT NOT NULL,
+        caption VARCHAR(255) DEFAULT NULL,
+        sort_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_field (fieldKey)
+    )`, (ec) => {
+        if (ec) console.error('❌ field_photos tablosu oluşturulamadı:', ec);
+        else console.log('✅ field_photos tablosu hazır.');
     });
 
     // Add average_rating column to pitch_settings and pitch_objects
@@ -549,11 +598,6 @@ const fieldsData = {
     }
 };
 
-// HELPER: OTP E-posta simülasyonu
-function sendOTPEmail(email, code) {
-    console.log(`✉️ [OTP GÖNDERİLDİ] E-posta: ${email} | Kod: ${code} (Geçerlilik süresi: 10 dakika)`);
-}
-
 // HELPER: Sosyal Giriş Başarılı İşleme
 function handleSocialAuthSuccess(req, res, provider, providerId, email, name) {
     // 1. Kullanıcı e-postasıyla kayıtlı mı kontrol et
@@ -616,12 +660,8 @@ app.post('/api/register', (req, res) => {
             return res.status(403).json({ success: false, message: 'Bu telefon numarası suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
         }
 
-        // 6 haneli OTP kodu üret
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 dakika geçerli
-
-        const sqlQuery = 'INSERT INTO users (name, phone, email, password, is_email_verified, otp_code, otp_expiry) VALUES (?, ?, ?, ?, 1, ?, ?)';
-        db.query(sqlQuery, [name, phone, email, password, otpCode, otpExpiry], (err, result) => {
+        const sqlQuery = 'INSERT INTO users (name, phone, email, password, is_email_verified) VALUES (?, ?, ?, ?, 1)';
+        db.query(sqlQuery, [name, phone, email, password], (err, result) => {
             if (err) {
                 console.error("SQL Hatası:", err);
                 if (err.code === 'ER_DUP_ENTRY') {
@@ -636,13 +676,9 @@ app.post('/api/register', (req, res) => {
                 return res.status(500).json({ success: false, message: 'Kayıt olurken veritabanı hatası oluştu!' });
             }
 
-            // OTP kodunu göndermeyi devre dışı bıraktık
-            // sendOTPEmail(email, otpCode);
-
             res.json({ 
                 success: true, 
                 message: 'Kayıt başarılı! Giriş yapıldı.',
-                unverified: false,
                 user: {
                     id: result.insertId,
                     name: name,
@@ -668,71 +704,7 @@ app.post('/api/login', (req, res) => {
             return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
         }
         
-        if (false && user.is_email_verified === 0) {
-            // Yeni OTP kodu üret ve kaydet
-            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-            const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-            
-            db.query('UPDATE users SET otp_code = ?, otp_expiry = ? WHERE id = ?', [otpCode, otpExpiry, user.id], (updErr) => {
-                if (!updErr) sendOTPEmail(user.email, otpCode);
-            });
-            
-            return res.status(403).json({ 
-                success: false, 
-                unverified: true, 
-                userId: user.id, 
-                email: user.email,
-                message: 'Lütfen hesabınızı doğrulamak için e-postanıza gönderilen OTP kodunu girin!' 
-            });
-        }
-        
         res.json({ success: true, user });
-    });
-});
-
-// OTP DOĞRULAMA ENDPOINT'İ
-app.post('/api/auth/verify-otp', (req, res) => {
-    const { userId, email, otpCode } = req.body;
-    if (!otpCode) {
-        return res.status(400).json({ success: false, message: 'OTP kodu gereklidir!' });
-    }
-
-    const query = userId 
-        ? 'SELECT id, name, phone, email, age, position, experience, otp_code, otp_expiry FROM users WHERE id = ?'
-        : 'SELECT id, name, phone, email, age, position, experience, otp_code, otp_expiry FROM users WHERE email = ?';
-    const param = userId || email;
-
-    db.query(query, [param], (err, results) => {
-        if (err || results.length === 0) {
-            return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
-        }
-
-        const user = results[0];
-        if (user.otp_code !== otpCode) {
-            return res.status(400).json({ success: false, message: 'Geçersiz doğrulama kodu!' });
-        }
-
-        if (new Date() > new Date(user.otp_expiry)) {
-            return res.status(400).json({ success: false, message: 'Doğrulama kodunun süresi dolmuştur! Lütfen tekrar giriş yapıp yeni kod isteyin.' });
-        }
-
-        db.query('UPDATE users SET is_email_verified = 1, otp_code = NULL, otp_expiry = NULL WHERE id = ?', [user.id], (updErr) => {
-            if (updErr) return res.status(500).json({ success: false, message: 'E-posta doğrulanamadı!' });
-            
-            res.json({ 
-                success: true, 
-                message: 'E-posta adresiniz doğrulandı! Giriş yapabilirsiniz.', 
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    phone: user.phone,
-                    email: user.email,
-                    age: user.age,
-                    position: user.position,
-                    experience: user.experience
-                }
-            });
-        });
     });
 });
 
@@ -773,6 +745,10 @@ app.put('/api/auth/complete-profile', (req, res) => {
 
 // GOOGLE & APPLE OAUTH ROUTER
 app.get(['/api/auth/google', '/api/auth/Google'], (req, res) => {
+    if (!process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID === 'your_google_client_id_here') {
+        console.warn('⚠️ GOOGLE_CLIENT_ID env değişkeni ayarlanmamış! Google girişi çalışmaz.');
+        return res.redirect('/?error=google_not_configured');
+    }
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
         `redirect_uri=${encodeURIComponent(process.env.GOOGLE_CALLBACK_URL)}&` +
@@ -1486,10 +1462,10 @@ app.delete('/api/reservations/:id', (req, res) => {
 // =======================================================
 
 app.post('/api/forum', (req, res) => {
-    const { dateText, hourText, position, payment, phone, msg, user_id } = req.body;
+    const { dateText, hourText, position, payment, phone, msg, user_id, user_name, user_phone, user_email } = req.body;
 
-    const sqlQuery = 'INSERT INTO forum_posts (dateText, hourText, position, payment, phone, msg, user_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-    db.query(sqlQuery, [dateText, hourText, position, payment, phone || null, msg, user_id || null, 'aktif'], (err, result) => {
+    const sqlQuery = 'INSERT INTO forum_posts (dateText, hourText, position, payment, phone, msg, user_id, status, user_name, user_phone, user_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    db.query(sqlQuery, [dateText, hourText, position, payment, phone || null, msg, user_id || null, 'aktif', user_name || null, user_phone || null, user_email || null], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: 'İlan kaydedilemedi!' });
         res.json({ success: true, message: 'İlan başarıyla eklendi!', id: result.insertId });
     });
@@ -2195,6 +2171,51 @@ app.get('/api/business-debts/:fieldKey', (req, res) => {
 });
 
 // =======================================================
+// SAHA FOTOĞRAF YÜKLEME / LİSTELEME / SİLME
+// =======================================================
+
+app.post('/api/field-photos/upload', (req, res) => {
+    const { fieldKey, imageData, caption } = req.body;
+    if (!fieldKey || !imageData) {
+        return res.status(400).json({ success: false, message: 'fieldKey ve imageData zorunludur!' });
+    }
+
+    const sqlQuery = 'INSERT INTO field_photos (fieldKey, url, caption, sort_order) VALUES (?, ?, ?, ?)';
+    db.query(sqlQuery, [fieldKey, imageData, caption || null, 0], (err, result) => {
+        if (err) {
+            console.error('Fotoğraf yükleme hatası:', err);
+            return res.status(500).json({ success: false, message: 'Fotoğraf yüklenemedi!' });
+        }
+        res.json({ success: true, id: result.insertId, message: 'Fotoğraf yüklendi.' });
+    });
+});
+
+app.get('/api/field-photos/:fieldKey', (req, res) => {
+    const { fieldKey } = req.params;
+    db.query('SELECT id, url, caption, sort_order, created_at FROM field_photos WHERE fieldKey = ? ORDER BY sort_order ASC, id ASC', [fieldKey], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data: results });
+    });
+});
+
+app.delete('/api/field-photos/:id', (req, res) => {
+    const { id } = req.params;
+    db.query('DELETE FROM field_photos WHERE id = ?', [id], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: 'Fotoğraf silinemedi!' });
+        res.json({ success: true, message: 'Fotoğraf silindi.' });
+    });
+});
+
+app.put('/api/field-photos/:id/order', (req, res) => {
+    const { id } = req.params;
+    const { sort_order } = req.body;
+    db.query('UPDATE field_photos SET sort_order = ? WHERE id = ?', [sort_order, id], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Sıra güncellenemedi!' });
+        res.json({ success: true });
+    });
+});
+
+// =======================================================
 // İSTATİSTİK TABLOSU YÖNETİMİ
 // =======================================================
 
@@ -2598,6 +2619,6 @@ function processWeeklySubscriptions() {
 processWeeklySubscriptions(); // Initial run on startup
 setInterval(processWeeklySubscriptions, 60 * 60 * 1000); // Every hour
 
-app.listen(port, () => {
-    console.log(`⚡ Arka plan sunucusu http://127.0.0.1:${port} adresinde çalışıyor!`);
+app.listen(port, host, () => {
+    console.log(`⚡ Arka plan sunucusu http://${host}:${port} adresinde çalışıyor!`);
 });

@@ -273,24 +273,16 @@ async function handleUserRegister(event) {
         }
 
         if (result.success) {
-            if (result.unverified) {
-                document.getElementById('otpUserId').value = result.userId || '';
-                document.getElementById('otpEmail').value = result.email || '';
-                closeModal('registerModal');
-                openModal('otpVerificationModal');
-                alert(result.message);
-            } else {
-                currentUser = result.user || null;
-                loggedInUser = (result.user && result.user.name) ? result.user.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
-                await loadUserBlacklist();
-                renderFieldsGrid();
-                updateLoginUIVisibility();
-                closeModal('registerModal');
-                document.getElementById('registerForm').reset();
-                if (currentSelectedFieldKey) onDateOrFieldChange();
-                fillFormsFromProfile();
-                if (result.message) alert(result.message);
-            }
+            currentUser = result.user || null;
+            loggedInUser = (result.user && result.user.name) ? result.user.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
+            await loadUserBlacklist();
+            renderFieldsGrid();
+            updateLoginUIVisibility();
+            closeModal('registerModal');
+            document.getElementById('registerForm').reset();
+            if (currentSelectedFieldKey) onDateOrFieldChange();
+            fillFormsFromProfile();
+            if (result.message) alert(result.message);
         } else {
             alert("Hata: " + result.message);
         }
@@ -327,12 +319,6 @@ async function handleUserLogin() {
             if (currentSelectedFieldKey) onDateOrFieldChange();
             fillFormsFromProfile();
         } else {
-            if (result.unverified) {
-                document.getElementById('otpUserId').value = result.userId || '';
-                document.getElementById('otpEmail').value = result.email || '';
-                closeModal('loginModal');
-                openModal('otpVerificationModal');
-            }
             alert("HATA: " + result.message);
         }
     } catch (error) {
@@ -362,6 +348,8 @@ function switchBusinessTab(tabName) {
         loadBusinessComments();
     } else if (tabName === 'blacklist') {
         loadBusinessBlacklist();
+    } else if (tabName === 'settings') {
+        loadBusinessFieldPhotos();
     }
 }
 
@@ -401,6 +389,7 @@ async function handleBusinessLogin() {
     document.getElementById('businessPanel').style.display = 'block';
     document.getElementById('businessPanelTitle').innerText = `${field.name.toLocaleUpperCase('tr-TR')} YÖNETİM PANELİ`;
     document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
+    document.getElementById('hamburgerFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
 
     switchBusinessTab('stats');
     await loadBusinessDashboard();
@@ -423,6 +412,20 @@ function handleBusinessLogout() {
     alert("İşletme panelinden çıkış yapıldı.");
     if (currentSelectedFieldKey) onDateOrFieldChange();
 }
+
+function toggleBusinessMenu() {
+    const menu = document.getElementById('businessHamburgerMenu');
+    menu.classList.toggle('open');
+}
+
+// Click outside to close
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('businessHamburgerMenu');
+    const btn = document.getElementById('businessHamburgerBtn');
+    if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !btn?.contains(e.target)) {
+        menu.classList.remove('open');
+    }
+});
 
 // =======================================================
 // İŞLETME DASHBOARD YÜKLEME
@@ -1636,6 +1639,7 @@ function renderFieldsGrid() {
                     <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
                 </div>
                 <div class="field-card-collapse">
+                    <div class="field-photos-thumbnails" id="field-photos-thumbnails-${key}" style="display:flex; gap:6px; overflow-x:auto; padding:6px 0; margin-bottom:6px;"></div>
                     <div class="pitch-badges-row">
                         ${serviceBadge}
                         ${cleatsBadge}
@@ -1663,6 +1667,7 @@ function renderFieldsGrid() {
             return `
             <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
                 ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
+                <div class="field-photos-thumbnails" id="field-photos-thumbnails-${key}" style="display:flex; gap:6px; overflow-x:auto; padding:6px 0; margin-bottom:6px;"></div>
                 <div class="field-info-row">
                     <div class="field-main-details">
                         <h3>${field.name}</h3>
@@ -1693,6 +1698,154 @@ function renderFieldsGrid() {
             </div>`;
         }
     }).join('');
+
+    Object.keys(fieldsData).forEach(key => {
+        loadFieldPhotos(key);
+    });
+}
+
+// =======================================================
+// SAHA FOTOĞRAFLARI YÜZEY / GALERİ
+// =======================================================
+
+// Fotoğrafları yükle ve thumbnail olarak göster
+async function loadFieldPhotos(fieldKey) {
+    const container = document.getElementById(`field-photos-thumbnails-${fieldKey}`);
+    if (!container) return;
+    try {
+        const response = await fetch(`/api/field-photos/${fieldKey}`);
+        const result = await response.json();
+        if (result.success && result.data.length > 0) {
+            container.innerHTML = result.data.map(p =>
+                `<img src="${p.url}" alt="${p.caption || ''}" style="width:80px;height:60px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation();showPhotoGallery('${fieldKey}', ${p.id})">`
+            ).join('');
+        } else {
+            container.innerHTML = '';
+        }
+    } catch(e) { console.error('Fotoğraf yükleme hatası:', e); }
+}
+
+// İşletme panelinde fotoğraf yükle
+async function uploadFieldPhoto() {
+    const fileInput = document.getElementById('fieldPhotoInput');
+    const captionInput = document.getElementById('fieldPhotoCaption');
+    const file = fileInput?.files?.[0];
+    if (!file) { alert('Lütfen bir fotoğraf seçin!'); return; }
+    if (!currentBusinessFieldKey) { alert('Önce bir sahaya giriş yapın!'); return; }
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const imageData = e.target.result;
+        try {
+            const response = await fetch('/api/field-photos/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fieldKey: currentBusinessFieldKey, imageData, caption: captionInput?.value || '' })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert('Fotoğraf yüklendi!');
+                fileInput.value = '';
+                if (captionInput) captionInput.value = '';
+                loadBusinessFieldPhotos();
+                renderFieldsGrid();
+            } else {
+                alert('Hata: ' + (result.message || 'Yüklenemedi'));
+            }
+        } catch(err) { alert('Bağlantı hatası!'); }
+    };
+    reader.readAsDataURL(file);
+}
+
+// İşletme panelinde fotoğrafları listele
+async function loadBusinessFieldPhotos() {
+    const container = document.getElementById('fieldPhotoGallery');
+    if (!container) return;
+    try {
+        const response = await fetch(`/api/field-photos/${currentBusinessFieldKey}`);
+        const result = await response.json();
+        if (result.success && result.data.length > 0) {
+            container.innerHTML = result.data.map(p =>
+                `<div style="position:relative;">
+                    <img src="${p.url}" alt="${p.caption || ''}" style="width:100%;height:90px;object-fit:cover;border-radius:6px;">
+                    ${p.caption ? `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${p.caption}</div>` : ''}
+                    <button style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:14px;cursor:pointer;line-height:1;padding:0;" onclick="deleteFieldPhoto(${p.id})">×</button>
+                </div>`
+            ).join('');
+        } else {
+            container.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Henüz fotoğraf yüklenmemiş.</p>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function deleteFieldPhoto(id) {
+    if (!await showConfirmModal('Bu fotoğrafı silmek istediğinize emin misiniz?')) return;
+    try {
+        const response = await fetch(`/api/field-photos/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.success) {
+            loadBusinessFieldPhotos();
+            renderFieldsGrid();
+        } else { alert('Silme hatası!'); }
+    } catch(e) { alert('Bağlantı hatası!'); }
+}
+
+// Tam ekran galeri gösterimi
+function showPhotoGallery(fieldKey, startId) {
+    fetch(`/api/field-photos/${fieldKey}`).then(r => r.json()).then(result => {
+        if (!result.success || !result.data.length) return;
+        const photos = result.data;
+        let currentIndex = photos.findIndex(p => p.id === startId);
+        if (currentIndex === -1) currentIndex = 0;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'photo-gallery-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+        document.body.appendChild(overlay);
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '×';
+        closeBtn.style.cssText = 'position:absolute;top:20px;right:30px;background:transparent;border:none;color:#fff;font-size:40px;cursor:pointer;z-index:1;';
+        closeBtn.onclick = () => overlay.remove();
+        overlay.appendChild(closeBtn);
+
+        const img = document.createElement('img');
+        img.style.cssText = 'max-width:90vw;max-height:80vh;border-radius:8px;object-fit:contain;';
+
+        const caption = document.createElement('p');
+        caption.style.cssText = 'color:#aaa;margin-top:12px;font-size:0.9rem;';
+
+        const navDiv = document.createElement('div');
+        navDiv.style.cssText = 'margin-top:15px;display:flex;gap:20px;';
+
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = '← ÖNCEKİ';
+        prevBtn.style.cssText = 'background:var(--primary-green);color:#000;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;';
+        prevBtn.onclick = () => {
+            currentIndex = (currentIndex - 1 + photos.length) % photos.length;
+            img.src = photos[currentIndex].url;
+            caption.textContent = photos[currentIndex].caption || '';
+        };
+        navDiv.appendChild(prevBtn);
+
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = 'SONRAKİ →';
+        nextBtn.style.cssText = 'background:var(--primary-green);color:#000;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;';
+        nextBtn.onclick = () => {
+            currentIndex = (currentIndex + 1) % photos.length;
+            img.src = photos[currentIndex].url;
+            caption.textContent = photos[currentIndex].caption || '';
+        };
+        navDiv.appendChild(nextBtn);
+
+        overlay.appendChild(img);
+        overlay.appendChild(caption);
+        if (photos.length > 1) overlay.appendChild(navDiv);
+
+        img.src = photos[currentIndex].url;
+        caption.textContent = photos[currentIndex].caption || '';
+
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    }).catch(e => console.error(e));
 }
 
 // =======================================================
@@ -1765,6 +1918,7 @@ function selectField(key) {
     if (window.innerWidth <= 768 && card) {
         const panel = document.getElementById('customerBookingPanel');
         panel.classList.add('mobile-open');
+        panel.style.display = '';
         card.parentNode.insertBefore(panel, card.nextSibling);
     } else {
         const layout = document.getElementById('customerBookingGridLayout');
@@ -2423,7 +2577,8 @@ async function loadMatchSeekers() {
         const result = await response.json();
 
         if (result.success) {
-            const seekers = result.data;
+            let seekers = result.data;
+            seekers = seekers.filter(s => s.status !== 'suresi_gecti' && s.status !== 'bulundu');
             if (seekers.length === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Filtrelere uygun ilan bulunamadı.</p>';
                 return;
@@ -2500,7 +2655,8 @@ async function loadTeamSeekers() {
         const result = await response.json();
 
         if (result.success) {
-            const seekers = result.data;
+            let seekers = result.data;
+            seekers = seekers.filter(s => s.status !== 'suresi_gecti' && s.status !== 'bulundu');
             container.innerHTML = seekers.map(s => {
         const isOwner = loggedInUser && currentUser && parseInt(s.user_id) === parseInt(currentUser.id);
         let days = []; try { days = JSON.parse(s.availableDays || '[]'); } catch(e) { days = []; }
@@ -3816,45 +3972,6 @@ async function submitFieldCardComment(fieldKey, event) {
 // =======================================================
 // ENTEGRASYON, OTP, YORUM VE KARALİSTE DESTEKLERİ
 // =======================================================
-
-// OTP DOĞRULAMA GÖNDERİMİ
-async function submitOTPVerification() {
-    const userId = document.getElementById('otpUserId').value;
-    const email = document.getElementById('otpEmail').value;
-    const otpCode = document.getElementById('otpCodeInput').value.trim();
-
-    if (!otpCode) {
-        alert("Lütfen 6 haneli doğrulama kodunu girin!");
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/auth/verify-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, email, otpCode })
-        });
-        const result = await response.json();
-
-        if (result.success) {
-            currentUser = result.user;
-            loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
-            await loadUserBlacklist();
-            renderFieldsGrid();
-            updateLoginUIVisibility();
-            closeModal('otpVerificationModal');
-            document.getElementById('otpCodeInput').value = "";
-            alert(result.message);
-            if (currentSelectedFieldKey) onDateOrFieldChange();
-            fillFormsFromProfile();
-        } else {
-            alert("Doğrulama Hatası: " + result.message);
-        }
-    } catch (error) {
-        console.error("OTP Verification Error:", error);
-        alert("Bağlantı hatası oluştu!");
-    }
-}
 
 // SOSYAL GİRİŞ PROFİL TAMAMLAMA
 async function submitCompleteProfile() {
