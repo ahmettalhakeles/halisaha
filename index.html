@@ -16,7 +16,7 @@
 
     <header>
         <div class="logo-area">
-            <button class="hamburger-btn" id="mobileHamburgerBtn" onclick="toggleMobileMenu()">
+            <button class="hamburger-btn" id="mobileHamburgerBtn" onclick="toggleMobileMenu()" aria-label="Menüyü Aç/Kapat">
                 <svg viewBox="0 0 24 24" width="28" height="28" stroke="white" stroke-width="2" fill="none">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
                     <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -24,7 +24,7 @@
                 </svg>
             </button>
             <div class="logo-row">
-                <svg class="football-logo" viewBox="0 0 100 100" width="52" height="52">
+                <svg class="football-logo" viewBox="0 0 100 100" width="52" height="52" role="img" aria-label="Futbol Logo">
                     <circle cx="50" cy="50" r="46" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
                     <path d="M 50.00 64.00 Q 42.17 60.78 36.69 54.33 Q 37.33 45.88 41.77 38.67 Q 50.00 36.67 58.23 38.67 Q 62.67 45.88 63.31 54.33 Q 57.83 60.78 50.00 64.00 Z" fill="#10b981" stroke="#10b981" stroke-width="1.5" stroke-linejoin="round"/>
                     <path d="M 43.77100646790537 37.67376207875074 Q 50.5 37.17376207875074 59.22899353209462 40.173762078750734 Q 60.771892380113385 48 61.31479122813215 55.82623792124926" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
@@ -150,7 +150,7 @@
                             
                             <!-- Cloudflare Turnstile Container -->
                             <div class="form-group" id="turnstileContainer" style="display: none; margin-top: 15px; margin-bottom: 15px; text-align: center;">
-                                <div id="bookingTurnstile" class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-callback="onTurnstileSuccess"></div>
+                                <div id="bookingTurnstile" class="cf-turnstile" data-sitekey="0x4AAAAAAAx1kOnBQFTVEy1k" data-callback="onTurnstileSuccess"></div>
                             </div>
 
                             <button id="submitBtn" class="action-btn" onclick="completeBooking()">REZERVASYON YAP</button>
@@ -411,7 +411,6 @@
                 <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('hours'); closeMobileMenu();">SAAT & ENGEL</button>
                 <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('subscriptions'); closeMobileMenu();">ABONELİK</button>
                 <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('settings'); closeMobileMenu();">İŞLETME AYARLARI</button>
-                <button class="nav-btn red-btn business-mobile-nav" onclick="handleBusinessLogout(); closeMobileMenu();">ÇIKIŞ YAP</button>
             </div>
 
             <!-- İŞLETME SEKME MENÜSÜ -->
@@ -517,17 +516,17 @@
                         </div>
                     </div>
                     
-                    <div class="debt-filter-bar" style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
-                        <button class="tab-btn active" id="debt-filter-all" onclick="loadBusinessDebts('all')">TÜMÜ</button>
-                        <button class="tab-btn" id="debt-filter-daily" onclick="loadBusinessDebts('daily')">BUGÜN</button>
-                        <button class="tab-btn" id="debt-filter-weekly" onclick="loadBusinessDebts('weekly')">SON 7 GÜN</button>
-                        <button class="tab-btn" id="debt-filter-monthly" onclick="loadBusinessDebts('monthly')">SON 30 GÜN</button>
+                    <div class="debt-filter-bar" style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
+                        <button class="debt-filter-btn active" id="debt-filter-all" onclick="loadBusinessDebts('all')">TÜMÜ</button>
+                        <button class="debt-filter-btn" id="debt-filter-daily" onclick="loadBusinessDebts('daily')">BUGÜN</button>
+                        <button class="debt-filter-btn" id="debt-filter-weekly" onclick="loadBusinessDebts('weekly')">SON 7 GÜN</button>
+                        <button class="debt-filter-btn" id="debt-filter-monthly" onclick="loadBusinessDebts('monthly')">SON 30 GÜN</button>
                     </div>
-                    <div class="debt-status-filter-bar" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-                        <button class="tab-btn active" id="debt-status-all" onclick="setDebtStatusFilter('all')">TÜM ÖDEMELER</button>
-                        <button class="tab-btn" id="debt-status-unpaid" onclick="setDebtStatusFilter('unpaid')">⚠️ ÖDENMEDİ</button>
-                        <button class="tab-btn" id="debt-status-paid" onclick="setDebtStatusFilter('paid')">✅ ÖDENDİ</button>
-                        <button class="tab-btn" id="debt-sort-toggle" onclick="toggleDebtSortOrder()" style="margin-left:auto;background:rgba(255,255,255,0.08);">⬇️ YENİDEN ESKİYE</button>
+                    <div class="debt-status-filter-bar" style="display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap;">
+                        <button class="debt-filter-btn active" id="debt-status-all" onclick="setDebtStatusFilter('all')">TÜM ÖDEMELER</button>
+                        <button class="debt-filter-btn" id="debt-status-unpaid" onclick="setDebtStatusFilter('unpaid')">⚠️ ÖDENMEDİ</button>
+                        <button class="debt-filter-btn" id="debt-status-paid" onclick="setDebtStatusFilter('paid')">✅ ÖDENDİ</button>
+                        <button class="debt-filter-btn" id="debt-sort-toggle" onclick="toggleDebtSortOrder()" style="margin-left:auto;background:rgba(255,255,255,0.08);">⬇️ YENİDEN ESKİYE</button>
                     </div>
                     
                     <div id="businessDebtsContainer" class="reservations-scroll"></div>
@@ -888,7 +887,7 @@
                 <input type="password" id="businessPassword" class="form-control" placeholder="İşletme şifresi" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
             </div>
             <button class="action-btn" onclick="handleBusinessLogin()">GİRİŞ YAP</button>
-            <p class="section-desc">Demo şifreler: final123, arena123, ciragan123, olimpiyat123, sporium123, ziyaret123</p>
+
         </div>
     </div>
 

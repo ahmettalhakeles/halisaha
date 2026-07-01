@@ -1,4 +1,4 @@
-const masterHoursList = [
+﻿const masterHoursList = [
     "06:00 - 07:00", "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
     "10:00 - 11:00", "11:00 - 12:00", "12:00 - 13:00", "13:00 - 14:00",
     "14:00 - 15:00", "15:00 - 16:00", "16:00 - 17:00", "17:00 - 18:00",
@@ -17,7 +17,7 @@ const fieldsData = {
         address: "Hacilar Meydani, Merkez, Amasya",
         coordinates: "40.66015930710386, 35.79187401098129",
         phone: "03582120001",
-        password: "final123",
+
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "12:00",
@@ -38,7 +38,6 @@ const fieldsData = {
         address: "Akbilek, Merkez, Amasya",
         coordinates: "40.69411694565239, 35.8179294637939",
         phone: "05051234562",
-        password: "arena123",
         isClosed: false,
         hasService: "Servis: Yok",
         openingHour: "10:00",
@@ -59,7 +58,6 @@ const fieldsData = {
         address: "Seyhcui, Merkez, Amasya",
         coordinates: "40.6528721257016, 35.79966936221245",
         phone: "05051234563",
-        password: "ciragan123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "12:00",
@@ -80,7 +78,6 @@ const fieldsData = {
         address: "Fatih, Merkez, Amasya",
         coordinates: "40.68148422172459, 35.82695848316526",
         phone: "05051234564",
-        password: "olimpiyat123",
         isClosed: false,
         hasService: "Servis: Yok",
         openingHour: "08:00",
@@ -101,7 +98,6 @@ const fieldsData = {
         address: "Kursunlu, Merkez, Amasya",
         coordinates: "40.61455229320892, 35.825450789697356",
         phone: "05051234565",
-        password: "sporium123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "14:00",
@@ -122,7 +118,6 @@ const fieldsData = {
         address: "Ziyaret Beldesi, Amasya",
         coordinates: "40.688429882215665, 35.86403902395539",
         phone: "05051234566",
-        password: "ziyaret123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "15:00",
@@ -324,13 +319,19 @@ async function handleBusinessLogin() {
         return;
     }
 
-    const field = fieldsData[key];
-    if (!field) {
-        alert("İşletme bulunamadı! Lütfen doğru işletme adını giriniz.");
-        return;
-    }
-    if (field.password !== password) {
-        alert("Hatalı şifre!");
+    try {
+        const resp = await fetch('/api/business-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fieldKey: key, password })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            alert(data.message || "Hatalı şifre!");
+            return;
+        }
+    } catch (e) {
+        alert("Sunucu hatası! Lütfen tekrar deneyin.");
         return;
     }
 
@@ -349,6 +350,7 @@ async function handleBusinessLogin() {
 
     document.querySelector('main').classList.add('business-mode');
     document.getElementById('businessPanel').style.display = 'block';
+    const field = fieldsData[currentBusinessFieldKey];
     document.getElementById('businessPanelTitle').innerText = `${field.name.toLocaleUpperCase('tr-TR')} YÖNETİM PANELİ`;
     document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
     // İşletme menü öğelerini mobil hamburger menüsüne ekle
@@ -1651,7 +1653,6 @@ function renderFieldsGrid() {
                         <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
                     </div>
                 </div>
-                <div class="field-photos-thumbnails" id="field-photos-thumbnails-${key}" style="display:flex; gap:6px; overflow-x:auto; padding:6px 0; margin-bottom:6px;"></div>
                 <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
                     YORUMLAR VE DEĞERLENDİRMELER 💬 ▶
                 </div>
@@ -1892,9 +1893,6 @@ function selectField(key) {
         const panel = document.getElementById('customerBookingPanel');
         layout.appendChild(panel);
     }
-
-    // Saha yorumlar�n� y�kle
-    loadFieldReviews(key);
 
     const field = fieldsData[key];
     const pitchCount = field.pitchCount || 1;
@@ -3017,7 +3015,7 @@ function parseReservationDateTime(dateText, hourText) {
     const resDate = parseTurkishDateString(dateText);
     if (!resDate) return null;
     
-    const hourPart = hourText.split(' - ')[0]; // "19:00"
+    const hourPart = hourText.split(' - ')[1] || hourText.split(' - ')[0];
     const [h, m] = hourPart.split(':').map(Number);
     resDate.setHours(h, m, 0, 0);
     
@@ -3930,164 +3928,7 @@ function onTurnstileSuccess(token) {
     latestTurnstileToken = token;
 }
 
-// MÜŞTERİ PANELİ SAHA YORUMLARINI YÜKLE
-async function loadFieldReviews(fieldKey) {
-    const listContainer = document.getElementById('fieldReviewsList');
-    if (!listContainer) return;
-    
-    document.getElementById('fieldReviewsSection').style.display = 'block';
 
-    try {
-        const response = await fetch(`/api/reviews/${fieldKey}`);
-        const result = await response.json();
-        
-        if (result.success) {
-            // Check if the user has a reviewable reservation
-            let reviewableRes = null;
-            if (currentUser && userReservations) {
-                const now = new Date();
-                const fieldReservations = userReservations.filter(r => r.fieldKey === fieldKey && r.user_id === currentUser.id);
-                for (const r of fieldReservations) {
-                    const playDate = getActualPlayDate(r.dateText, r.hourText);
-                    if (!playDate) continue;
-                    const hourPart = r.hourText.split(' - ')[1] || '23:59';
-                    const [h, m] = hourPart.split(':').map(Number);
-                    playDate.setHours(h, m, 0, 0);
-                    
-                    const ageInMs = now.getTime() - playDate.getTime();
-                    const ageInDays = ageInMs / (1000 * 60 * 60 * 24);
-                    
-                    if (playDate.getTime() <= now.getTime() && ageInDays <= 7) {
-                        const alreadyReviewed = result.data.some(rev => rev.reservation_id === r.id);
-                        if (!alreadyReviewed) {
-                            reviewableRes = r;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            const formContainer = document.getElementById('addReviewFormContainer');
-            if (reviewableRes) {
-                document.getElementById('reviewResId').value = reviewableRes.id;
-                formContainer.style.display = 'block';
-            } else {
-                formContainer.style.display = 'none';
-            }
-
-            if (result.data.length === 0) {
-                listContainer.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Henüz bu sahaya yorum yapılmamış.</p>';
-                return;
-            }
-
-            // Averages
-            let sumTurf = 0, sumLight = 0, sumFac = 0, sumServ = 0;
-            result.data.forEach(rev => {
-                sumTurf += rev.rating_turf;
-                sumLight += rev.rating_lighting;
-                sumFac += rev.rating_facilities;
-                sumServ += rev.rating_service;
-            });
-            const count = result.data.length;
-            const avgTurf = (sumTurf / count).toFixed(1);
-            const avgLight = (sumLight / count).toFixed(1);
-            const avgFac = (sumFac / count).toFixed(1);
-            const avgServ = (sumServ / count).toFixed(1);
-            const overallAvg = ((sumTurf + sumLight + sumFac + sumServ) / (count * 4)).toFixed(1);
-
-            const summaryHtml = `
-                <div class="reviews-summary-row">
-                    <div>
-                        <div class="review-average-big">${overallAvg} ⭐</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">${count} DEĞERLENDİRME</div>
-                    </div>
-                    <div class="reviews-grid-details" style="flex: 1; max-width: 300px; margin-left: 20px;">
-                        <div class="review-sub-rating-item"><span>ZEMİN:</span> <span>${avgTurf} ⭐</span></div>
-                        <div class="review-sub-rating-item"><span>IŞIK:</span> <span>${avgLight} ⭐</span></div>
-                        <div class="review-sub-rating-item"><span>TESİS:</span> <span>${avgFac} ⭐</span></div>
-                        <div class="review-sub-rating-item"><span>HİZMET:</span> <span>${avgServ} ⭐</span></div>
-                    </div>
-                </div>
-            `;
-
-            const reviewsHtml = result.data.map(rev => {
-                const dateStr = new Date(rev.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-                const rating = ((rev.rating_turf + rev.rating_lighting + rev.rating_facilities + rev.rating_service) / 4).toFixed(1);
-                
-                let ownerReplyHtml = '';
-                if (rev.owner_reply) {
-                    ownerReplyHtml = `
-                        <div class="review-owner-reply">
-                            <div class="review-owner-reply-title">İŞLETME YANITI:</div>
-                            <div class="review-owner-reply-text">${rev.owner_reply}</div>
-                        </div>
-                    `;
-                }
-
-                return `
-                    <div class="review-comment-card">
-                        <div class="review-comment-header">
-                            <span class="review-comment-user">${rev.userName} <span class="review-star-badge">${rating} ⭐</span></span>
-                            <span class="review-comment-date">${dateStr}</span>
-                        </div>
-                        <div class="review-comment-text">"${rev.comment || 'Puan verildi.'}"</div>
-                        ${ownerReplyHtml}
-                    </div>
-                `;
-            }).join('');
-
-            listContainer.innerHTML = summaryHtml + reviewsHtml;
-        }
-    } catch (error) {
-        console.error("Reviews load error:", error);
-    }
-}
-
-// MÜŞTERİ YORUM GÖNDERME
-async function submitFieldReview() {
-    if (!loggedInUser || !currentUser) {
-        alert("Yorum yapabilmek için lütfen giriş yapınız!");
-        return;
-    }
-    const resId = document.getElementById('reviewResId').value;
-    const ratingTurf = document.getElementById('ratingTurf').value;
-    const ratingLighting = document.getElementById('ratingLighting').value;
-    const ratingFacilities = document.getElementById('ratingFacilities').value;
-    const ratingService = document.getElementById('ratingService').value;
-    const comment = document.getElementById('reviewCommentText').value.trim();
-    const isAnonymous = document.getElementById('reviewIsAnonymous').checked;
-
-    if (!resId) return;
-
-    try {
-        const response = await fetch('/api/reviews', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: currentUser.id,
-                reservation_id: resId,
-                rating_turf: parseInt(ratingTurf),
-                rating_lighting: parseInt(ratingLighting),
-                rating_facilities: parseInt(ratingFacilities),
-                rating_service: parseInt(ratingService),
-                comment,
-                is_anonymous: isAnonymous ? 1 : 0
-            })
-        });
-        const result = await response.json();
-        if (result.success) {
-            alert(result.message);
-            document.getElementById('reviewCommentText').value = "";
-            document.getElementById('reviewIsAnonymous').checked = false;
-            await loadFieldReviews(currentSelectedFieldKey);
-        } else {
-            alert("Hata: " + result.message);
-        }
-    } catch (error) {
-        console.error("Yorum gönderme hatası:", error);
-        alert("Sunucuya bağlanılamadı!");
-    }
-}
 
 // İŞLETME YORUM YÖNETİMİ
 let currentBusinessCommentFilter = 'all';
@@ -4341,9 +4182,7 @@ function toggleMobileForm(formId) {
     const formContainer = document.getElementById(formId);
     if (!formContainer) return;
     
-    // Find the corresponding button
-    // The button is inside the previous sibling (mobile-listing-header)
-    const btn = formContainer.nextElementSibling?.querySelector('.mobile-create-btn');
+    const btn = formContainer.previousElementSibling?.querySelector('.mobile-create-btn');
     
     if (formContainer.classList.contains('anim-slide-fade-in') || formContainer.style.display === 'block') {
         // Kapat

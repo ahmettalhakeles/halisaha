@@ -3,15 +3,32 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
 const fs = require('fs');
+
+// fetch polyfill for Node < 18
+if (!globalThis.fetch) {
+    try {
+        globalThis.fetch = require('node-fetch');
+    } catch (e) {
+        console.warn('⚠️ node-fetch not available, using https:// fallback for Turnstile');
+    }
+}
 
 const app = express();
 const port = process.env.PORT || 5000;
 const host = '0.0.0.0';
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static(__dirname));
+app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
+app.use(express.json({ limit: '2mb' }));
+// .env ve server.js erişimini engelle
+app.use((req, res, next) => {
+    if (req.path === '/.env' || req.path === '/server.js' || req.path.startsWith('/node_modules/')) {
+        return res.status(403).send('Forbidden');
+    }
+    next();
+});
+app.use(express.static(__dirname, { dotfiles: 'ignore' }));
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
@@ -57,7 +74,7 @@ const db = mysql.createPool({
     connectTimeout: 30000,
     maxIdle: 5,
     idleTimeout: 60000,
-    multipleStatements: true
+    multipleStatements: false
 });
 
 db.on('error', (err) => {
@@ -69,11 +86,18 @@ db.getConnection((err, connection) => {
     console.log('🚀 XAMPP MySQL Veritabanına başarıyla bağlanıldı!');
     
     // Run database migration (safe - uses IF NOT EXISTS)
-    const migrationSql = fs.readFileSync(__dirname + '/database_complete.sql', 'utf8');
-    connection.query(migrationSql, (migrateErr) => {
-        if (migrateErr) console.error('❌ Migration hatası:', migrateErr.message);
-        else console.log('✅ Veritabanı tablolari başarıyla oluşturuldu/güncellendi.');
-    });
+    let migrationSql;
+    try {
+        migrationSql = fs.readFileSync(__dirname + '/database_complete.sql', 'utf8');
+    } catch (readErr) {
+        console.error('❌ Migration SQL dosyası okunamadı:', readErr.message);
+    }
+    if (migrationSql) {
+        connection.query(migrationSql, (migrateErr) => {
+            if (migrateErr) console.error('❌ Migration hatası:', migrateErr.message);
+            else console.log('✅ Veritabanı tablolari başarıyla oluşturuldu/güncellendi.');
+        });
+    }
     
     // Check and add age column
     connection.query("SHOW COLUMNS FROM users LIKE 'age'", (errCheck, results) => {
@@ -404,6 +428,38 @@ db.getConnection((err, connection) => {
         else console.log('✅ field_photos tablosu hazır.');
     });
 
+    // Create business_passwords table
+    connection.query(`CREATE TABLE IF NOT EXISTS business_passwords (
+        fieldKey VARCHAR(50) PRIMARY KEY,
+        hashed_password VARCHAR(255) NOT NULL
+    )`, (ec) => {
+        if (ec) {
+            console.error('❌ business_passwords tablosu oluşturulamadı:', ec);
+            return;
+        }
+        console.log('✅ business_passwords tablosu hazır.');
+        // Seed demo passwords if empty
+        connection.query('SELECT COUNT(*) as cnt FROM business_passwords', (sec, sres) => {
+            if (sec) return;
+            if (sres[0].cnt === 0) {
+                const demoPasswords = {
+                    final: 'final123',
+                    arena: 'arena123',
+                    ciragan: 'ciragan123',
+                    olimpiyat: 'olimpiyat123',
+                    sporium05: 'sporium123',
+                    ziyaret: 'ziyaret123'
+                };
+                const stmt = 'INSERT INTO business_passwords (fieldKey, hashed_password) VALUES ?';
+                const values = Object.entries(demoPasswords).map(([k, v]) => [k, bcrypt.hashSync(v, 10)]);
+                connection.query(stmt, [values], (ie) => {
+                    if (ie) console.error('❌ Demo şifreler eklenemedi:', ie);
+                    else console.log('✅ Demo işletme şifreleri hashlenerek kaydedildi.');
+                });
+            }
+        });
+    });
+
     // Add average_rating column to pitch_settings and pitch_objects
     connection.query(`SHOW COLUMNS FROM pitch_settings LIKE 'average_rating'`, (ec, r) => {
         if (!ec && r.length === 0) {
@@ -500,6 +556,14 @@ db.getConnection((err, connection) => {
 
     connection.release();
 
+    // Sunucuyu başlat (veritabanı bağlantısı kurulduktan sonra)
+    processWeeklySubscriptions();
+    setInterval(processWeeklySubscriptions, 60 * 60 * 1000);
+
+    app.listen(port, host, () => {
+        console.log(`⚡ Arka plan sunucusu http://${host}:${port} adresinde çalışıyor!`);
+    });
+
 });
 
 // 6 Adet Izole Multi-Tenant Saha Veri Yapisi (Giriş Şifreleri ve Detaylar)
@@ -509,7 +573,6 @@ const fieldsData = {
         address: "Hacilar Meydani, Merkez, Amasya",
         coordinates: "40.66015930710386, 35.79187401098129",
         phone: "03582120001",
-        password: "final123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "12:00",
@@ -524,7 +587,6 @@ const fieldsData = {
         address: "Akbilek, Merkez, Amasya",
         coordinates: "40.69411694565239, 35.8179294637939",
         phone: "05051234562",
-        password: "arena123",
         isClosed: false,
         hasService: "Servis: Yok",
         openingHour: "10:00",
@@ -539,7 +601,6 @@ const fieldsData = {
         address: "Seyhcui, Merkez, Amasya",
         coordinates: "40.6528721257016, 35.79966936221245",
         phone: "05051234563",
-        password: "ciragan123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "12:00",
@@ -554,7 +615,6 @@ const fieldsData = {
         address: "Fatih, Merkez, Amasya",
         coordinates: "40.68148422172459, 35.82695848316526",
         phone: "05051234564",
-        password: "olimpiyat123",
         isClosed: false,
         hasService: "Servis: Yok",
         openingHour: "08:00",
@@ -569,7 +629,6 @@ const fieldsData = {
         address: "Kursunlu, Merkez, Amasya",
         coordinates: "40.61455229320892, 35.825450789697356",
         phone: "05051234565",
-        password: "sporium123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "14:00",
@@ -584,7 +643,6 @@ const fieldsData = {
         address: "Ziyaret Beldesi, Amasya",
         coordinates: "40.688429882215665, 35.86403902395539",
         phone: "05051234566",
-        password: "ziyaret123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "15:00",
@@ -614,8 +672,9 @@ app.post('/api/register', (req, res) => {
             return res.status(403).json({ success: false, message: 'Bu telefon numarası suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
         }
 
+        const hashedPassword = bcrypt.hashSync(password, 10);
         const sqlQuery = 'INSERT INTO users (name, phone, email, password, is_email_verified) VALUES (?, ?, ?, ?, 1)';
-        db.query(sqlQuery, [name, phone, email, password], (err, result) => {
+        db.query(sqlQuery, [name, phone, email, hashedPassword], (err, result) => {
             if (err) {
                 console.error("SQL Hatası:", err);
                 if (err.code === 'ER_DUP_ENTRY') {
@@ -649,8 +708,8 @@ app.post('/api/register', (req, res) => {
 
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
-    const sqlQuery = 'SELECT id, name, phone, email, age, position, experience, is_email_verified, status FROM users WHERE email = ? AND password = ?';
-    db.query(sqlQuery, [email, password], (err, results) => {
+    const sqlQuery = 'SELECT id, name, phone, email, age, position, experience, is_email_verified, status, password FROM users WHERE email = ?';
+    db.query(sqlQuery, [email], (err, results) => {
         if (err || results.length === 0) return res.status(401).json({ success: false, message: 'Hatalı giriş!' });
         
         const user = results[0];
@@ -658,7 +717,12 @@ app.post('/api/login', (req, res) => {
             return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
         }
         
-        res.json({ success: true, user });
+        if (!bcrypt.compareSync(password, user.password)) {
+            return res.status(401).json({ success: false, message: 'Hatalı giriş!' });
+        }
+        
+        const { password: _, ...safeUser } = user;
+        res.json({ success: true, user: safeUser });
     });
 });
 
@@ -973,7 +1037,11 @@ app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
     }
 
     // 1. Cloudflare Turnstile Doğrulaması
-    const secretKey = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA'; // Test key
+    const secretKey = process.env.TURNSTILE_SECRET_KEY;
+    if (!secretKey) {
+        console.error('TURNSTILE_SECRET_KEY environment variable is not set!');
+        return res.status(500).json({ success: false, message: 'Sunucu yapılandırma hatası!' });
+    }
     if (!turnstileToken) {
         return res.status(400).json({ success: false, message: 'Güvenlik doğrulaması (Turnstile) eksik!' });
     }
@@ -1002,9 +1070,7 @@ app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
             if (user.status === 'globally_banned') {
                 return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
             }
-            if (false && user.is_email_verified === 0) {
-                return res.status(403).json({ success: false, message: 'Lütfen rezervasyon yapabilmek için e-posta adresinizi doğrulayın!' });
-            }
+
 
             // 3. Yerel Kara Liste (Blacklist) Kontrolü
             db.query('SELECT id FROM field_blacklists WHERE fieldKey = ? AND phone_number = ?', [fieldKey, user_phone], (errBlack, blackResults) => {
@@ -1422,7 +1488,10 @@ app.post('/api/subscriptions', (req, res) => {
         // 2. pitch_objects tablosundaki 'aboneHours' dizisine bu saati de ekleyelim ki müşteri tarafında bloke olsun
         const selectObjQuery = 'SELECT aboneHours FROM pitch_objects WHERE fieldKey = ? AND pitchNumber = ?';
         db.query(selectObjQuery, [fieldKey, pitchNumber], (selErr, selResults) => {
-            if (selErr || selResults.length === 0) {
+            if (selErr) {
+                return res.status(500).json({ success: false, message: 'Abonelik verisi güncellenirken hata!' });
+            }
+            if (selResults.length === 0) {
                 return res.json({ success: true, message: 'Abonelik başarıyla oluşturuldu!' });
             }
 
@@ -1844,41 +1913,45 @@ app.post('/api/business-login', (req, res) => {
         return res.status(400).json({ success: false, message: 'Tüm alanları doldurunuz!' });
     }
 
-    // İşletme şifresi (fieldsData'daki password ile kontrol edelim)
     const field = fieldsData[fieldKey];
     if (!field) {
         return res.status(404).json({ success: false, message: 'İşletme bulunamadı!' });
     }
 
-    // Şifre kontrolü (Demo amaçlı password parametresi kullanılıyor)
-    // Gerçek uygulamada veritabanında hashlenmiş şifre kontrolü yapılmalı
-    if (field.password && field.password !== password) {
-        return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
-    }
-
-    // Son giriş tarihini güncelle
-    const sqlUpdate = 'UPDATE pitch_settings SET last_login = NOW() WHERE fieldKey = ?';
-    db.query(sqlUpdate, [fieldKey], (err) => {
-        if (err) console.error("Son giriş güncelleme hatası:", err);
-    });
-
-    res.json({
-        success: true,
-        message: 'Giriş başarılı!',
-        business: {
-            fieldKey: fieldKey,
-            name: field.name,
-            address: field.address,
-            phone: field.phone,
-            hasService: field.hasService,
-            pricing: field.pricing || '2600 TL',
-            fieldCount: field.pitchCount || 1,
-            isOpen: !field.isClosed,
-            openingHour: field.openingHour,
-            closingHour: field.closingHour,
-            aboneHours: field.aboneHours,
-            disabledHours: field.disabledHours
+    // Veritabanındaki hashlenmiş şifre ile kontrol et
+    const pwSql = 'SELECT hashed_password FROM business_passwords WHERE fieldKey = ?';
+    db.query(pwSql, [fieldKey], (pwErr, pwResults) => {
+        if (pwErr || pwResults.length === 0) {
+            return res.status(500).json({ success: false, message: 'Şifre verisi bulunamadı!' });
         }
+        if (!bcrypt.compareSync(password, pwResults[0].hashed_password)) {
+            return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
+        }
+
+        // Son giriş tarihini güncelle
+        const sqlUpdate = 'UPDATE pitch_settings SET last_login = NOW() WHERE fieldKey = ?';
+        db.query(sqlUpdate, [fieldKey], (err) => {
+            if (err) console.error("Son giriş güncelleme hatası:", err);
+        });
+
+        res.json({
+            success: true,
+            message: 'Giriş başarılı!',
+            business: {
+                fieldKey: fieldKey,
+                name: field.name,
+                address: field.address,
+                phone: field.phone,
+                hasService: field.hasService,
+                pricing: field.pricing || '2600 TL',
+                fieldCount: field.pitchCount || 1,
+                isOpen: !field.isClosed,
+                openingHour: field.openingHour,
+                closingHour: field.closingHour,
+                aboneHours: field.aboneHours,
+                disabledHours: field.disabledHours
+            }
+        });
     });
 });
 
@@ -2400,39 +2473,39 @@ app.use((err, req, res, next) => {
 // =======================================================
 // ABONELİK CRON JOB - Her saat başı kontrol et
 // =======================================================
+let _cronRunning = false;
 function processWeeklySubscriptions() {
+    if (_cronRunning) return;
+    _cronRunning = true;
+
     const dayNames = ["PAZAR","PAZARTESİ","SALI","ÇARŞAMBA","PERŞEMBE","CUMA","CUMARTESİ"];
     const now = new Date();
     const todayName = dayNames[now.getDay()];
 
     const sql = 'SELECT * FROM subscriptions WHERE dayOfWeek = ?';
     db.query(sql, [todayName], (err, subs) => {
-        if (err) { console.error("Cron: Abonelik sorgu hatası:", err); return; }
-        if (subs.length === 0) return;
+        if (err) { console.error("Cron: Abonelik sorgu hatası:", err); _cronRunning = false; return; }
+        if (subs.length === 0) { _cronRunning = false; return; }
 
         const dateText = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toLocaleUpperCase('tr-TR');
+        let pending = subs.length;
 
         subs.forEach(sub => {
-            // Check if reservation already exists for this subscription this week
             const checkSql = 'SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND dateText = ? AND hourText = ? AND type = ?';
             db.query(checkSql, [sub.fieldKey, sub.pitchNumber, dateText, sub.hourText, 'abone'], (checkErr, existing) => {
-                if (checkErr) { console.error("Cron: Çakışma kontrolü hatası:", checkErr); return; }
-                if (existing.length > 0) return; // Already exists
+                if (checkErr) { console.error("Cron: Çakışma kontrolü hatası:", checkErr); pending--; if (pending === 0) _cronRunning = false; return; }
+                if (existing.length > 0) { pending--; if (pending === 0) _cronRunning = false; return; }
 
                 const insertSql = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_phone, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")';
                 db.query(insertSql, [sub.fieldKey, sub.pitchNumber, dateText, sub.hourText, sub.subscriberName, sub.subscriberPhone], (insErr) => {
                     if (insErr) console.error("Cron: Abone rezervasyon kaydı oluşturma hatası:", insErr);
                     else console.log(`Cron: Abone kaydı oluşturuldu - ${sub.subscriberName} ${dateText} ${sub.hourText}`);
+                    pending--;
+                    if (pending === 0) _cronRunning = false;
                 });
             });
         });
     });
 }
 
-// Run every hour (check if today matches subscription day)
-processWeeklySubscriptions(); // Initial run on startup
-setInterval(processWeeklySubscriptions, 60 * 60 * 1000); // Every hour
 
-app.listen(port, host, () => {
-    console.log(`⚡ Arka plan sunucusu http://${host}:${port} adresinde çalışıyor!`);
-});
