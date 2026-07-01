@@ -586,13 +586,14 @@ main {
 .field-card {
     background: var(--card-bg);
     backdrop-filter: blur(12px);
-    border: 2px solid transparent;
+    border: 2px solid rgba(16, 185, 129, 0.5);
     border-radius: 16px;
     padding: 28px;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
 }
 
 .field-card::before {
