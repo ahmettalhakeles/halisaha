@@ -314,8 +314,6 @@ db.getConnection((err, connection) => {
     // Add columns to users table
     const userCols = [
         { col: 'is_email_verified', def: 'ALTER TABLE users ADD COLUMN is_email_verified TINYINT(1) DEFAULT 0' },
-        { col: 'google_id', def: 'ALTER TABLE users ADD COLUMN google_id VARCHAR(255) DEFAULT NULL' },
-        { col: 'apple_id', def: 'ALTER TABLE users ADD COLUMN apple_id VARCHAR(255) DEFAULT NULL' },
         { col: 'status', def: "ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'" }
     ];
     userCols.forEach(({ col, def }) => {
@@ -598,50 +596,6 @@ const fieldsData = {
     }
 };
 
-// HELPER: Sosyal Giriş Başarılı İşleme
-function handleSocialAuthSuccess(req, res, provider, providerId, email, name) {
-    // 1. Kullanıcı e-postasıyla kayıtlı mı kontrol et
-    const selectSql = 'SELECT * FROM users WHERE email = ?';
-    db.query(selectSql, [email], (err, results) => {
-        if (err) return res.redirect('/?error=database_error');
-        
-        if (results.length > 0) {
-            const user = results[0];
-            if (user.status === 'globally_banned') {
-                return res.redirect('/?error=globally_banned');
-            }
-            
-            // Eğer telefon numarası yoksa profil tamamlama ekranına gönder
-            if (!user.phone) {
-                return res.redirect(`/?needs_phone=true&email=${encodeURIComponent(email)}&userId=${user.id}`);
-            }
-            
-            // Sosyal ID güncelle
-            const idCol = provider === 'google' ? 'google_id' : 'apple_id';
-            if (!user[idCol]) {
-                db.query(`UPDATE users SET ${idCol} = ? WHERE id = ?`, [providerId, user.id]);
-            }
-            
-            // Giriş yaptır ve token ver
-            const jwt = require('jsonwebtoken');
-            const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, process.env.JWT_SECRET || 'jwt_key');
-            return res.redirect(`/?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`);
-        } else {
-            // Yeni kullanıcı oluştur (pasif ve telefon yok)
-            const idCol = provider === 'google' ? 'google_id' : 'apple_id';
-            const insertSql = `INSERT INTO users (name, phone, email, password, is_email_verified, ${idCol}) VALUES (?, '', ?, 'social_login_pwd', 1, ?)`;
-            db.query(insertSql, [name, email, providerId], (insErr, result) => {
-                if (insErr) {
-                    console.error("OAuth Register Error:", insErr);
-                    return res.redirect('/?error=oauth_registration_failed');
-                }
-                const newUserId = result.insertId;
-                return res.redirect(`/?needs_phone=true&email=${encodeURIComponent(email)}&userId=${newUserId}`);
-            });
-        }
-    });
-}
-
 // KULLANICI KAYIT VE GİRİŞ
 app.post('/api/register', (req, res) => {
     console.log("Gelen veri:", req.body);
@@ -706,146 +660,6 @@ app.post('/api/login', (req, res) => {
         
         res.json({ success: true, user });
     });
-});
-
-// SOSYAL GİRİŞ PROFİL TAMAMLAMA ENDPOINT'İ
-app.put('/api/auth/complete-profile', (req, res) => {
-    const { userId, phone } = req.body;
-    if (!userId || !phone) {
-        return res.status(400).json({ success: false, message: 'Kullanıcı ID ve telefon numarası zorunludur!' });
-    }
-
-    // Telefon no karaliste kontrolü
-    const checkBanSql = 'SELECT COUNT(DISTINCT fieldKey) AS count FROM field_blacklists WHERE phone_number = ?';
-    db.query(checkBanSql, [phone], (errBan, banRes) => {
-        if (errBan) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-        const banCount = banRes[0] ? banRes[0].count : 0;
-        if (banCount >= 3) {
-            return res.status(403).json({ success: false, message: 'Bu telefon numarası suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
-        }
-
-        // Telefon benzersizlik kontrolü
-        db.query('SELECT id FROM users WHERE phone = ? AND id != ?', [phone, userId], (errPhone, phoneRes) => {
-            if (errPhone) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            if (phoneRes.length > 0) {
-                return res.status(409).json({ success: false, message: 'Bu telefon numarası zaten başka bir hesap tarafından kullanılıyor!' });
-            }
-
-            db.query('UPDATE users SET phone = ?, is_email_verified = 1, status = \'active\' WHERE id = ?', [phone, userId], (updErr) => {
-                if (updErr) return res.status(500).json({ success: false, message: 'Profil güncellenemedi!' });
-                
-                db.query('SELECT id, name, phone, email, age, position, experience FROM users WHERE id = ?', [userId], (errUser, userResults) => {
-                    if (errUser || userResults.length === 0) return res.status(500).json({ success: false, message: 'Kullanıcı detayları alınamadı!' });
-                    res.json({ success: true, message: 'Profiliniz başarıyla tamamlandı!', user: userResults[0] });
-                });
-            });
-        });
-    });
-});
-
-// GOOGLE & APPLE OAUTH ROUTER
-app.get(['/api/auth/google', '/api/auth/Google'], (req, res) => {
-    if (!process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID === 'your_google_client_id_here') {
-        console.warn('⚠️ GOOGLE_CLIENT_ID env değişkeni ayarlanmamış! Google girişi çalışmaz.');
-        return res.redirect('/?error=google_not_configured');
-    }
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
-        `redirect_uri=${encodeURIComponent(process.env.GOOGLE_CALLBACK_URL)}&` +
-        `response_type=code&` +
-        `scope=openid%20profile%20email`;
-    res.redirect(googleAuthUrl);
-});
-
-app.get(['/api/auth/google/callback', '/api/auth/Google/callback'], async (req, res) => {
-    const code = req.query.code;
-    if (!code) {
-        return res.redirect('/?error=no_code');
-    }
-
-    let googleUser = {
-        id: "google_123456789",
-        email: "googleuser@example.com",
-        name: "Google Oyuncusu"
-    };
-
-    if (process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CLIENT_SECRET !== 'google_dummy_client_secret' && !code.startsWith('mock_')) {
-        try {
-            const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `code=${code}&client_id=${process.env.GOOGLE_CLIENT_ID}&client_secret=${process.env.GOOGLE_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(process.env.GOOGLE_CALLBACK_URL)}&grant_type=authorization_code`
-            });
-            const tokens = await tokenResponse.json();
-            if (tokens.id_token) {
-                const jwt = require('jsonwebtoken');
-                const decoded = jwt.decode(tokens.id_token);
-                if (decoded) {
-                    googleUser = {
-                        id: decoded.sub,
-                        email: decoded.email,
-                        name: decoded.name || decoded.given_name || 'Google Kullanıcısı'
-                    };
-                }
-            }
-        } catch (e) {
-            console.error("Google Token Exchange error:", e);
-            return res.redirect('/?error=google_auth_failed');
-        }
-    } else {
-        if (code === 'mock_google_code') {
-            googleUser = {
-                id: "google_mock_user_998",
-                email: "mockgoogle@gmail.com",
-                name: "Ahmet Google"
-            };
-        }
-    }
-
-    handleSocialAuthSuccess(req, res, 'google', googleUser.id, googleUser.email, googleUser.name);
-});
-
-app.all(['/api/auth/apple/callback', '/api/auth/Apple/callback'], express.urlencoded({ extended: true }), (req, res) => {
-    const code = req.body.code || req.query.code;
-    const id_token = req.body.id_token || req.query.id_token;
-    const user = req.body.user || req.query.user;
-    let appleUser = {
-        id: "apple_123456789",
-        email: "appleuser@example.com",
-        name: "Apple Oyuncusu"
-    };
-
-    if (code === 'mock_apple_code') {
-        appleUser = {
-            id: "apple_mock_user_777",
-            email: "mockapple@icloud.com",
-            name: "Talha Apple"
-        };
-    } else if (id_token) {
-        try {
-            const jwt = require('jsonwebtoken');
-            const decoded = jwt.decode(id_token);
-            if (decoded) {
-                appleUser.id = decoded.sub;
-                appleUser.email = decoded.email || '';
-                if (user) {
-                    try {
-                        const parsedUser = JSON.parse(user);
-                        if (parsedUser.name) {
-                            appleUser.name = `${parsedUser.name.firstName || ''} ${parsedUser.name.lastName || ''}`.trim() || 'Apple Kullanıcısı';
-                        }
-                    } catch(e) {}
-                }
-            }
-        } catch (err) {
-            console.error("Apple Token Decode Error:", err);
-            return res.redirect('/?error=apple_auth_failed');
-        }
-    } else {
-        return res.redirect('/?error=apple_auth_failed');
-    }
-
-    handleSocialAuthSuccess(req, res, 'apple', appleUser.id, appleUser.email, appleUser.name);
 });
 
 // KULLANICI PROFİLİ GÜNCELLEME

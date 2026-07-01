@@ -178,48 +178,10 @@ window.onload = async function() {
 
     // Rezervasyonlar zaten loadReservationsFromServer() ile yüklendi (cancelled hariç)
     // Telefon maskelerini bağlama
-    ['forumPhone', 'matchPhone', 'regPhone', 'subPhoneInput', 'profilePhoneInput', 'businessSettingPhone', 'completeProfilePhone', 'blacklistPhoneInput'].forEach(id => {
+    ['forumPhone', 'matchPhone', 'regPhone', 'subPhoneInput', 'profilePhoneInput', 'businessSettingPhone', 'blacklistPhoneInput'].forEach(id => {
         const input = document.getElementById(id);
         if (input) applyPhoneMask(input);
     });
-
-    // OAuth ve Yönlendirme Kontrolleri
-    const urlParams = new URLSearchParams(window.location.search);
-    const oauthError = urlParams.get('error');
-    const needsPhone = urlParams.get('needs_phone');
-    const oauthToken = urlParams.get('token');
-    const oauthUserJson = urlParams.get('user');
-
-    if (oauthError) {
-        if (oauthError === 'globally_banned') {
-            alert("Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!");
-        } else if (oauthError === 'oauth_registration_failed') {
-            alert("Sosyal giriş ile kayıt esnasında hata oluştu!");
-        } else {
-            alert("Sosyal giriş doğrulaması başarısız oldu!");
-        }
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (needsPhone === 'true') {
-        const completeUserId = urlParams.get('userId');
-        const completeEmail = urlParams.get('email');
-        document.getElementById('completeProfileUserId').value = completeUserId || '';
-        openModal('socialCompleteProfileModal');
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (oauthToken && oauthUserJson) {
-        try {
-            const userObj = JSON.parse(decodeURIComponent(oauthUserJson));
-            localStorage.setItem('userToken', oauthToken);
-            loggedInUser = userObj.name.toLocaleUpperCase('tr-TR');
-            currentUser = userObj;
-            await loadUserBlacklist();
-            renderFieldsGrid();
-            updateLoginUIVisibility();
-            alert(`Hoş geldiniz, ${userObj.name || 'Oyuncu'}! Giriş yapıldı.`);
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (e) {
-            console.error("OAuth user parse error:", e);
-        }
-    }
 
     if (currentUser) {
         await loadUserBlacklist();
@@ -1607,25 +1569,6 @@ function renderFieldsGrid() {
         const field = fieldsData[key];
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.coordinates)}`;
 
-        // Çift fiyat gösterimi
-        let priceHtml = '';
-        if (field.pitchCount >= 2) {
-            const pitch1 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 1);
-            const pitch2 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 2);
-            const p1Morning = pitch1 ? (pitch1.morningPrice || 2500) : 2500;
-            const p1Evening = pitch1 ? (pitch1.eveningPrice || 3000) : 3000;
-            const p2Morning = pitch2 ? (pitch2.morningPrice || 2500) : 2500;
-            const p2Evening = pitch2 ? (pitch2.eveningPrice || 3000) : 3000;
-            priceHtml = `
-                <div class="price-detail-line"><span class="pitch-label">SAHA 1)</span> ${p1Morning}/${p1Evening} TL</div>
-                <div class="price-detail-line"><span class="pitch-label">SAHA 2)</span> ${p2Morning}/${p2Evening} TL</div>
-            `;
-        } else {
-            const pitch1 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 1);
-            const p1Pricing = pitch1 ? `${pitch1.morningPrice || 2500}/${pitch1.eveningPrice || 3000}` : (field.pricing || '2500/3000');
-            priceHtml = `<div class="price-detail-line"><span class="pitch-label">SAHA 1)</span> ${p1Pricing} TL</div>`;
-        }
-
         const serviceStatus = (field.hasService || "Servis: Yok").toLowerCase().includes("var");
         const cleatsStatus = (field.cleats || "Krampon Kiralanmaz") === "Krampon Kiralanır";
         const showerStatus = (field.shower || "Duş Yok").toLowerCase().includes("var");
@@ -1659,21 +1602,20 @@ function renderFieldsGrid() {
                 <div class="field-card-header">
                     <h3>${field.name}</h3>
                 </div>
+                <div class="mcard-sep"></div>
+                <div class="pitch-badges-row">
+                    ${serviceBadge}
+                    ${cleatsBadge}
+                    ${showerBadge}
+                    ${marketBadge}
+                </div>
+                ${refreshmentsText ? `<div class="mcard-sep"></div><div class="refreshments-display">${refreshmentsText}</div>` : ''}
+                <div class="mcard-sep"></div>
                 <div class="field-card-meta">
                     <a href="tel:${field.phone}" class="phone-link" onclick="event.stopPropagation();">${field.phone}</a>
                     <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
                 </div>
-                <div class="field-card-collapse">
-                    <div class="field-photos-thumbnails" id="field-photos-thumbnails-${key}" style="display:flex; gap:6px; overflow-x:auto; padding:6px 0; margin-bottom:6px;"></div>
-                    <div class="pitch-badges-row">
-                        ${serviceBadge}
-                        ${cleatsBadge}
-                        ${showerBadge}
-                        ${marketBadge}
-                    </div>
-                    ${refreshmentsText ? `<div class="refreshments-display">${refreshmentsText}</div>` : ''}
-                    <div class="price-tag">${priceHtml}</div>
-                </div>
+                <div class="mcard-sep"></div>
                 <div class="field-comments-section" onclick="event.stopPropagation()">
                     <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
                         YORUMLAR VE DEĞERLENDİRMELER 💬
@@ -1707,9 +1649,9 @@ function renderFieldsGrid() {
                     <div class="field-actions">
                         <a href="tel:${field.phone}" class="phone-link" onclick="event.stopPropagation();">${field.phone}</a>
                         <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
-                        <div class="price-tag">${priceHtml}</div>
                     </div>
                 </div>
+                <div class="field-photos-thumbnails" id="field-photos-thumbnails-${key}" style="display:flex; gap:6px; overflow-x:auto; padding:6px 0; margin-bottom:6px;"></div>
                 <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
                     YORUMLAR VE DEĞERLENDİRMELER 💬 ▶
                 </div>
@@ -2797,34 +2739,6 @@ function updateLoginUIVisibility() {
         if (authAlert) authAlert.style.display = 'block';
     }
 }
-
-function openOAuth(provider) {
-    const width = 500;
-    const height = 600;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-    const url = provider === 'google' ? 'google_login.html' : 'apple_login.html';
-    window.open(url, `${provider} Login`, `width=${width},height=${height},top=${top},left=${left}`);
-}
-
-window.addEventListener('message', async function(event) {
-    if (event.data && event.data.type === 'oauth-success') {
-        const user = event.data.user;
-        currentUser = user;
-        loggedInUser = user.name.toLocaleUpperCase('tr-TR');
-        
-        await loadUserBlacklist();
-        renderFieldsGrid();
-        
-        closeModal('loginModal');
-        closeModal('registerModal');
-        
-        updateLoginUIVisibility();
-        
-        if (currentSelectedFieldKey) onDateOrFieldChange();
-        fillFormsFromProfile();
-    }
-});
 
 function switchCustomerTab(tabName) {
     document.querySelectorAll('.customer-tab-content').forEach(zone => {
@@ -3997,53 +3911,6 @@ async function submitFieldCardComment(fieldKey, event) {
 // =======================================================
 // ENTEGRASYON, OTP, YORUM VE KARALİSTE DESTEKLERİ
 // =======================================================
-
-// SOSYAL GİRİŞ PROFİL TAMAMLAMA
-async function submitCompleteProfile() {
-    const userId = document.getElementById('completeProfileUserId').value;
-    const phone = document.getElementById('completeProfilePhone').value.trim();
-
-    if (!phone) {
-        alert("Lütfen telefon numaranızı girin!");
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/auth/complete-profile', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, phone })
-        });
-        const result = await response.json();
-
-        if (result.success) {
-            currentUser = result.user;
-            loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
-            await loadUserBlacklist();
-            renderFieldsGrid();
-            updateLoginUIVisibility();
-            closeModal('socialCompleteProfileModal');
-            document.getElementById('completeProfilePhone').value = "";
-            alert(result.message);
-            if (currentSelectedFieldKey) onDateOrFieldChange();
-            fillFormsFromProfile();
-        } else {
-            alert("Profil Tamamlama Hatası: " + result.message);
-        }
-    } catch (error) {
-        console.error("Complete Profile Error:", error);
-        alert("Bağlantı hatası oluştu!");
-    }
-}
-
-// OAUTH PENCERESİ AÇMA
-function openOAuth(provider) {
-    if (provider === 'google') {
-        window.location.href = '/api/auth/google';
-    } else if (provider === 'apple') {
-        window.location.href = '/api/auth/apple/callback?code=mock_apple_code';
-    }
-}
 
 // TURNSTILE DESTEĞİ
 let latestTurnstileToken = "";
