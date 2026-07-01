@@ -1603,7 +1603,7 @@ app.get('/api/match-seekers', (req, res) => {
             FROM player_reviews
             GROUP BY playerPhone
         ) avg_table ON ms.phone = avg_table.playerPhone
-        WHERE 1=1
+        WHERE ms.status = 'aktif'
     `;
     const params = [];
 

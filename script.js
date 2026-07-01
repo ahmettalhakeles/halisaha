@@ -1578,6 +1578,18 @@ function renderFieldsGrid() {
         const marketStatus = (field.market || "Market Yok").toLowerCase().includes("var");
         const refreshmentsText = field.refreshments ? `İKRAMLAR: ${field.refreshments.toLocaleUpperCase('tr-TR')}` : "";
 
+        const fieldPitches = pitchObjectsList.filter(p => p.fieldKey === key);
+        let fieldAvgRating = 0;
+        let fieldReviewCount = 0;
+        if (fieldPitches.length > 0) {
+            const totalRating = fieldPitches.reduce((sum, p) => sum + (parseFloat(p.average_rating) || 0), 0);
+            fieldAvgRating = totalRating / fieldPitches.length;
+            fieldReviewCount = fieldPitches.reduce((sum, p) => sum + (parseInt(p.review_count) || 0), 0);
+        }
+        const ratingHtml = fieldAvgRating > 0
+            ? `<span style="font-size:0.8rem; color:#fbbf24; font-weight:700; white-space:nowrap;">${fieldAvgRating.toFixed(1)} <span style="font-size:0.7rem;">★</span></span>`
+            : `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:600; white-space:nowrap;">— ★</span>`;
+
         // Make nice badges
         const serviceBadge = serviceStatus 
             ? `<span class="detail-badge badge-yes">SERVİS ✅</span>` 
@@ -1603,7 +1615,7 @@ function renderFieldsGrid() {
             <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
                 ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
                 <div class="field-card-header">
-                    <h3>${field.name}</h3>
+                    <h3>${field.name} ${ratingHtml}</h3>
                 </div>
                 <div class="mcard-sep"></div>
                 <div class="pitch-badges-row">
@@ -1640,7 +1652,7 @@ function renderFieldsGrid() {
                 <div class="field-photos-thumbnails" id="field-photos-thumbnails-${key}" style="display:flex; gap:6px; overflow-x:auto; padding:6px 0; margin-bottom:6px;"></div>
                 <div class="field-info-row">
                     <div class="field-main-details">
-                        <h3>${field.name}</h3>
+                        <h3>${field.name} ${ratingHtml}</h3>
                         <div class="pitch-badges-row">
                             ${serviceBadge}
                             ${cleatsBadge}
