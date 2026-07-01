@@ -389,7 +389,20 @@ async function handleBusinessLogin() {
     document.getElementById('businessPanel').style.display = 'block';
     document.getElementById('businessPanelTitle').innerText = `${field.name.toLocaleUpperCase('tr-TR')} YÖNETİM PANELİ`;
     document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
-    document.getElementById('hamburgerFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
+    // İşletme menü öğelerini mobil hamburger menüsüne ekle
+    const businessMenuItems = document.getElementById('businessMobileMenuItems');
+    if (businessMenuItems) {
+        const headerActions = document.querySelector('.header-actions');
+        if (headerActions) {
+            // İşletme menüsünü header-actions'ın en üstüne ekle
+            const clone = businessMenuItems.cloneNode(true);
+            clone.id = 'businessMobileMenuClone';
+            clone.style.display = 'block';
+            const existingClone = document.getElementById('businessMobileMenuClone');
+            if (existingClone) existingClone.remove();
+            headerActions.insertBefore(clone, headerActions.firstChild);
+        }
+    }
 
     switchBusinessTab('stats');
     await loadBusinessDashboard();
@@ -409,23 +422,13 @@ function handleBusinessLogout() {
     document.querySelector('main').classList.remove('business-mode');
     document.getElementById('businessPanel').style.display = 'none';
 
+    // İşletme menüsünü kaldır
+    const clone = document.getElementById('businessMobileMenuClone');
+    if (clone) clone.remove();
+
     alert("İşletme panelinden çıkış yapıldı.");
     if (currentSelectedFieldKey) onDateOrFieldChange();
 }
-
-function toggleBusinessMenu() {
-    const menu = document.getElementById('businessHamburgerMenu');
-    menu.classList.toggle('open');
-}
-
-// Click outside to close
-document.addEventListener('click', function(e) {
-    const menu = document.getElementById('businessHamburgerMenu');
-    const btn = document.getElementById('businessHamburgerBtn');
-    if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !btn?.contains(e.target)) {
-        menu.classList.remove('open');
-    }
-});
 
 // =======================================================
 // İŞLETME DASHBOARD YÜKLEME
@@ -1046,50 +1049,74 @@ function renderBusinessReservations() {
     const pitchCount = fieldsData[currentBusinessFieldKey].pitchCount || 1;
 
     if (activeList.length === 0) {
-        activeContainer.innerHTML = '<p style="color: var(--text-muted);">Aktif rezervasyon bulunmamaktadır.</p>';
+        activeContainer.innerHTML = '<p style="color: var(--text-muted); padding: 12px; text-align:center; font-size:0.85rem;">Aktif rezervasyon bulunmamaktadır.</p>';
     } else {
-        activeContainer.innerHTML = activeList.map(res => `
-            <div class="admin-res-item" style="${res.type === 'abone' ? 'border-left: 4px solid #f59e0b;' : ''}">
-                <div class="admin-res-info">
-                    <strong>${res.user_name}${res.type === 'abone' ? ' <span style="background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:700;">ABONE</span>' : ''}</strong><br>
-                    <small style="color: var(--text-muted);">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} | ${res.dateText} | ${res.hourText}</small>
+        activeContainer.innerHTML = activeList.map(res => {
+            const aboneBadge = res.type === 'abone' ? '<span class="abone-badge">ABONE</span>' : '';
+            return `
+            <div class="res-card" onclick="toggleResCard(this)" data-res-id="${res.id}">
+                <div class="res-card-header">
+                    <div class="res-card-info">
+                        <strong>${res.user_name}</strong> ${aboneBadge}
+                        <span class="res-card-meta">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} · ${res.dateText} · ${res.hourText}</span>
+                    </div>
+                    <span class="res-card-arrow">▼</span>
                 </div>
-                <div class="admin-res-actions" style="margin-top: 5px;">
-                    ${pitchCount > 1 ? `
-                    <select id="newPitch_${res.id}" class="admin-control-inline">
-                        <option value="1" ${res.pitchNumber === 1 ? 'selected' : ''}>Saha 1</option>
-                        <option value="2" ${res.pitchNumber === 2 ? 'selected' : ''}>Saha 2</option>
-                    </select>
-                    ` : `<input type="hidden" id="newPitch_${res.id}" value="1">`}
-                    <select id="newDate_${res.id}" class="admin-control-inline">
-                        <option value="${res.dateText}">Tarih: ${res.dateText}</option>
-                        ${getNext7Days().map(day => `<option value="${day}">${day}</option>`).join('')}
-                    </select>
-                    <select id="newHour_${res.id}" class="admin-control-inline">
-                        <option value="${res.hourText}">Saat: ${res.hourText}</option>
-                        ${masterHoursList.map(h => `<option value="${h}">${h}</option>`).join('')}
-                    </select>
-                    <button class="btn-danger-sm" style="background-color: var(--primary-green); color: #000;" onclick="updateReservation(${res.id})">ERTELE</button>
-                    <button class="btn-danger-sm" onclick="removeReservation(${res.id})">İPTAL</button>
+                <div class="res-card-body" style="display:none;">
+                    <div class="res-card-actions">
+                        ${pitchCount > 1 ? `
+                        <select id="newPitch_${res.id}" class="res-select">
+                            <option value="1" ${res.pitchNumber === 1 ? 'selected' : ''}>Saha 1</option>
+                            <option value="2" ${res.pitchNumber === 2 ? 'selected' : ''}>Saha 2</option>
+                        </select>
+                        ` : `<input type="hidden" id="newPitch_${res.id}" value="1">`}
+                        <select id="newDate_${res.id}" class="res-select">
+                            <option value="${res.dateText}">${res.dateText}</option>
+                            ${getNext7Days().map(day => `<option value="${day}">${day}</option>`).join('')}
+                        </select>
+                        <select id="newHour_${res.id}" class="res-select">
+                            <option value="${res.hourText}">${res.hourText}</option>
+                            ${masterHoursList.map(h => `<option value="${h}">${h}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="res-card-buttons">
+                        <button class="res-btn res-btn-postpone" onclick="event.stopPropagation();updateReservation(${res.id})">ERTELE</button>
+                        <button class="res-btn res-btn-cancel" onclick="event.stopPropagation();removeReservation(${res.id})">İPTAL</button>
+                    </div>
+                    <div class="res-card-hint">▼ Ertlemek veya iptal etmek için tıklayın</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    if (pastList.length === 0) {
+        pastContainer.innerHTML = '<p style="color: var(--text-muted); padding: 12px; text-align:center; font-size:0.85rem;">Geçmiş rezervasyon bulunmamaktadır.</p>';
+    } else {
+        pastContainer.innerHTML = pastList.map(res => `
+            <div class="res-card res-card-past">
+                <div class="res-card-header">
+                    <div class="res-card-info">
+                        <strong>${res.user_name}</strong>
+                        <span class="res-card-meta">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} · ${res.dateText} · ${res.hourText} · GEÇMİŞ</span>
+                    </div>
+                </div>
+                <div class="res-card-body" style="display:none;">
+                    <div class="res-card-buttons">
+                        <button class="res-btn res-btn-cancel" onclick="event.stopPropagation();removeReservation(${res.id})">SİL</button>
+                    </div>
                 </div>
             </div>
         `).join('');
     }
+}
 
-    if (pastList.length === 0) {
-        pastContainer.innerHTML = '<p style="color: var(--text-muted);">Geçmiş rezervasyon bulunmamaktadır.</p>';
-    } else {
-        pastContainer.innerHTML = pastList.map(res => `
-            <div class="admin-res-item" style="opacity: 0.85;">
-                <div class="admin-res-info">
-                    <strong>${res.user_name}${res.type === 'abone' ? ' <span style="background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:700;">ABONE</span>' : ''}</strong><br>
-                    <small style="color: var(--text-muted);">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} | ${res.dateText} | ${res.hourText} (GEÇMİŞ)</small>
-                </div>
-                <div class="admin-res-actions">
-                    <button class="btn-danger-sm" onclick="removeReservation(${res.id})">SİL</button>
-                </div>
-            </div>
-        `).join('');
+function toggleResCard(el) {
+    const body = el.querySelector('.res-card-body');
+    const arrow = el.querySelector('.res-card-arrow');
+    if (body) {
+        const isOpen = body.style.display !== 'none';
+        body.style.display = isOpen ? 'none' : 'block';
+        if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
     }
 }
 
@@ -1143,6 +1170,7 @@ function renderBusinessHoursGrid() {
     if (!field) { grid.innerHTML = ''; return; }
     const pitchCount = field.pitchCount || 1;
 
+    grid.className = 'business-hours-grid-compact';
     grid.innerHTML = '';
 
     const resForDate = currentBusinessReservations.filter(r => r.dateText === dateText);
@@ -1157,8 +1185,8 @@ function renderBusinessHoursGrid() {
 
     for (let p = 1; p <= pitchCount; p++) {
         const pitchLabel = document.createElement('div');
-        pitchLabel.style.cssText = 'grid-column: 1 / -1; font-size:0.85rem; font-weight:700; color:var(--neon-green); text-transform:uppercase; margin-top:8px;';
-        pitchLabel.textContent = `--- SAHA ${p} ---`;
+        pitchLabel.style.cssText = 'grid-column: 1 / -1; font-size:0.75rem; font-weight:700; color:var(--neon-green); text-transform:uppercase; margin:6px 0 2px;';
+        pitchLabel.textContent = `SAHA ${p}`;
         grid.appendChild(pitchLabel);
 
         const pitch = pitchObjectsList.find(po => po.fieldKey === currentBusinessFieldKey && po.pitchNumber === p) || field;
@@ -1190,10 +1218,8 @@ function renderBusinessHoursGrid() {
         });
 
         filteredHours.forEach(hour => {
-            const btn = document.createElement('button');
-            btn.classList.add('hour-btn');
-            btn.dataset.hour = hour;
-            btn.dataset.pitch = p;
+            const box = document.createElement('button');
+            box.classList.add('business-hour-box');
 
             const hStartBiz = parseInt(hour.split(':')[0]);
             let taken = filtered.find(r => r.pitchNumber === p && r.hourText === hour && r.status !== 'cancelled');
@@ -1202,23 +1228,22 @@ function renderBusinessHoursGrid() {
                 taken = currentBusinessReservations.find(r => r.dateText === nextDate && r.pitchNumber === p && r.hourText === hour && r.status !== 'cancelled');
             }
             if (taken) {
-                btn.classList.add('taken-business');
-                btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(${taken.user_name})</span>`;
-                btn.title = `${taken.user_name} | ${taken.user_phone || ''} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.type === 'abone' ? ' | ABONE' : ''}`;
-                btn.onclick = () => {
+                box.classList.add(taken.type === 'abone' ? 'abone' : 'booked');
+                box.textContent = hour;
+                box.title = `${taken.user_name} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.type === 'abone' ? ' | ABONE' : ''}`;
+                box.onclick = () => {
                     selectedBusinessGridResId = taken.id;
                     const info = document.getElementById('businessGridSelectedInfo');
                     if (info) {
                         info.style.display = 'block';
                         document.getElementById('bizGridSelName').textContent = `${taken.user_name}${taken.type === 'abone' ? ' (ABONE)' : ''}`;
-                        document.getElementById('bizGridSelDetail').textContent = `SAHA ${taken.pitchNumber} | ${taken.dateText} | ${taken.hourText} | ${taken.payment_status === 'odendi' ? '✅ ÖDENDİ' : '⚠️ ÖDENMEDİ'}${taken.reservation_price ? ` | ${taken.reservation_price} TL` : ''}`;
+                        document.getElementById('bizGridSelDetail').textContent = `SAHA ${taken.pitchNumber} | ${taken.dateText} | ${taken.hourText} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.reservation_price ? ` | ${taken.reservation_price} TL` : ''}`;
                     }
                 };
             } else {
-                btn.classList.add('business-empty');
-                btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(BOS)</span>`;
+                box.textContent = hour;
             }
-            grid.appendChild(btn);
+            grid.appendChild(box);
         });
     }
 }

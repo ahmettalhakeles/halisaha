@@ -397,26 +397,21 @@
 
         <!-- İŞLETME PANELİ -->
         <section class="business-panel" id="businessPanel" style="display: none;">
-            <div class="business-header-row">
-                <h2 class="section-title" id="businessPanelTitle" style="flex:1;">İŞLETME PANELİ</h2>
-                <button class="hamburger-btn" id="businessHamburgerBtn" onclick="toggleBusinessMenu()">
-                    <span></span><span></span><span></span>
-                </button>
-            </div>
+            <h2 class="section-title" id="businessPanelTitle">İŞLETME PANELİ</h2>
 
-            <!-- Hamburger Menü (mobil) -->
-            <div class="hamburger-menu" id="businessHamburgerMenu">
-                <div class="hamburger-field-name" id="hamburgerFieldName"></div>
-                <button class="hamburger-item active" onclick="switchBusinessTab('stats'); toggleBusinessMenu();">İSTATİSTİKLER</button>
-                <button class="hamburger-item" onclick="switchBusinessTab('reservations'); toggleBusinessMenu();">REZERVASYONLAR</button>
-                <button class="hamburger-item" onclick="switchBusinessTab('debts'); toggleBusinessMenu();">BORÇLAR</button>
-                <button class="hamburger-item" onclick="switchBusinessTab('comments'); toggleBusinessMenu();">YORUMLAR</button>
-                <button class="hamburger-item" onclick="switchBusinessTab('blacklist'); toggleBusinessMenu();">KARA LİSTE</button>
-                <button class="hamburger-item" onclick="switchBusinessTab('pricing'); toggleBusinessMenu();">FİYAT TARİFESİ</button>
-                <button class="hamburger-item" onclick="switchBusinessTab('hours'); toggleBusinessMenu();">SAAT & ENGEL</button>
-                <button class="hamburger-item" onclick="switchBusinessTab('subscriptions'); toggleBusinessMenu();">ABONELİK</button>
-                <button class="hamburger-item" onclick="switchBusinessTab('settings'); toggleBusinessMenu();">İŞLETME AYARLARI</button>
-                <button class="hamburger-item hamburger-logout" onclick="handleBusinessLogout(); toggleBusinessMenu();">ÇIKIŞ YAP</button>
+            <!-- İşletme mobil menü elemanları (existing hamburger'a eklenir) -->
+            <div id="businessMobileMenuItems" style="display:none;">
+                <div class="mobile-menu-section-title" id="hamburgerFieldName"></div>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('stats'); closeMobileMenu();">İSTATİSTİKLER</button>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('reservations'); closeMobileMenu();">REZERVASYONLAR</button>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('debts'); closeMobileMenu();">BORÇLAR</button>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('comments'); closeMobileMenu();">YORUMLAR</button>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('blacklist'); closeMobileMenu();">KARA LİSTE</button>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('pricing'); closeMobileMenu();">FİYAT TARİFESİ</button>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('hours'); closeMobileMenu();">SAAT & ENGEL</button>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('subscriptions'); closeMobileMenu();">ABONELİK</button>
+                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('settings'); closeMobileMenu();">İŞLETME AYARLARI</button>
+                <button class="nav-btn red-btn business-mobile-nav" onclick="handleBusinessLogout(); closeMobileMenu();">ÇIKIŞ YAP</button>
             </div>
 
             <!-- İŞLETME SEKME MENÜSÜ -->
