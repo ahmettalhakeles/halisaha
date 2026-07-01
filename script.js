@@ -349,6 +349,10 @@ async function handleBusinessLogin() {
     if (customerContainer) customerContainer.style.display = 'none';
 
     document.querySelector('main').classList.add('business-mode');
+    const weatherEl = document.querySelector('.weather-container');
+    if (weatherEl) weatherEl.style.display = 'none';
+    const textDivider = document.querySelector('.text-divider');
+    if (textDivider) textDivider.style.display = 'none';
     document.getElementById('businessPanel').style.display = 'block';
     const field = fieldsData[currentBusinessFieldKey];
     document.getElementById('businessPanelTitle').innerText = `${field.name.toLocaleUpperCase('tr-TR')} YÖNETİM PANELİ`;
@@ -385,6 +389,10 @@ function handleBusinessLogout() {
     if (customerContainer) customerContainer.style.display = 'block';
 
     document.querySelector('main').classList.remove('business-mode');
+    const weatherEl = document.querySelector('.weather-container');
+    if (weatherEl) weatherEl.style.display = '';
+    const textDivider = document.querySelector('.text-divider');
+    if (textDivider) textDivider.style.display = '';
     document.getElementById('businessPanel').style.display = 'none';
 
     // İşletme menüsünü kaldır
