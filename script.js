@@ -364,7 +364,8 @@ async function handleBusinessLogin() {
     const field = fieldsData[currentBusinessFieldKey];
     document.getElementById('businessPanelTitle').innerText = `YÖNETİM PANELİ`;
     document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
-    document.getElementById('hamburgerFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
+    const hbf = document.getElementById('hamburgerFieldName');
+    if (hbf) hbf.innerText = field.name.toLocaleUpperCase('tr-TR');
     // Her zaman işletme menü öğelerini hamburger menüsüne ekle (PC'de de hamburger ile kullanılabilir)
     const headerActions = document.querySelector('.header-actions');
     if (headerActions) {
@@ -4250,7 +4251,8 @@ function adminEnterFieldPanel(key) {
     document.body.classList.remove('admin-mode');
     document.querySelector('main').classList.add('business-mode');
     document.body.classList.add('business-mode');
-    document.getElementById('hamburgerFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
+    const hbf2 = document.getElementById('hamburgerFieldName');
+    if (hbf2) hbf2.innerText = field.name.toLocaleUpperCase('tr-TR');
     document.getElementById('adminAuthSection').style.display = 'none';
     document.getElementById('adminLogoutSection').style.display = 'none';
     
