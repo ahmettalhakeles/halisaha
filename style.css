@@ -3960,10 +3960,19 @@ body.business-mode .header-actions #userAuthSection {
     }
 }
 
-/* Footer Auth Bar Gizleme */
+/* Footer Auth Bar ve Müşteri Alanları Gizleme */
 body.business-mode #footerAuthBar,
 body.admin-mode #footerAuthBar,
-body.admin-impersonating #footerAuthBar {
+body.admin-mode #userAuthSection,
+body.admin-mode #userLogoutSection,
+body.admin-mode #weatherWidget,
+body.admin-mode #sunsetWidget,
+body.admin-mode .mobile-hamburger-btn,
+body.admin-impersonating #footerAuthBar,
+body.admin-impersonating #userAuthSection,
+body.admin-impersonating #userLogoutSection,
+body.admin-impersonating #weatherWidget,
+body.admin-impersonating #sunsetWidget {
     display: none !important;
 }
 

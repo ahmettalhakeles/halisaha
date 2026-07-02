@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.0.3">
+    <link rel="stylesheet" href="style.css?v=1.0.4">
 
 </head>
 <body>
@@ -801,11 +801,10 @@
             </div>
         </section>
 
-        <!-- SÜPER YÖNETİCİ PANELİ -->
         <section class="business-panel" id="adminPanel" style="display: none;">
-            <div class="admin-banner">
-                <span id="adminBannerText">🛡️ YÖNETİCİ PANELİ</span>
-                <button class="action-btn" onclick="exitAdminPanel()" style="background:rgba(139,92,246,0.2);border-color:#8b5cf6;color:#8b5cf6;padding:6px 14px;font-size:0.75rem;">← ANA EKRAN</button>
+            <div class="admin-banner" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+                <span id="adminBannerText" style="margin: 0;">🛡️ YÖNETİCİ PANELİ</span>
+                <button class="nav-btn red-btn" onclick="handleAdminLogout()" style="font-size: 0.8rem; padding: 6px 14px; margin: 0; background: #ef4444; border-color: #ef4444; color: #fff; font-weight: bold; border-radius: 6px; cursor: pointer;">ÇIKIŞ YAP</button>
             </div>
             <div class="admin-tabs">
                 <button class="tab-btn active" onclick="switchAdminTab('dashboard')">DASHBOARD</button>
@@ -1347,7 +1346,7 @@
         </button>
     </div>
 
-    <script src="script.js?v=1.0.3"></script>
+    <script src="script.js?v=1.0.4"></script>
 </body>
 </html>
 
