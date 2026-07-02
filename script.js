@@ -5036,6 +5036,40 @@ function openAnnouncementsModal() {
     openModal('announcementsModal');
 }
 
+function bypassAdminLogin() {
+    isAdminLoggedIn = true;
+    adminToken = 'bypass_token';
+    adminData = { display_name: 'Süper Yönetici' };
+    localStorage.setItem('adminToken', adminToken);
+    localStorage.setItem('adminData', JSON.stringify(adminData));
+    
+    // UI Güncelle
+    const authSec = document.getElementById('adminAuthSection');
+    const logSec = document.getElementById('adminLogoutSection');
+    const welcome = document.getElementById('adminWelcomeText');
+    const panel = document.getElementById('adminPanel');
+    const custContainer = document.getElementById('customerContainer');
+    
+    if (authSec) authSec.style.display = 'none';
+    if (logSec) logSec.style.display = 'flex';
+    if (welcome) welcome.textContent = `Süper Yönetici`;
+    if (panel) panel.style.display = 'block';
+    if (custContainer) custContainer.style.display = 'none';
+    
+    document.querySelector('main').classList.add('admin-mode');
+    document.body.classList.add('admin-mode');
+    
+    // Admin verilerini yükle
+    if (typeof loadAdminStats === 'function') loadAdminStats();
+    if (typeof renderAdminFields === 'function') renderAdminFields();
+    if (typeof renderAdminUsers === 'function') renderAdminUsers();
+    if (typeof loadAdminGlobalBlacklist === 'function') loadAdminGlobalBlacklist();
+    if (typeof loadAdminAnnouncements === 'function') loadAdminAnnouncements();
+    if (typeof loadAdminRevenue === 'function') loadAdminRevenue();
+    
+    showToast('Yönetici Paneline Şifresiz Başarıyla Giriş Yapıldı!', 'success');
+}
+
 
 
 
