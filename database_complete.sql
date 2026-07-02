@@ -249,6 +249,42 @@ CREATE TABLE IF NOT EXISTS admin_login_logs (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS super_admins (
+  id INT NOT NULL AUTO_INCREMENT,
+  username VARCHAR(50) NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  display_name VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_activity_log (
+  id INT NOT NULL AUTO_INCREMENT,
+  admin_username VARCHAR(50) NOT NULL,
+  action_type VARCHAR(50) NOT NULL,
+  target_type VARCHAR(50) NOT NULL,
+  target_name VARCHAR(255) DEFAULT NULL,
+  description TEXT DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_action_type (action_type),
+  KEY idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS announcements (
+  id INT NOT NULL AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  target_audience VARCHAR(50) NOT NULL DEFAULT 'all',
+  target_field_key VARCHAR(50) DEFAULT NULL,
+  created_by VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Default super admin is created in server.js startup if not exists
+
 -- Seed data for fields (sadece yoksa ekle)
 INSERT IGNORE INTO pitch_settings (fieldKey, isClosed, openingHour, closingHour, disabledHours, aboneHours, pricing, field_count, total_reservations, last_login, average_rating)
 VALUES

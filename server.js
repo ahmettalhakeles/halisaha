@@ -554,6 +554,13 @@ db.getConnection((err, connection) => {
         }
     }
 
+    // Varsayılan süper yönetici hesabını oluştur
+    const defaultAdminPass = bcrypt.hashSync('admin123', 10);
+    db.query("INSERT IGNORE INTO super_admins (username, password, display_name) VALUES (?, ?, ?)", ['admin', defaultAdminPass, 'Süper Yönetici'], (adminErr) => {
+        if (adminErr) console.error('❌ Varsayılan admin oluşturulamadı:', adminErr.message);
+        else console.log('✅ Varsayılan admin hesabı hazır (admin / admin123)');
+    });
+
     connection.release();
 
     // Sunucuyu başlat (veritabanı bağlantısı kurulduktan sonra)
@@ -2463,6 +2470,266 @@ function updateGlobalBanStatus(phone, callback) {
         });
     });
 }
+
+// =======================================================
+// SÜPER YÖNETİCİ PANELİ API ENDPOINTS
+// =======================================================
+
+// Admin auth middleware
+function requireAdmin(req, res, next) {
+    const token = req.headers['x-admin-token'];
+    if (!token) return res.status(401).json({ success: false, message: 'Yetkilendirme gerekli!' });
+    db.query("SELECT * FROM super_admins WHERE username = ? AND password = ?", [token, token], (err, admins) => {
+        if (err || admins.length === 0) return res.status(403).json({ success: false, message: 'Geçersiz token!' });
+        req.adminUser = admins[0];
+        next();
+    });
+}
+
+// Admin login
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ success: false, message: 'Kullanıcı adı ve şifre zorunludur!' });
+    db.query("SELECT * FROM super_admins WHERE username = ?", [username], (err, admins) => {
+        if (err || admins.length === 0) return res.status(401).json({ success: false, message: 'Kullanıcı bulunamadı!' });
+        const admin = admins[0];
+        if (!bcrypt.compareSync(password, admin.password)) return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
+        res.json({ success: true, admin: { username: admin.username, display_name: admin.display_name }, token: admin.username });
+    });
+});
+
+// Dashboard istatistikleri
+app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
+    let response = { success: true, data: {} };
+    let pending = 4;
+    function checkDone() { if (--pending === 0) res.json(response); }
+
+    db.query("SELECT COUNT(*) AS total FROM pitch_objects", (err, r) => { response.data.totalPitches = r?.[0]?.total || 0; checkDone(); });
+    db.query("SELECT COUNT(*) AS total FROM pitch_objects WHERE isClosed = 0", (err, r) => { response.data.activePitches = r?.[0]?.total || 0; checkDone(); });
+    db.query("SELECT COUNT(*) AS total FROM users", (err, r) => { response.data.totalUsers = r?.[0]?.total || 0; checkDone(); });
+    db.query("SELECT COUNT(*) AS total FROM reservations", (err, r) => { response.data.totalReservations = r?.[0]?.total || 0; checkDone(); });
+});
+
+// Tüm sahaları listele
+app.get('/api/admin/fields', requireAdmin, (req, res) => {
+    db.query("SELECT p.*, ps.total_reservations, ps.average_rating, (SELECT COUNT(*) FROM pitch_objects WHERE fieldKey = p.fieldKey) AS pitch_count FROM pitch_settings p ORDER BY p.fieldKey", (err, fields) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data: fields });
+    });
+});
+
+// Saha ekle
+app.post('/api/admin/fields', requireAdmin, (req, res) => {
+    const { fieldKey, name, address, coordinates, phone, openingHour, closingHour, pitchCount, morningPrice, eveningPrice } = req.body;
+    if (!fieldKey || !name) return res.status(400).json({ success: false, message: 'Saha anahtarı ve adı zorunludur!' });
+    const key = fieldKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+    db.query("INSERT IGNORE INTO pitch_settings (fieldKey, isClosed, openingHour, closingHour, disabledHours, aboneHours, pricing, field_count) VALUES (?, 0, ?, ?, '[]', '[]', ?, ?)", 
+        [key, openingHour || '09:00', closingHour || '23:00', `${morningPrice || 2500}/${eveningPrice || 3000}`, pitchCount || 1], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Saha eklenemedi! (Zaten var olabilir)' });
+        for (let i = 1; i <= (pitchCount || 1); i++) {
+            db.query("INSERT IGNORE INTO pitch_objects (fieldKey, pitchNumber, name, address, coordinates, phone, isClosed, hasService, openingHour, closingHour) VALUES (?, ?, ?, ?, ?, ?, 0, 'Servis: Yok', ?, ?)",
+                [key, i, `${name} - SAHA ${i}`, address || '', coordinates || '', phone || '', openingHour || '09:00', closingHour || '23:00']);
+        }
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_add', 'field', ?, ?)", 
+            [req.adminUser.username, name, `${name} sahası eklendi`]);
+        res.json({ success: true, message: 'Saha başarıyla eklendi!' });
+    });
+});
+
+// Saha sil
+app.delete('/api/admin/fields/:key', requireAdmin, (req, res) => {
+    const { key } = req.params;
+    db.query("DELETE FROM pitch_settings WHERE fieldKey = ?", [key], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Saha silinemedi!' });
+        db.query("DELETE FROM pitch_objects WHERE fieldKey = ?", [key]);
+        db.query("DELETE FROM reservations WHERE fieldKey = ?", [key]);
+        db.query("DELETE FROM field_blacklists WHERE fieldKey = ?", [key]);
+        db.query("DELETE FROM field_comments WHERE fieldKey = ?", [key]);
+        db.query("DELETE FROM field_daily_hours WHERE fieldKey = ?", [key]);
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_delete', 'field', ?, ?)", 
+            [req.adminUser.username, key, `${key} sahası silindi`]);
+        res.json({ success: true, message: 'Saha ve tüm verileri silindi!' });
+    });
+});
+
+// Saha görünürlük değiştir
+app.put('/api/admin/fields/:key/visibility', requireAdmin, (req, res) => {
+    const { key } = req.params;
+    db.query("UPDATE pitch_settings SET isClosed = NOT isClosed WHERE fieldKey = ?", [key], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Güncellenemedi!' });
+        db.query("UPDATE pitch_objects SET isClosed = NOT isClosed WHERE fieldKey = ?", [key]);
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_visibility', 'field', ?, ?)", 
+            [req.adminUser.username, key, `${key} görünürlüğü değiştirildi`]);
+        res.json({ success: true, message: 'Görünürlük güncellendi!' });
+    });
+});
+
+// Tüm kullanıcıları listele (arama ile)
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+    const { search, status } = req.query;
+    let sql = "SELECT * FROM users WHERE 1=1";
+    const params = [];
+    if (search) { sql += " AND (name LIKE ? OR phone LIKE ? OR email LIKE ?)"; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (status) { sql += " AND status = ?"; params.push(status); }
+    sql += " ORDER BY id DESC LIMIT 200";
+    db.query(sql, params, (err, users) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data: users });
+    });
+});
+
+// Kullanıcı detayı
+app.get('/api/admin/users/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    let response = { success: true, data: {} };
+    let pending = 3;
+    function checkDone() { if (--pending === 0) res.json(response); }
+
+    db.query("SELECT * FROM users WHERE id = ?", [id], (err, users) => {
+        if (err || users.length === 0) { pending = 0; return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' }); }
+        response.data.user = users[0];
+        checkDone();
+    });
+    db.query("SELECT r.*, p.name AS field_name FROM reservations r LEFT JOIN pitch_objects p ON r.fieldKey = p.fieldKey AND r.pitchNumber = p.pitchNumber WHERE r.user_phone = (SELECT phone FROM users WHERE id = ?) ORDER BY r.created_at DESC LIMIT 50", [id], (err, reservations) => {
+        if (!err) response.data.reservations = reservations;
+        checkDone();
+    });
+    db.query("SELECT r.*, p.name AS field_name FROM reviews r LEFT JOIN pitch_objects p ON r.fieldKey = p.fieldKey AND r.pitchNumber = p.pitchNumber WHERE r.user_id = ? ORDER BY r.created_at DESC", [id], (err, reviews) => {
+        if (!err) response.data.reviews = reviews;
+        checkDone();
+    });
+});
+
+// Kullanıcı sil
+app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    db.query("SELECT name, phone FROM users WHERE id = ?", [id], (err, users) => {
+        if (err || users.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
+        db.query("DELETE FROM users WHERE id = ?", [id], (delErr) => {
+            if (delErr) return res.status(500).json({ success: false, message: 'Silinemedi!' });
+            db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'user_delete', 'user', ?, ?)", 
+                [req.adminUser.username, users[0].name, `${users[0].name} (${users[0].phone}) silindi`]);
+            res.json({ success: true, message: 'Kullanıcı silindi!' });
+        });
+    });
+});
+
+// Kullanıcı ban/unban
+app.put('/api/admin/users/:id/ban', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    db.query("SELECT name, status FROM users WHERE id = ?", [id], (err, users) => {
+        if (err || users.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
+        const newStatus = users[0].status === 'banned' ? 'active' : 'banned';
+        db.query("UPDATE users SET status = ? WHERE id = ?", [newStatus, id], (updErr) => {
+            if (updErr) return res.status(500).json({ success: false, message: 'Güncellenemedi!' });
+            const action = newStatus === 'banned' ? 'ban' : 'unban';
+            db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, ?, 'user', ?, ?)", 
+                [req.adminUser.username, `user_${action}`, users[0].name, `${users[0].name} ${newStatus === 'banned' ? 'yasaklandı' : 'yasak kaldırıldı'}`]);
+            res.json({ success: true, message: newStatus === 'banned' ? 'Kullanıcı yasaklandı!' : 'Kullanıcı yasağı kaldırıldı!', status: newStatus });
+        });
+    });
+});
+
+// Aktivite günlüğü
+app.get('/api/admin/activity-log', requireAdmin, (req, res) => {
+    const { type } = req.query;
+    let sql = "SELECT * FROM admin_activity_log";
+    const params = [];
+    if (type) { sql += " WHERE action_type LIKE ?"; params.push(`%${type}%`); }
+    sql += " ORDER BY created_at DESC LIMIT 200";
+    db.query(sql, params, (err, logs) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data: logs });
+    });
+});
+
+// Aktivite günlüğüne yaz (client tarafından)
+app.post('/api/admin/activity-log', requireAdmin, (req, res) => {
+    const { action_type, target_type, target_name, description } = req.body;
+    db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, ?, ?, ?, ?)",
+        [req.adminUser.username, action_type, target_type, target_name, description], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Log yazılamadı!' });
+        res.json({ success: true });
+    });
+});
+
+// Global kara liste
+app.get('/api/admin/global-blacklist', requireAdmin, (req, res) => {
+    const sql = "SELECT fb.phone_number, COUNT(DISTINCT fb.fieldKey) AS block_count, GROUP_CONCAT(DISTINCT fb.fieldKey SEPARATOR ', ') AS fields, u.name, u.status FROM field_blacklists fb LEFT JOIN users u ON fb.phone_number = u.phone GROUP BY fb.phone_number HAVING block_count >= 1 ORDER BY block_count DESC";
+    db.query(sql, (err, list) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data: list });
+    });
+});
+
+// Manuel global ban
+app.post('/api/admin/global-blacklist', requireAdmin, (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Telefon zorunludur!' });
+    db.query("UPDATE users SET status = 'globally_banned' WHERE phone = ?", [phone], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Güncellenemedi!' });
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'global_ban', 'user', ?, ?)", 
+            [req.adminUser.username, phone, `${phone} global olarak yasaklandı`]);
+        res.json({ success: true, message: 'Kullanıcı global olarak yasaklandı!' });
+    });
+});
+
+// Global ban kaldır
+app.delete('/api/admin/global-blacklist/:phone', requireAdmin, (req, res) => {
+    const { phone } = req.params;
+    db.query("UPDATE users SET status = 'active' WHERE phone = ?", [phone], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Güncellenemedi!' });
+        db.query("DELETE FROM field_blacklists WHERE phone_number = ?", [phone]);
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'global_unban', 'user', ?, ?)", 
+            [req.adminUser.username, phone, `${phone} global yasağı kaldırıldı`]);
+        res.json({ success: true, message: 'Global yasak kaldırıldı ve tüm kara liste kayıtları temizlendi!' });
+    });
+});
+
+// Duyuru gönder
+app.post('/api/admin/announcements', requireAdmin, (req, res) => {
+    const { title, message, target_audience, target_field_key } = req.body;
+    if (!title || !message) return res.status(400).json({ success: false, message: 'Başlık ve mesaj zorunludur!' });
+    db.query("INSERT INTO announcements (title, message, target_audience, target_field_key, created_by) VALUES (?, ?, ?, ?, ?)",
+        [title, message, target_audience || 'all', target_field_key || null, req.adminUser.username], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Duyuru gönderilemedi!' });
+        res.json({ success: true, message: 'Duyuru başarıyla gönderildi!' });
+    });
+});
+
+// Duyuru listesi
+app.get('/api/admin/announcements', requireAdmin, (req, res) => {
+    db.query("SELECT * FROM announcements ORDER BY created_at DESC LIMIT 100", (err, list) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data: list });
+    });
+});
+
+// Saha bazlı gelir raporu
+app.get('/api/admin/revenue', requireAdmin, (req, res) => {
+    const { period } = req.query;
+    let dateFilter = "";
+    if (period === 'today') dateFilter = "WHERE DATE(created_at) = CURDATE()";
+    else if (period === 'week') dateFilter = "WHERE YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1)";
+    else if (period === 'month') dateFilter = "WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())";
+    const sql = `SELECT fieldKey, COUNT(*) AS total_res, COALESCE(SUM(reservation_price), 0) AS total_revenue, SUM(CASE WHEN payment_status = 'odenmedi' THEN reservation_price ELSE 0 END) AS total_debt FROM reservations ${dateFilter} GROUP BY fieldKey ORDER BY total_revenue DESC`;
+    db.query(sql, (err, data) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data });
+    });
+});
+
+// Saha paneline admin erişimi (business panel bilgilerini döndür)
+app.get('/api/admin/field-access/:key', requireAdmin, (req, res) => {
+    const { key } = req.params;
+    if (!fieldsData[key]) return res.status(404).json({ success: false, message: 'Saha bulunamadı!' });
+    db.query("SELECT * FROM pitch_settings WHERE fieldKey = ?", [key], (err, settings) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_access', 'field', ?, ?)", 
+            [req.adminUser.username, fieldsData[key].name, `${fieldsData[key].name} paneline admin erişimi`]);
+        res.json({ success: true, field: fieldsData[key], settings: settings[0] || {} });
+    });
+});
 
 // Global error handler - always return JSON
 app.use((err, req, res, next) => {

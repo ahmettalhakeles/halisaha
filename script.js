@@ -355,8 +355,9 @@ async function handleBusinessLogin() {
     if (textDivider) textDivider.style.display = 'none';
     document.getElementById('businessPanel').style.display = 'block';
     const field = fieldsData[currentBusinessFieldKey];
-    document.getElementById('businessPanelTitle').innerText = `${field.name.toLocaleUpperCase('tr-TR')} YÖNETİM PANELİ`;
+    document.getElementById('businessPanelTitle').innerText = `YÖNETİM PANELİ`;
     document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
+    document.getElementById('hamburgerFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
     // İşletme menü öğelerini sadece mobilde hamburger menüsüne ekle
     if (window.innerWidth <= 768) {
         const businessMenuItems = document.getElementById('businessMobileMenuItems');
@@ -368,6 +369,9 @@ async function handleBusinessLogin() {
                 clone.style.display = 'block';
                 const existingClone = document.getElementById('businessMobileMenuClone');
                 if (existingClone) existingClone.remove();
+                const btns = Array.from(clone.querySelectorAll('.business-mobile-nav'));
+                btns.sort((a, b) => a.textContent.trim().localeCompare(b.textContent.trim(), 'tr'));
+                btns.forEach(btn => clone.appendChild(btn));
                 headerActions.insertBefore(clone, headerActions.firstChild);
             }
         }
@@ -398,6 +402,16 @@ function handleBusinessLogout() {
     // İşletme menüsünü kaldır
     const clone = document.getElementById('businessMobileMenuClone');
     if (clone) clone.remove();
+
+    // Admin modunda işletme panelinden çıkış: admin paneline dön
+    if (isAdminLoggedIn) {
+        document.querySelector('main').classList.remove('business-mode');
+        document.getElementById('adminPanel').style.display = 'block';
+        document.querySelector('main').classList.add('admin-mode');
+        document.getElementById('customerContainer').style.display = 'none';
+        switchAdminTab('fields');
+        return;
+    }
 
     alert("İşletme panelinden çıkış yapıldı.");
     if (currentSelectedFieldKey) onDateOrFieldChange();
@@ -3987,7 +4001,404 @@ async function loadBusinessComments() {
             container.innerHTML = reviews.map(r => {
                 const rating = ((r.rating_turf + r.rating_lighting + r.rating_facilities + r.rating_service) / 4).toFixed(1);
                 const dateStr = new Date(r.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-                
+// =======================================================
+// SÜPER YÖNETİCİ PANELİ
+// =======================================================
+let isAdminLoggedIn = false;
+let adminToken = null;
+let adminData = null;
+
+function handleAdminLogin() {
+    const username = document.getElementById('adminUsername').value.trim();
+    const password = document.getElementById('adminPassword').value.trim();
+    const errorEl = document.getElementById('adminLoginError');
+    if (!username || !password) { errorEl.textContent = 'Kullanıcı adı ve şifre girin!'; errorEl.style.display = 'block'; return; }
+    errorEl.style.display = 'none';
+    fetch('/api/admin/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { errorEl.textContent = data.message; errorEl.style.display = 'block'; return; }
+        closeModal('adminLoginModal');
+        isAdminLoggedIn = true;
+        adminToken = data.token;
+        adminData = data.admin;
+        document.getElementById('adminAuthSection').style.display = 'none';
+        document.getElementById('adminLogoutSection').style.display = 'flex';
+        document.getElementById('adminWelcomeText').textContent = `🛡️ ${data.admin.display_name}`;
+        openAdminPanel();
+    })
+    .catch(() => { errorEl.textContent = 'Sunucu hatası!'; errorEl.style.display = 'block'; });
+}
+
+function handleAdminLogout() {
+    isAdminLoggedIn = false;
+    adminToken = null;
+    adminData = null;
+    document.getElementById('adminAuthSection').style.display = 'flex';
+    document.getElementById('adminLogoutSection').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'none';
+    document.querySelector('main').classList.remove('admin-mode');
+    document.getElementById('customerContainer').style.display = 'block';
+}
+
+function openAdminPanel() {
+    document.getElementById('adminPanel').style.display = 'block';
+    document.querySelector('main').classList.add('admin-mode');
+    document.getElementById('customerContainer').style.display = 'none';
+    switchAdminTab('dashboard');
+    loadAdminDashboard();
+}
+
+function exitAdminPanel() {
+    document.getElementById('adminPanel').style.display = 'none';
+    document.querySelector('main').classList.remove('admin-mode');
+    document.getElementById('customerContainer').style.display = 'block';
+}
+
+function getAdminHeaders() {
+    return { 'Content-Type': 'application/json', 'x-admin-token': adminToken || '' };
+}
+
+function switchAdminTab(tab) {
+    const tabs = ['dashboard', 'fields', 'users', 'activity', 'blacklist', 'announcements', 'revenue'];
+    tabs.forEach(t => {
+        const el = document.getElementById('admin' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (el) el.style.display = t === tab ? 'block' : 'none';
+    });
+    document.querySelectorAll('#adminPanel .admin-tabs .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim().toLowerCase().includes(tab));
+    });
+    if (tab === 'dashboard') loadAdminDashboard();
+    if (tab === 'fields') renderAdminFields();
+    if (tab === 'users') renderAdminUsers();
+    if (tab === 'activity') renderAdminActivity();
+    if (tab === 'blacklist') loadAdminGlobalBlacklist();
+    if (tab === 'announcements') loadAdminAnnouncements();
+    if (tab === 'revenue') renderAdminRevenue();
+}
+
+function loadAdminDashboard() {
+    fetch('/api/admin/dashboard', { headers: getAdminHeaders() })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) return;
+        document.getElementById('adminStatPitches').textContent = data.data.totalPitches || 0;
+        document.getElementById('adminStatActive').textContent = data.data.activePitches || 0;
+        document.getElementById('adminStatUsers').textContent = data.data.totalUsers || 0;
+        document.getElementById('adminStatReservations').textContent = data.data.totalReservations || 0;
+    });
+}
+
+// --- SAHA YÖNETİMİ ---
+function renderAdminFields() {
+    const container = document.getElementById('adminFieldList');
+    const search = (document.getElementById('adminFieldSearch').value || '').toLowerCase();
+    const fields = window.fieldsData || {};
+    const keys = Object.keys(fields).filter(k => fields[k].name.toLowerCase().includes(search));
+    if (keys.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Saha bulunamadı.</div>'; return; }
+    container.innerHTML = keys.map(key => {
+        const f = fields[key];
+        return `<div class="admin-field-card${f.isClosed ? ' passive' : ''}">
+            <div class="field-info">
+                <div class="field-name">${f.name}</div>
+                <div class="field-meta">${f.address} · ${f.phone} · ${f.pitchCount || 1} saha · ${f.isClosed ? '<span style="color:#ef4444;">PASİF</span>' : '<span style="color:#34d399;">AKTİF</span>'}</div>
+            </div>
+            <div class="field-actions">
+                <button class="btn-enter" onclick="adminEnterFieldPanel('${key}')">PANEL</button>
+                <button class="btn-visibility" onclick="adminToggleFieldVisibility('${key}')">${f.isClosed ? 'GÖSTER' : 'GİZLE'}</button>
+                <button class="btn-delete" onclick="adminDeleteField('${key}')">SİL</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function adminEnterFieldPanel(key) {
+    if (!window.fieldsData || !window.fieldsData[key]) return;
+    const field = window.fieldsData[key];
+    currentBusinessFieldKey = key;
+    isBusinessLoggedIn = true;
+    document.getElementById('businessPanelTitle').innerText = `🛡️ ADMIN · ${field.name.toLocaleUpperCase('tr-TR')} YÖNETİLİYOR`;
+    document.getElementById('businessPanel').style.display = 'block';
+    document.getElementById('adminPanel').style.display = 'none';
+    document.querySelector('main').classList.remove('admin-mode');
+    document.querySelector('main').classList.add('business-mode');
+    document.getElementById('hamburgerFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
+    if (window.innerWidth <= 768) {
+        const businessMenuItems = document.getElementById('businessMobileMenuItems');
+        if (businessMenuItems) {
+            const headerActions = document.querySelector('.header-actions');
+            if (headerActions) {
+                const clone = businessMenuItems.cloneNode(true);
+                clone.id = 'businessMobileMenuClone';
+                clone.style.display = 'block';
+                const existingClone = document.getElementById('businessMobileMenuClone');
+                if (existingClone) existingClone.remove();
+                const btns = Array.from(clone.querySelectorAll('.business-mobile-nav'));
+                btns.forEach(btn => btn.setAttribute('onclick', btn.getAttribute('onclick').replace('handleBusinessLogout', 'adminReturnFromFieldPanel')));
+                headerActions.insertBefore(clone, headerActions.firstChild);
+            }
+        }
+    }
+    switchBusinessTab('stats');
+    loadBusinessDashboard();
+    adminLogAction('field_access', 'field', field.name, `${field.name} paneline admin erişimi`);
+}
+
+function adminReturnFromFieldPanel() {
+    closeMobileMenu();
+    handleBusinessLogout();
+}
+
+function adminToggleFieldVisibility(key) {
+    const f = window.fieldsData[key];
+    if (!f) return;
+    fetch(`/api/admin/fields/${key}/visibility`, { method: 'PUT', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) { f.isClosed = !f.isClosed; renderAdminFields(); showToast(d.message, 'info'); }
+        else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+function adminDeleteField(key) {
+    if (!confirm(`${window.fieldsData[key]?.name || key} sahasını ve tüm verilerini silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)) return;
+    fetch(`/api/admin/fields/${key}`, { method: 'DELETE', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) { delete window.fieldsData[key]; renderAdminFields(); showToast(d.message, 'info'); }
+        else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+function showAddFieldForm() {
+    const form = document.getElementById('adminAddFieldForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function submitAddField() {
+    const data = {
+        fieldKey: document.getElementById('afKey').value.trim(),
+        name: document.getElementById('afName').value.trim(),
+        address: document.getElementById('afAddress').value.trim(),
+        phone: document.getElementById('afPhone').value.trim(),
+        openingHour: document.getElementById('afOpening').value.trim() || '09:00',
+        closingHour: document.getElementById('afClosing').value.trim() || '23:00',
+        pitchCount: parseInt(document.getElementById('afPitchCount').value) || 1,
+        morningPrice: parseInt(document.getElementById('afMorningPrice').value) || 2500,
+        eveningPrice: parseInt(document.getElementById('afEveningPrice').value) || 3000
+    };
+    if (!data.fieldKey || !data.name) { showToast('Saha anahtarı ve adı zorunludur!', 'error'); return; }
+    fetch('/api/admin/fields', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify(data) })
+    .then(r => r.json()).then(d => {
+        if (d.success) {
+            showToast(d.message, 'info');
+            document.getElementById('adminAddFieldForm').style.display = 'none';
+            document.getElementById('afKey').value = '';
+            document.getElementById('afName').value = '';
+            renderAdminFields();
+            location.reload();
+        } else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+// --- KULLANICI YÖNETİMİ ---
+function renderAdminUsers() {
+    const container = document.getElementById('adminUserList');
+    const search = document.getElementById('adminUserSearch').value.trim();
+    const status = document.getElementById('adminUserStatusFilter').value;
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (status) params.set('status', status);
+    fetch(`/api/admin/users?${params}`, { headers: getAdminHeaders() })
+    .then(r => r.json()).then(data => {
+        if (!data.success || !data.data) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;">Kullanıcı bulunamadı.</div>'; return; }
+        container.innerHTML = data.data.map(u => {
+            const statusClass = u.status === 'globally_banned' ? 'globally_banned' : (u.status === 'banned' ? 'banned' : 'active');
+            const statusLabel = u.status === 'globally_banned' ? 'GLOBAL BAN' : (u.status === 'banned' ? 'BANLI' : 'AKTİF');
+            return `<div class="admin-user-row" onclick="showAdminUserDetail(${u.id})">
+                <div class="user-info">
+                    <div class="user-name">${u.name}</div>
+                    <div class="user-meta">${u.phone || ''} · ${u.email || ''} · ${u.age ? u.age + ' yaş' : ''}</div>
+                </div>
+                <span class="user-status ${statusClass}">${statusLabel}</span>
+            </div>`;
+        }).join('');
+    }).catch(() => container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+}
+
+function showAdminUserDetail(id) {
+    const container = document.getElementById('adminUserDetail');
+    container.style.display = 'block';
+    container.innerHTML = '<div style="text-align:center;padding:20px;">Yükleniyor...</div>';
+    fetch(`/api/admin/users/${id}`, { headers: getAdminHeaders() })
+    .then(r => r.json()).then(data => {
+        if (!data.success || !data.data.user) { container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Kullanıcı bulunamadı!</div>'; return; }
+        const u = data.data.user;
+        container.innerHTML = `<div class="admin-user-detail">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
+                <h3>${u.name}</h3>
+                <div style="display:flex;gap:6px;">
+                    <button class="action-btn" onclick="adminToggleUserBan(${u.id})" style="padding:5px 12px;font-size:0.7rem;background:${u.status === 'banned' || u.status === 'globally_banned' ? 'rgba(16,185,129,0.2);border-color:#10b981;color:#34d399' : 'rgba(239,68,68,0.2);border-color:#ef4444;color:#f87171'}">${u.status === 'banned' || u.status === 'globally_banned' ? 'BAN KALDIR' : 'BANLA'}</button>
+                    <button class="action-btn" onclick="adminDeleteUser(${u.id},'${u.name}')" style="padding:5px 12px;font-size:0.7rem;background:rgba(239,68,68,0.2);border-color:#ef4444;color:#f87171;">SİL</button>
+                </div>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-item"><label>Telefon</label><span>${u.phone || '-'}</span></div>
+                <div class="detail-item"><label>E-posta</label><span>${u.email || '-'}</span></div>
+                <div class="detail-item"><label>Yaş</label><span>${u.age || '-'}</span></div>
+                <div class="detail-item"><label>Boy</label><span>${u.height || '-'} cm</span></div>
+                <div class="detail-item"><label>Kilo</label><span>${u.weight || '-'} kg</span></div>
+                <div class="detail-item"><label>Mevki</label><span>${u.position || '-'}</span></div>
+                <div class="detail-item"><label>Tecrübe</label><span>${u.experience || '-'}</span></div>
+                <div class="detail-item"><label>Durum</label><span style="color:${u.status === 'globally_banned' ? '#ef4444' : (u.status === 'banned' ? '#f87171' : '#34d399')}">${u.status}</span></div>
+            </div>
+            <div style="margin-top:15px;">
+                <h4 style="color:#8b5cf6;margin-bottom:8px;">REZERVASYONLAR (${(data.data.reservations||[]).length})</h4>
+                ${(data.data.reservations||[]).slice(0,10).map(r => `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">${r.dateText} ${r.hourText} · ${r.field_name || r.fieldKey} · ${r.reservation_price} TL · <span style="color:${r.payment_status === 'odendi' ? '#34d399' : '#f87171'}">${r.payment_status}</span></div>`).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);">Rezervasyon yok.</div>'}
+            </div>
+            <div style="margin-top:15px;">
+                <h4 style="color:#8b5cf6;margin-bottom:8px;">YORUMLAR (${(data.data.reviews||[]).length})</h4>
+                ${(data.data.reviews||[]).map(r => `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">${r.field_name || r.fieldKey} · Puan: ${r.rating_turf || '-'}/5 · ${r.comment || ''}</div>`).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);">Yorum yok.</div>'}
+            </div>
+        </div>`;
+    }).catch(() => container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+}
+
+function adminToggleUserBan(id) {
+    fetch(`/api/admin/users/${id}/ban`, { method: 'PUT', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) { showToast(d.message, 'info'); renderAdminUsers(); document.getElementById('adminUserDetail').style.display = 'none'; }
+        else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+function adminDeleteUser(id, name) {
+    if (!confirm(`${name} kullanıcısını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)) return;
+    fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) { showToast(d.message, 'info'); renderAdminUsers(); document.getElementById('adminUserDetail').style.display = 'none'; }
+        else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+// --- AKTİVİTE GÜNLÜĞÜ ---
+function renderAdminActivity() {
+    const type = document.getElementById('adminActivityFilter').value;
+    const params = type ? `?type=${type}` : '';
+    fetch(`/api/admin/activity-log${params}`, { headers: getAdminHeaders() })
+    .then(r => r.json()).then(data => {
+        const container = document.getElementById('adminActivityList');
+        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Aktivite kaydı bulunamadı.</div>'; return; }
+        container.innerHTML = data.data.map(log => `
+            <div class="admin-log-item">
+                <span class="log-action">${log.action_type}</span>
+                <span class="log-target">${log.target_name || ''}</span>
+                <div>${log.description || ''}</div>
+                <div class="log-date">${log.admin_username} · ${new Date(log.created_at).toLocaleString('tr-TR')}</div>
+            </div>
+        `).join('');
+    }).catch(() => document.getElementById('adminActivityList').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+}
+
+function adminLogAction(action_type, target_type, target_name, description) {
+    fetch('/api/admin/activity-log', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify({ action_type, target_type, target_name, description }) })
+    .catch(() => {});
+}
+
+// --- GLOBAL KARA LİSTE ---
+function loadAdminGlobalBlacklist() {
+    fetch('/api/admin/global-blacklist', { headers: getAdminHeaders() })
+    .then(r => r.json()).then(data => {
+        const container = document.getElementById('adminGlobalBlacklist');
+        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Kara liste boş.</div>'; return; }
+        container.innerHTML = data.data.map(item => `
+            <div class="admin-bl-item">
+                <div class="bl-info">
+                    <div class="bl-name">${item.name || 'Bilinmeyen'}</div>
+                    <div class="bl-meta">📞 ${item.phone_number} · 🚫 ${item.block_count} saha tarafından engellenmiş · Sahalar: ${item.fields || '-'} · Durum: ${item.status}</div>
+                </div>
+                <button class="action-btn" onclick="adminRemoveGlobalBan('${item.phone_number}')" style="padding:5px 12px;font-size:0.7rem;background:rgba(16,185,129,0.2);border-color:#10b981;color:#34d399;">BAN KALDIR</button>
+            </div>
+        `).join('');
+    }).catch(() => document.getElementById('adminGlobalBlacklist').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+}
+
+function adminManualGlobalBan() {
+    const phone = document.getElementById('adminGlobalBanPhone').value.trim();
+    if (!phone) { showToast('Telefon numarası girin!', 'error'); return; }
+    fetch('/api/admin/global-blacklist', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify({ phone }) })
+    .then(r => r.json()).then(d => {
+        if (d.success) { showToast(d.message, 'info'); loadAdminGlobalBlacklist(); document.getElementById('adminGlobalBanPhone').value = ''; }
+        else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+function adminRemoveGlobalBan(phone) {
+    if (!confirm(`${phone} numarasının global yasağını kaldırmak istediğinize emin misiniz?`)) return;
+    fetch(`/api/admin/global-blacklist/${encodeURIComponent(phone)}`, { method: 'DELETE', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) { showToast(d.message, 'info'); loadAdminGlobalBlacklist(); }
+        else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+// --- DUYURULAR ---
+function submitAnnouncement() {
+    const title = document.getElementById('annTitle').value.trim();
+    const message = document.getElementById('annMessage').value.trim();
+    const target = document.getElementById('annTarget').value;
+    if (!title || !message) { showToast('Başlık ve mesaj zorunludur!', 'error'); return; }
+    fetch('/api/admin/announcements', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify({ title, message, target_audience: target }) })
+    .then(r => r.json()).then(d => {
+        if (d.success) { showToast(d.message, 'info'); document.getElementById('annTitle').value = ''; document.getElementById('annMessage').value = ''; loadAdminAnnouncements(); }
+        else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+function loadAdminAnnouncements() {
+    fetch('/api/admin/announcements', { headers: getAdminHeaders() })
+    .then(r => r.json()).then(data => {
+        const container = document.getElementById('adminAnnouncementList');
+        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Henüz duyuru gönderilmemiş.</div>'; return; }
+        container.innerHTML = data.data.map(a => `
+            <div class="admin-ann-item">
+                <div class="ann-title">${a.title}</div>
+                <div class="ann-meta">${a.created_by} · ${new Date(a.created_at).toLocaleString('tr-TR')} · Hedef: ${a.target_audience}</div>
+                <div class="ann-msg">${a.message}</div>
+            </div>
+        `).join('');
+    }).catch(() => document.getElementById('adminAnnouncementList').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+}
+
+// --- GELİR RAPORU ---
+function renderAdminRevenue() {
+    const period = document.getElementById('adminRevenuePeriod').value;
+    fetch(`/api/admin/revenue?period=${period}`, { headers: getAdminHeaders() })
+    .then(r => r.json()).then(data => {
+        const container = document.getElementById('adminRevenueList');
+        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Veri bulunamadı.</div>'; return; }
+        const fields = window.fieldsData || {};
+        container.innerHTML = data.data.map(r => `
+            <div class="admin-rev-item">
+                <div class="rev-field">${fields[r.fieldKey]?.name || r.fieldKey}</div>
+                <div>
+                    <span class="rev-amount">${Number(r.total_revenue).toLocaleString('tr-TR')} TL</span>
+                    ${r.total_debt > 0 ? ` · <span class="rev-debt">${Number(r.total_debt).toLocaleString('tr-TR')} TL borç</span>` : ''}
+                    <span style="font-size:0.7rem;color:var(--text-muted);margin-left:8px;">${r.total_res} rezervasyon</span>
+                </div>
+            </div>
+        `).join('');
+    }).catch(() => document.getElementById('adminRevenueList').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+}
+
+// Close admin login modal on Enter
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.getElementById('adminLoginModal').classList.contains('show')) {
+        handleAdminLogin();
+    }
+});
+
                 let actionHtml = '';
                 if (r.owner_reply) {
                     actionHtml = `

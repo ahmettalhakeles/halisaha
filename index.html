@@ -95,6 +95,14 @@
                 <span id="businessWelcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px;"></span>
                 <button class="nav-btn red-btn" onclick="handleBusinessLogout()">ÇIKIŞ</button>
             </div>
+            <!-- Yönetici Giriş/Çıkış -->
+            <div id="adminAuthSection" class="user-auth-zone">
+                <button class="nav-btn" onclick="openModal('adminLoginModal')" style="border-color: #8b5cf6; color: #8b5cf6;">YÖNETİCİ</button>
+            </div>
+            <div id="adminLogoutSection" class="user-auth-zone" style="display: none;">
+                <span id="adminWelcomeText" style="font-weight: bold; color: #8b5cf6; margin-right: 10px;"></span>
+                <button class="nav-btn red-btn" onclick="handleAdminLogout()">ÇIKIŞ</button>
+            </div>
         </div>
     </header>
 
@@ -802,6 +810,130 @@
             </div>
         </section>
 
+        <!-- SÜPER YÖNETİCİ PANELİ -->
+        <section class="business-panel" id="adminPanel" style="display: none;">
+            <div class="admin-banner">
+                <span id="adminBannerText">🛡️ YÖNETİCİ PANELİ</span>
+                <button class="action-btn" onclick="exitAdminPanel()" style="background:rgba(139,92,246,0.2);border-color:#8b5cf6;color:#8b5cf6;padding:6px 14px;font-size:0.75rem;">← ANA EKRAN</button>
+            </div>
+            <div class="admin-tabs">
+                <button class="tab-btn active" onclick="switchAdminTab('dashboard')">DASHBOARD</button>
+                <button class="tab-btn" onclick="switchAdminTab('fields')">SAHALAR</button>
+                <button class="tab-btn" onclick="switchAdminTab('users')">KULLANICILAR</button>
+                <button class="tab-btn" onclick="switchAdminTab('activity')">AKTİVİTE</button>
+                <button class="tab-btn" onclick="switchAdminTab('blacklist')">KARA LİSTE</button>
+                <button class="tab-btn" onclick="switchAdminTab('announcements')">DUYURULAR</button>
+                <button class="tab-btn" onclick="switchAdminTab('revenue')">GELİR</button>
+            </div>
+
+            <!-- Dashboard -->
+            <div class="admin-tab-content" id="adminDashboard">
+                <div class="admin-stats-grid">
+                    <div class="admin-stat-card"><div class="admin-stat-label">TOPLAM SAHA</div><div class="admin-stat-value" id="adminStatPitches">-</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-label">AKTİF SAHA</div><div class="admin-stat-value" id="adminStatActive">-</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-label">KULLANICI</div><div class="admin-stat-value" id="adminStatUsers">-</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-label">REZERVASYON</div><div class="admin-stat-value" id="adminStatReservations">-</div></div>
+                </div>
+            </div>
+
+            <!-- Sahalar -->
+            <div class="admin-tab-content" id="adminFields" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <button class="action-btn" onclick="showAddFieldForm()">+ SAHA EKLE</button>
+                    <input type="text" id="adminFieldSearch" placeholder="Saha ara..." oninput="renderAdminFields()" style="flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
+                </div>
+                <div id="adminFieldList"></div>
+                <!-- Saha ekleme formu -->
+                <div id="adminAddFieldForm" style="display:none;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:20px;margin-top:15px;">
+                    <h3 style="color:#8b5cf6;margin-bottom:15px;">YENİ SAHA EKLE</h3>
+                    <div class="inline-inputs">
+                        <input type="text" id="afKey" placeholder="Saha anahtarı (final)" style="flex:1;">
+                        <input type="text" id="afName" placeholder="Saha adı" style="flex:2;">
+                    </div>
+                    <div class="inline-inputs">
+                        <input type="text" id="afAddress" placeholder="Adres" style="flex:2;">
+                        <input type="text" id="afPhone" placeholder="Telefon" style="flex:1;">
+                    </div>
+                    <div class="inline-inputs">
+                        <input type="text" id="afOpening" placeholder="Açılış (09:00)" style="flex:1;">
+                        <input type="text" id="afClosing" placeholder="Kapanış (23:00)" style="flex:1;">
+                        <input type="number" id="afPitchCount" placeholder="Saha sayısı" value="1" style="flex:1;">
+                    </div>
+                    <div class="inline-inputs">
+                        <input type="number" id="afMorningPrice" placeholder="Gündüz ücreti" value="2500" style="flex:1;">
+                        <input type="number" id="afEveningPrice" placeholder="Akşam ücreti" value="3000" style="flex:1;">
+                    </div>
+                    <button class="action-btn" onclick="submitAddField()" style="background:#8b5cf6;border-color:#8b5cf6;margin-top:10px;">SAHA EKLE</button>
+                </div>
+            </div>
+
+            <!-- Kullanıcılar -->
+            <div class="admin-tab-content" id="adminUsers" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <input type="text" id="adminUserSearch" placeholder="İsim, telefon veya e-posta ile ara..." oninput="renderAdminUsers()" style="flex:2;min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
+                    <select id="adminUserStatusFilter" onchange="renderAdminUsers()" style="flex:0;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="">Tümü</option>
+                        <option value="active">Aktif</option>
+                        <option value="banned">Banlı</option>
+                        <option value="globally_banned">Global Banlı</option>
+                    </select>
+                </div>
+                <div id="adminUserList"></div>
+                <div id="adminUserDetail" style="display:none;"></div>
+            </div>
+
+            <!-- Aktivite Günlüğü -->
+            <div class="admin-tab-content" id="adminActivity" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <select id="adminActivityFilter" onchange="renderAdminActivity()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="">Tümü</option>
+                        <option value="field">Saha İşlemleri</option>
+                        <option value="user">Kullanıcı İşlemleri</option>
+                    </select>
+                </div>
+                <div id="adminActivityList"></div>
+            </div>
+
+            <!-- Global Kara Liste -->
+            <div class="admin-tab-content" id="adminBlacklist" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <input type="text" id="adminGlobalBanPhone" placeholder="Telefon numarası (manuel global ban)" style="flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
+                    <button class="action-btn" onclick="adminManualGlobalBan()" style="background:#ef4444;border-color:#ef4444;">GLOBAL BANLA</button>
+                </div>
+                <div id="adminGlobalBlacklist"></div>
+            </div>
+
+            <!-- Duyurular -->
+            <div class="admin-tab-content" id="adminAnnouncements" style="display:none;">
+                <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:20px;margin-bottom:20px;">
+                    <h3 style="color:#8b5cf6;margin-bottom:15px;">YENİ DUYURU</h3>
+                    <input type="text" id="annTitle" placeholder="Duyuru başlığı" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;margin-bottom:10px;">
+                    <textarea id="annMessage" placeholder="Mesaj" rows="3" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;margin-bottom:10px;resize:vertical;"></textarea>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <select id="annTarget" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                            <option value="all">Tüm Kullanıcılar</option>
+                            <option value="businesses">Tüm İşletmeler</option>
+                        </select>
+                        <button class="action-btn" onclick="submitAnnouncement()" style="background:#8b5cf6;border-color:#8b5cf6;">GÖNDER</button>
+                    </div>
+                </div>
+                <div id="adminAnnouncementList"></div>
+            </div>
+
+            <!-- Gelir Raporu -->
+            <div class="admin-tab-content" id="adminRevenue" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <select id="adminRevenuePeriod" onchange="renderAdminRevenue()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="all">Tüm Zamanlar</option>
+                        <option value="today">Bugün</option>
+                        <option value="week">Bu Hafta</option>
+                        <option value="month">Bu Ay</option>
+                    </select>
+                </div>
+                <div id="adminRevenueList"></div>
+            </div>
+        </section>
+
         <!-- BOTTOM GRADIENT LINE -->
         <div class="bottom-gradient-line"></div>
     </main>
@@ -1125,6 +1257,24 @@
             <div style="display:flex;gap:15px;justify-content:center;">
                 <button id="confirmYesBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#10b981;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">EVET</button>
                 <button id="confirmNoBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#ef4444;color:#fff;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">HAYIR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yönetici Giriş Modalı -->
+    <div class="modal-overlay" id="adminLoginModal">
+        <div class="modal-card mini-modal" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>YÖNETİCİ GİRİŞİ</h2>
+                <button type="button" class="close-modal" onclick="closeModal('adminLoginModal')">X</button>
+            </div>
+            <div style="padding: 15px 0;">
+                <label>Kullanıcı Adı</label>
+                <input type="text" id="adminUsername" placeholder="admin" class="form-control" style="margin-bottom: 12px;">
+                <label>Şifre</label>
+                <input type="password" id="adminPassword" placeholder="••••••••" class="form-control" style="margin-bottom: 15px;">
+                <div id="adminLoginError" style="color: var(--danger-red); font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
+                <button class="modal-btn" onclick="handleAdminLogin()" style="width: 100%; background: #8b5cf6; color: #fff; border: none; font-weight: 700; padding: 12px; border-radius: 8px; cursor: pointer;">GİRİŞ YAP</button>
             </div>
         </div>
     </div>
