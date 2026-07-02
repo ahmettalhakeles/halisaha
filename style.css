@@ -3967,6 +3967,13 @@ body.admin-impersonating #footerAuthBar {
     display: none !important;
 }
 
+/* PC Modundayken Hamburger İşletme Menü Klonunu Gizle */
+@media (min-width: 769px) {
+    #businessMobileMenuClone {
+        display: none !important;
+    }
+}
+
 @media (max-width: 768px) {
     #footerAuthBar {
         padding: 15px !important;
