@@ -2,6 +2,16 @@ const fs = require('fs');
 const path = require('path');
 
 async function initDatabase(connection) {
+    // Tablolari olustur (yoksa)
+    try {
+        const sqlPath = path.join(__dirname, '..', 'database_complete.sql');
+        const sql = fs.readFileSync(sqlPath, 'utf8');
+        await connection.query(sql);
+        console.log('Tablo olusturma tamamlandi.');
+    } catch (err) {
+        console.error('Tablo olusturma hatasi:', err.message);
+    }
+
     const queries = [
         "SHOW COLUMNS FROM users LIKE 'age'",
         "SHOW COLUMNS FROM users LIKE 'position'",

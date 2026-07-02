@@ -145,6 +145,7 @@ function renderFieldsGrid() {
                         ${field.phone}
                     </a>
                 </div>
+                <button class="manage-btn" onclick="event.stopPropagation(); openBusinessPanel('${key}')" style="width:100%;padding:10px;font-size:0.85rem;font-weight:700;border:none;border-radius:8px;background:var(--warning-orange);color:#000;cursor:pointer;margin:10px 0;font-family:'Montserrat',sans-serif;text-transform:uppercase;">YÖNET</button>
                 <div class="field-main-details">
                     <div class="pitch-badges-row">
                         ${serviceBadge}

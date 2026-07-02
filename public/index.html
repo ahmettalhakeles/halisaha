@@ -78,20 +78,18 @@
                 <button class="nav-btn green-btn" data-click="openModal-registerModal">KAYIT OL</button>
             </div>
 
-            <!-- İşletme Giriş -->
-            <div id="businessAuthSection" class="user-auth-zone">
-                <button class="nav-btn" data-click="openBusinessLogin" style="border-color: var(--warning-orange); color: var(--warning-orange);">İŞLETME GİRİŞİ</button>
-            </div>
-
-            <!-- Çıkış Butonları -->
+            <!-- Kullanıcı Çıkış -->
             <div id="userLogoutSection" class="user-auth-zone" style="display: none;">
                 <span id="welcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px; align-self: center;"></span>
                 <button class="nav-btn profile-nav-btn" data-click="openProfilePanel">PROFİLİM</button>
                 <button class="nav-btn red-btn" data-click="handleUserLogout">ÇIKIŞ</button>
             </div>
 
-            <!-- İşletme Çıkış -->
-            <div id="businessLogoutSection" class="user-auth-zone" style="display: none;">
+            <!-- İşletme Paneli Mobil Butonları -->
+            <div id="businessMobileTabs" class="user-auth-zone" style="display: none;"></div>
+
+            <!-- İşletme Çıkış (en altta) -->
+            <div id="businessLogoutSection" class="user-auth-zone business-logout-bottom" style="display: none; margin-top: auto;">
                 <span id="businessWelcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px;"></span>
                 <button class="nav-btn red-btn" data-click="handleBusinessLogout">ÇIKIŞ</button>
             </div>
@@ -878,25 +876,7 @@
         </div>
     </div>
 
-    <!-- İşletme Giriş Modalı -->
-    <div class="modal-overlay" id="businessLoginModal" style="z-index: 1200;">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2>İŞLETME GİRİŞİ</h2>
-                <button type="button" class="close-modal" data-click="closeModal-businessLoginModal">X</button>
-            </div>
-            <div class="form-group">
-                <label>İŞLETME ADI / SAHA KEY</label>
-                <input type="text" id="businessKey" class="form-control" placeholder="Örn: final, arena" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
-            </div>
-            <div class="form-group">
-                <label>ŞİFRE</label>
-                <input type="password" id="businessPassword" class="form-control" placeholder="İşletme şifresi" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
-            </div>
-            <button class="action-btn" data-click="handleBusinessLogin">GİRİŞ YAP</button>
-            <p class="section-desc">Demo şifreler: final123, arena123, ciragan123, olimpiyat123, sporium123, ziyaret123</p>
-        </div>
-    </div>
+
 
     <!-- E-posta OTP Doğrulama Modalı -->
     <div class="modal-overlay" id="otpVerificationModal" style="z-index: 1500;">

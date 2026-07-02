@@ -2,19 +2,34 @@
 // =======================================================
 // İŞLETME GİRİŞ & ÇIKIŞ
 // =======================================================
-function openBusinessLogin() {
-    openModal('businessLoginModal');
-}
+const businessTabNames = {
+    'subscriptions': 'ABONELİK YÖNETİMİ',
+    'debts': 'BORÇLAR',
+    'pricing': 'FİYAT TARİFESİ',
+    'stats': 'İSTATİSTİKLER',
+    'settings': 'İŞLETME AYARLARI',
+    'blacklist': 'KARA LİSTE',
+    'reservations': 'REZERVASYONLAR',
+    'hours': 'SAAT & ENGEL AYARLARI',
+    'comments': 'YORUMLAR'
+};
 
 function switchBusinessTab(tabName) {
     document.querySelectorAll('.tab-content-zone').forEach(zone => {
         zone.style.display = 'none';
     });
-    document.getElementById(`tab-${tabName}`).style.display = 'block';
+    const tabEl = document.getElementById(`tab-${tabName}`);
+    if (tabEl) tabEl.style.display = 'block';
     document.querySelectorAll('.business-tabs .tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+    const tabBtn = document.getElementById(`tab-btn-${tabName}`);
+    if (tabBtn) tabBtn.classList.add('active');
+    document.querySelectorAll('#businessMobileTabs .biz-mobile-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const mobileBtn = document.getElementById(`biz-mob-${tabName}`);
+    if (mobileBtn) mobileBtn.classList.add('active');
     if (tabName === 'debts') {
         loadBusinessDebts('all');
     } else if (tabName === 'comments') {
@@ -22,34 +37,42 @@ function switchBusinessTab(tabName) {
     } else if (tabName === 'blacklist') {
         loadBusinessBlacklist();
     }
+    closeMobileMenu();
 }
 
-async function handleBusinessLogin() {
-    const key = document.getElementById('businessKey').value.trim().toLowerCase();
-    const password = document.getElementById('businessPassword').value;
+function buildBusinessMobileTabs() {
+    const container = document.getElementById('businessMobileTabs');
+    if (!container) return;
+    container.innerHTML = '';
+    const sorted = Object.keys(businessTabNames).sort((a, b) => businessTabNames[a].localeCompare(businessTabNames[b]));
+    sorted.forEach(key => {
+        const btn = document.createElement('button');
+        btn.className = 'nav-btn biz-mobile-tab';
+        btn.id = `biz-mob-${key}`;
+        btn.textContent = businessTabNames[key];
+        btn.dataset.click = `switchBusinessTab-${key}`;
+        container.appendChild(btn);
+    });
+}
 
-    if (!key || !password) {
-        alert("Lütfen işletme adı ve şifreyi giriniz.");
-        return;
-    }
-
-    const field = fieldsData[key];
+async function openBusinessPanel(fieldKey) {
+    const field = fieldsData[fieldKey];
     if (!field) {
-        alert("İşletme bulunamadı! Lütfen doğru işletme adını giriniz.");
-        return;
-    }
-    if (field.password !== password) {
-        alert("Hatalı şifre!");
+        alert("Saha bulunamadı!");
         return;
     }
 
-    currentBusinessFieldKey = key;
+    if (isBusinessLoggedIn && currentBusinessFieldKey === fieldKey) {
+        document.querySelector('main').classList.add('business-mode');
+        document.getElementById('businessPanel').style.display = 'block';
+        document.querySelector('.header-actions').classList.add('business-mode');
+        return;
+    }
+
+    currentBusinessFieldKey = fieldKey;
     isBusinessLoggedIn = true;
-    closeModal('businessLoginModal');
-    document.getElementById('businessPassword').value = "";
 
     document.getElementById('userAuthSection').style.display = 'none';
-    document.getElementById('businessAuthSection').style.display = 'none';
     document.getElementById('businessLogoutSection').style.display = 'flex';
     document.getElementById('welcomeText').style.display = 'none';
 
@@ -57,12 +80,35 @@ async function handleBusinessLogin() {
     if (customerContainer) customerContainer.style.display = 'none';
 
     document.querySelector('main').classList.add('business-mode');
+    document.querySelector('.header-actions').classList.add('business-mode');
     document.getElementById('businessPanel').style.display = 'block';
     document.getElementById('businessPanelTitle').innerText = `${field.name.toLocaleUpperCase('tr-TR')} YÖNETİM PANELİ`;
     document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
 
+    buildBusinessMobileTabs();
+    document.getElementById('businessMobileTabs').style.display = 'flex';
+
     switchBusinessTab('stats');
     await loadBusinessDashboard();
+}
+
+function handleBusinessLogout() {
+    isBusinessLoggedIn = false;
+    currentBusinessFieldKey = "";
+
+    document.getElementById('userAuthSection').style.display = 'flex';
+    document.getElementById('businessLogoutSection').style.display = 'none';
+    document.getElementById('businessMobileTabs').style.display = 'none';
+    document.querySelector('.header-actions').classList.remove('business-mode');
+
+    const customerContainer = document.getElementById('customerContainer');
+    if (customerContainer) customerContainer.style.display = 'block';
+
+    document.querySelector('main').classList.remove('business-mode');
+    document.getElementById('businessPanel').style.display = 'none';
+
+    alert("İşletme panelinden çıkış yapıldı.");
+    if (currentSelectedFieldKey) onDateOrFieldChange();
 }
 
 function handleBusinessLogout() {
