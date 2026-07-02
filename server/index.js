@@ -4,6 +4,13 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
 const db = require('./db');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -110,7 +117,7 @@ async function processWeeklySubscriptions() {
         console.error('Cron: Abonelik hatasi:', err);
     }
 }
-processWeeklySubscriptions();
+processWeeklySubscriptions().catch(err => console.error('Cron baslatma hatasi:', err));
 setInterval(processWeeklySubscriptions, 60 * 60 * 1000);
 
 app.listen(port, () => {
