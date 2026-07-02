@@ -74,7 +74,7 @@ const db = mysql.createPool({
     connectTimeout: 30000,
     maxIdle: 5,
     idleTimeout: 60000,
-    multipleStatements: false
+    multipleStatements: true
 });
 
 db.on('error', (err) => {
@@ -338,7 +338,8 @@ db.getConnection((err, connection) => {
     // Add columns to users table
     const userCols = [
         { col: 'is_email_verified', def: 'ALTER TABLE users ADD COLUMN is_email_verified TINYINT(1) DEFAULT 0' },
-        { col: 'status', def: "ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'" }
+        { col: 'status', def: "ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'" },
+        { col: 'created_at', def: "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" }
     ];
     userCols.forEach(({ col, def }) => {
         connection.query(`SHOW COLUMNS FROM users LIKE '${col}'`, (ec, r) => {
@@ -2501,13 +2502,81 @@ app.post('/api/admin/login', (req, res) => {
 // Dashboard istatistikleri
 app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
     let response = { success: true, data: {} };
-    let pending = 4;
+    let pending = 8;
     function checkDone() { if (--pending === 0) res.json(response); }
 
     db.query("SELECT COUNT(*) AS total FROM pitch_objects", (err, r) => { response.data.totalPitches = r?.[0]?.total || 0; checkDone(); });
     db.query("SELECT COUNT(*) AS total FROM pitch_objects WHERE isClosed = 0", (err, r) => { response.data.activePitches = r?.[0]?.total || 0; checkDone(); });
     db.query("SELECT COUNT(*) AS total FROM users", (err, r) => { response.data.totalUsers = r?.[0]?.total || 0; checkDone(); });
-    db.query("SELECT COUNT(*) AS total FROM reservations", (err, r) => { response.data.totalReservations = r?.[0]?.total || 0; checkDone(); });
+    
+    // Rezervasyon kırılımı
+    db.query(`
+        SELECT 
+            SUM(CASE WHEN created_at >= CURDATE() THEN 1 ELSE 0 END) AS today,
+            SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) AS weekly,
+            SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS monthly,
+            COUNT(*) AS total
+        FROM reservations WHERE status = 'active'
+    `, (err, r) => {
+        response.data.reservationsBreakdown = {
+            today: r?.[0]?.today || 0,
+            weekly: r?.[0]?.weekly || 0,
+            monthly: r?.[0]?.monthly || 0,
+            total: r?.[0]?.total || 0
+        };
+        checkDone();
+    });
+
+    // Sahalara göre gelir kırılımı
+    db.query(`
+        SELECT r.fieldKey, p.name AS field_name,
+            SUM(CASE WHEN r.payment_status = 'odendi' THEN r.reservation_price ELSE 0 END) AS paid,
+            SUM(CASE WHEN r.payment_status = 'odenmedi' THEN r.reservation_price ELSE 0 END) AS unpaid
+        FROM reservations r
+        LEFT JOIN pitch_settings p ON r.fieldKey = p.fieldKey
+        WHERE r.status = 'active'
+        GROUP BY r.fieldKey, p.name
+    `, (err, r) => {
+        response.data.revenueStats = r || [];
+        checkDone();
+    });
+
+    // En aktif sahalar
+    db.query(`
+        SELECT r.fieldKey, p.name AS field_name, COUNT(*) AS count
+        FROM reservations r
+        LEFT JOIN pitch_settings p ON r.fieldKey = p.fieldKey
+        WHERE r.status = 'active'
+        GROUP BY r.fieldKey, p.name
+        ORDER BY count DESC LIMIT 5
+    `, (err, r) => {
+        response.data.activeFields = r || [];
+        checkDone();
+    });
+
+    // En çok rezervasyon yapan kullanıcılar
+    db.query(`
+        SELECT user_name, user_phone, COUNT(*) AS count, SUM(reservation_price) AS spend
+        FROM reservations
+        WHERE status = 'active'
+        GROUP BY user_phone, user_name
+        ORDER BY count DESC LIMIT 5
+    `, (err, r) => {
+        response.data.topUsers = r || [];
+        checkDone();
+    });
+
+    // Son 30 günlük trend
+    db.query(`
+        SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS count
+        FROM reservations
+        WHERE status = 'active' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+    `, (err, r) => {
+        response.data.trendStats = r || [];
+        checkDone();
+    });
 });
 
 // Tüm sahaları listele
@@ -2564,14 +2633,56 @@ app.put('/api/admin/fields/:key/visibility', requireAdmin, (req, res) => {
     });
 });
 
-// Tüm kullanıcıları listele (arama ile)
+// Tüm kullanıcıları listele (arama ve gelişmiş filtreler ile)
 app.get('/api/admin/users', requireAdmin, (req, res) => {
-    const { search, status } = req.query;
-    let sql = "SELECT * FROM users WHERE 1=1";
+    const { search, status, startDate, endDate, sortBy, suspicious } = req.query;
+    
+    let sql = `
+        SELECT u.*, 
+            (SELECT COUNT(*) FROM reservations WHERE user_phone = u.phone) AS total_reservations,
+            (SELECT COUNT(*) FROM reservations WHERE user_phone = u.phone AND status = 'cancelled' AND created_at >= NOW() - INTERVAL 30 DAY) AS cancelled_reservations_30_days,
+            (SELECT COUNT(DISTINCT fieldKey) FROM field_blacklists WHERE phone_number = u.phone) AS blacklist_count
+        FROM users u 
+        WHERE 1=1
+    `;
     const params = [];
-    if (search) { sql += " AND (name LIKE ? OR phone LIKE ? OR email LIKE ?)"; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
-    if (status) { sql += " AND status = ?"; params.push(status); }
-    sql += " ORDER BY id DESC LIMIT 200";
+    
+    if (search) {
+        sql += " AND (u.name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    
+    if (status) {
+        sql += " AND u.status = ?";
+        params.push(status);
+    }
+    
+    if (startDate) {
+        sql += " AND u.created_at >= ?";
+        params.push(startDate + ' 00:00:00');
+    }
+    
+    if (endDate) {
+        sql += " AND u.created_at <= ?";
+        params.push(endDate + ' 23:59:59');
+    }
+    
+    if (suspicious === 'true') {
+        sql += " AND ((SELECT COUNT(*) FROM reservations WHERE user_phone = u.phone AND status = 'cancelled' AND created_at >= NOW() - INTERVAL 30 DAY) >= 3 OR (SELECT COUNT(DISTINCT fieldKey) FROM field_blacklists WHERE phone_number = u.phone) >= 3 OR u.status = 'globally_banned')";
+    }
+    
+    if (sortBy === 'oldest') {
+        sql += " ORDER BY u.created_at ASC";
+    } else if (sortBy === 'most_reservations') {
+        sql += " ORDER BY total_reservations DESC";
+    } else if (sortBy === 'least_reservations') {
+        sql += " ORDER BY total_reservations ASC";
+    } else {
+        sql += " ORDER BY u.created_at DESC";
+    }
+    
+    sql += " LIMIT 500";
+    
     db.query(sql, params, (err, users) => {
         if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
         res.json({ success: true, data: users });
@@ -2693,6 +2804,11 @@ app.post('/api/admin/announcements', requireAdmin, (req, res) => {
     db.query("INSERT INTO announcements (title, message, target_audience, target_field_key, created_by) VALUES (?, ?, ?, ?, ?)",
         [title, message, target_audience || 'all', target_field_key || null, req.adminUser.username], (err) => {
         if (err) return res.status(500).json({ success: false, message: 'Duyuru gönderilemedi!' });
+        
+        // Aktivite günlüğü kaydı
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'announcement_send', 'all', ?, ?)", 
+            [req.adminUser.username, title, `Yeni duyuru gönderildi: ${title}`]);
+            
         res.json({ success: true, message: 'Duyuru başarıyla gönderildi!' });
     });
 });
@@ -2774,5 +2890,13 @@ function processWeeklySubscriptions() {
         });
     });
 }
+
+// Herkese açık duyurular
+app.get('/api/announcements', (req, res) => {
+    db.query("SELECT id, title, message, created_at FROM announcements WHERE target_audience = 'all' ORDER BY created_at DESC LIMIT 50", (err, list) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data: list });
+    });
+});
 
 

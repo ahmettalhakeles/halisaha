@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS users (
   height INT DEFAULT NULL,
   weight INT DEFAULT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY unique_phone (phone)
+  UNIQUE KEY unique_phone (phone),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS reservations (

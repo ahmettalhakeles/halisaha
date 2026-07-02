@@ -13,6 +13,15 @@
 </head>
 <body>
     <div id="toastContainer"></div>
+    
+    <!-- Admin Impersonation Banner -->
+    <div id="adminImpersonationBanner" style="display: none; background: #8b5cf6; color: #fff; text-align: center; padding: 10px 20px; font-weight: bold; position: fixed; top: 0; left: 0; right: 0; z-index: 10000; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-family: 'Montserrat', sans-serif;">
+        <span style="display:flex; align-items:center; gap:8px;">
+            <span style="animation: pulse 1.5s infinite; background: #ef4444; width: 10px; height: 10px; border-radius: 50%; display: inline-block;"></span>
+            🛡️ ADMİN MODU — <span id="adminImpersonatedFieldName" style="color: var(--neon-green);">Saha</span> Yönetiliyor
+        </span>
+        <button onclick="adminReturnFromFieldPanel()" style="background: #fff; color: #8b5cf6; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 800; cursor: pointer; font-size: 0.75rem; font-family: 'Montserrat', sans-serif; transition: all 0.2s ease;">ADMİN PANELİNE DÖN</button>
+    </div>
 
     <header>
         <div class="logo-area">
@@ -22,6 +31,11 @@
                     <line x1="3" y1="6" x2="21" y2="6"></line>
                     <line x1="3" y1="18" x2="21" y2="18"></line>
                 </svg>
+            </button>
+            <!-- Duyurular Butonu (Logonun Solunda) -->
+            <button class="nav-btn" onclick="openAnnouncementsModal()" style="position: relative; border-color: #fbbf24; color: #fbbf24; margin-left: 10px; margin-right: 20px; padding: 6px 12px; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">
+                📢 DUYURULAR
+                <span id="announcementBadge" style="display: none; position: absolute; top: -7px; right: -7px; background: #ef4444; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: bold; align-items: center; justify-content: center;">0</span>
             </button>
             <div class="logo-row">
                 <svg class="football-logo" viewBox="0 0 100 100" width="52" height="52" role="img" aria-label="Futbol Logo">
@@ -836,8 +850,37 @@
                 <div class="admin-stats-grid">
                     <div class="admin-stat-card"><div class="admin-stat-label">TOPLAM SAHA</div><div class="admin-stat-value" id="adminStatPitches">-</div></div>
                     <div class="admin-stat-card"><div class="admin-stat-label">AKTİF SAHA</div><div class="admin-stat-value" id="adminStatActive">-</div></div>
-                    <div class="admin-stat-card"><div class="admin-stat-label">KULLANICI</div><div class="admin-stat-value" id="adminStatUsers">-</div></div>
-                    <div class="admin-stat-card"><div class="admin-stat-label">REZERVASYON</div><div class="admin-stat-value" id="adminStatReservations">-</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-label">TOPLAM KULLANICI</div><div class="admin-stat-value" id="adminStatUsers">-</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-label">REZERVASYON (BUGÜN)</div><div class="admin-stat-value" id="adminStatReservations">-</div></div>
+                </div>
+
+                <!-- Rezervasyon Kırılımı -->
+                <h3 class="section-subtitle" style="margin-top: 25px; margin-bottom: 15px; font-size: 0.95rem; font-weight: 700; color: #fff;">📊 REZERVASYON DETAYLARI</h3>
+                <div class="admin-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 25px;">
+                    <div class="admin-stat-card" style="background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.2);"><div class="admin-stat-label">BUGÜN</div><div class="admin-stat-value" id="rStatToday" style="font-size:1.8rem; color:#a78bfa;">-</div></div>
+                    <div class="admin-stat-card" style="background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.2);"><div class="admin-stat-label">SON 7 GÜN</div><div class="admin-stat-value" id="rStatWeekly" style="font-size:1.8rem; color:#60a5fa;">-</div></div>
+                    <div class="admin-stat-card" style="background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.2);"><div class="admin-stat-label">SON 30 GÜN</div><div class="admin-stat-value" id="rStatMonthly" style="font-size:1.8rem; color:#34d399;">-</div></div>
+                    <div class="admin-stat-card" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2);"><div class="admin-stat-label">TÜM ZAMANLAR</div><div class="admin-stat-value" id="rStatTotal" style="font-size:1.8rem; color:#fbbf24;">-</div></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;" class="admin-two-cols">
+                    <!-- En Aktif Sahalar -->
+                    <div style="background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 12px;">
+                        <h4 style="color:#fff; margin-bottom:12px; font-size:0.95rem; font-weight:700;">🏟️ EN AKTİF SAHALAR</h4>
+                        <div id="adminActivePitchesList" style="display:flex; flex-direction:column; gap:8px;"></div>
+                    </div>
+
+                    <!-- En Çok Rezervasyon Yapanlar -->
+                    <div style="background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 12px;">
+                        <h4 style="color:#fff; margin-bottom:12px; font-size:0.95rem; font-weight:700;">👑 TOP ÜYELER (REZERVASYON)</h4>
+                        <div id="adminTopUsersList" style="display:flex; flex-direction:column; gap:8px;"></div>
+                    </div>
+                </div>
+
+                <!-- 30 Günlük Rezervasyon Trendi (CSS Bar Grafik) -->
+                <div style="background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 12px; margin-top: 25px;">
+                    <h4 style="color:#fff; margin-bottom:15px; font-size:0.95rem; font-weight:700;">📈 SON 30 GÜNLÜK REZERVASYON TRENDİ</h4>
+                    <div id="adminTrendChart" style="display:flex; align-items:flex-end; gap:6px; height: 160px; padding-bottom: 20px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.1);"></div>
                 </div>
             </div>
 
@@ -872,16 +915,30 @@
                 </div>
             </div>
 
-            <!-- Kullanıcılar -->
             <div class="admin-tab-content" id="adminUsers" style="display:none;">
-                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                     <input type="text" id="adminUserSearch" placeholder="İsim, telefon veya e-posta ile ara..." oninput="renderAdminUsers()" style="flex:2;min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
-                    <select id="adminUserStatusFilter" onchange="renderAdminUsers()" style="flex:0;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
-                        <option value="">Tümü</option>
+                    <select id="adminUserStatusFilter" onchange="renderAdminUsers()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="">TÜMÜ</option>
                         <option value="active">Aktif</option>
                         <option value="banned">Banlı</option>
                         <option value="globally_banned">Global Banlı</option>
                     </select>
+                    <select id="adminUserSortBy" onchange="renderAdminUsers()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="newest">En Yeni Üye</option>
+                        <option value="oldest">En Eski Üye</option>
+                        <option value="most_reservations">En Çok Rezervasyon</option>
+                        <option value="least_reservations">En Az Rezervasyon</option>
+                    </select>
+                    <div style="display:flex;gap:5px;align-items:center;">
+                        <span style="font-size:0.75rem;color:var(--text-muted);">Kayıt:</span>
+                        <input type="date" id="adminUserStartDate" onchange="renderAdminUsers()" style="padding:8px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;font-size:0.75rem;">
+                        <input type="date" id="adminUserEndDate" onchange="renderAdminUsers()" style="padding:8px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;font-size:0.75rem;">
+                    </div>
+                    <label style="display:flex;align-items:center;gap:5px;font-size:0.85rem;color:#fff;cursor:pointer;">
+                        <input type="checkbox" id="adminUserSuspicious" onchange="renderAdminUsers()"> ⚠️ Şüpheliler
+                    </label>
+                    <button class="action-btn" onclick="exportAdminUsersCSV()" style="padding:8px 15px;font-size:0.8rem;background:rgba(16,185,129,0.2);border-color:#10b981;color:#34d399;max-width:140px;margin-left:auto;">📥 CSV AKTAR</button>
                 </div>
                 <div id="adminUserList"></div>
                 <div id="adminUserDetail" style="display:none;"></div>
@@ -927,13 +984,14 @@
 
             <!-- Gelir Raporu -->
             <div class="admin-tab-content" id="adminRevenue" style="display:none;">
-                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                     <select id="adminRevenuePeriod" onchange="renderAdminRevenue()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
                         <option value="all">Tüm Zamanlar</option>
                         <option value="today">Bugün</option>
                         <option value="week">Bu Hafta</option>
                         <option value="month">Bu Ay</option>
                     </select>
+                    <button class="action-btn" onclick="exportAdminRevenueCSV()" style="padding:8px 15px;font-size:0.8rem;background:rgba(16,185,129,0.2);border-color:#10b981;color:#34d399;max-width:140px;margin-left:auto;">📥 CSV AKTAR</button>
                 </div>
                 <div id="adminRevenueList"></div>
             </div>
@@ -1280,6 +1338,19 @@
                 <input type="password" id="adminPassword" placeholder="••••••••" class="form-control" style="margin-bottom: 15px;" onkeypress="if(event.key === 'Enter') handleAdminLogin()">
                 <div id="adminLoginError" style="color: var(--danger-red); font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
                 <button class="modal-btn" onclick="handleAdminLogin()" id="adminLoginBtn" style="width: 100%; background: #8b5cf6; color: #fff; border: none; font-weight: 700; padding: 12px; border-radius: 8px; cursor: pointer;">GİRİŞ YAP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duyurular Modalı (Uygulama İçi Bildirim) -->
+    <div class="modal-overlay" id="announcementsModal" style="z-index: 1400;">
+        <div class="modal-card" style="max-width: 600px; background: #0f172a; border: 1px solid #fbbf24; border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(251, 191, 36, 0.2); padding-bottom: 12px;">
+                <h2 style="color:#fbbf24; display:flex; align-items:center; gap:8px;">📢 DUYURULAR VE KAMPANYALAR</h2>
+                <button type="button" class="close-modal" onclick="closeModal('announcementsModal')" style="color:#fbbf24;">X</button>
+            </div>
+            <div id="publicAnnouncementsList" style="max-height: 450px; overflow-y: auto; margin-top: 15px; display:flex; flex-direction:column; gap:12px; padding-right:5px;">
+                <!-- Dinamik duyurular buraya yüklenecek -->
             </div>
         </div>
     </div>
