@@ -83,7 +83,7 @@ db.on('error', (err) => {
 
 db.getConnection((err, connection) => {
     if (err) return console.error('❌ MySQL Bağlantı Hatası:', err.message);
-    console.log('🚀 XAMPP MySQL Veritabanına başarıyla bağlanıldı!');
+    console.log('MySQL veritabanina basariyla baglanildi!');
     
     // Run database migration (safe - uses IF NOT EXISTS)
     let migrationSql;
@@ -95,7 +95,7 @@ db.getConnection((err, connection) => {
     if (migrationSql) {
         connection.query(migrationSql, (migrateErr) => {
             if (migrateErr) console.error('❌ Migration hatası:', migrateErr.message);
-            else console.log('✅ Veritabanı tablolari başarıyla oluşturuldu/güncellendi.');
+            else console.log('Veritabanı migration tamamlandı.');
         });
     }
     
@@ -104,7 +104,6 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE users ADD COLUMN age INT DEFAULT NULL", (errAlter) => {
                 if (errAlter) console.error("❌ users.age kolonu eklenemedi:", errAlter);
-                else console.log("✅ users.age kolonu veritabanına başarıyla eklendi.");
             });
         }
     });
@@ -114,7 +113,6 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE users ADD COLUMN position VARCHAR(50) DEFAULT NULL", (errAlter) => {
                 if (errAlter) console.error("❌ users.position kolonu eklenemedi:", errAlter);
-                else console.log("✅ users.position kolonu veritabanına başarıyla eklendi.");
             });
         }
     });
@@ -124,7 +122,6 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE users ADD COLUMN experience VARCHAR(50) DEFAULT NULL", (errAlter) => {
                 if (errAlter) console.error("❌ users.experience kolonu eklenemedi:", errAlter);
-                else console.log("✅ users.experience kolonu veritabanına başarıyla eklendi.");
             });
         }
     });
@@ -134,7 +131,6 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE users ADD COLUMN height INT DEFAULT NULL", (errAlter) => {
                 if (errAlter) console.error("❌ users.height kolonu eklenemedi:", errAlter);
-                else console.log("✅ users.height kolonu veritabanına başarıyla eklendi.");
             });
         }
     });
@@ -144,7 +140,6 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE users ADD COLUMN weight INT DEFAULT NULL", (errAlter) => {
                 if (errAlter) console.error("❌ users.weight kolonu eklenemedi:", errAlter);
-                else console.log("✅ users.weight kolonu veritabanına başarıyla eklendi.");
             });
         }
     });
@@ -154,7 +149,7 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE match_seekers ADD COLUMN height INT DEFAULT NULL", (errAlter) => {
                 if (errAlter) console.error("❌ match_seekers.height kolonu eklenemedi:", errAlter);
-                else console.log("✅ match_seekers.height kolonu veritabanına başarıyla eklendi.");
+                
             });
         }
     });
@@ -164,7 +159,7 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE match_seekers ADD COLUMN weight INT DEFAULT NULL", (errAlter) => {
                 if (errAlter) console.error("❌ match_seekers.weight kolonu eklenemedi:", errAlter);
-                else console.log("✅ match_seekers.weight kolonu veritabanına başarıyla eklendi.");
+                
             });
         }
     });
@@ -174,7 +169,7 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE pitch_objects ADD COLUMN refreshments VARCHAR(255) DEFAULT ''", (errAlter) => {
                 if (errAlter) console.error("❌ pitch_objects.refreshments kolonu eklenemedi:", errAlter);
-                else console.log("✅ pitch_objects.refreshments kolonu veritabanına başarıyla eklendi.");
+                
             });
         }
     });
@@ -184,7 +179,7 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE pitch_objects ADD COLUMN cleats VARCHAR(50) DEFAULT 'Krampon Kiralanmaz'", (errAlter) => {
                 if (errAlter) console.error("❌ pitch_objects.cleats kolonu eklenemedi:", errAlter);
-                else console.log("✅ pitch_objects.cleats kolonu veritabanına başarıyla eklendi.");
+                
             });
         }
     });
@@ -194,7 +189,7 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE pitch_objects ADD COLUMN shower VARCHAR(50) DEFAULT 'Duş Yok'", (errAlter) => {
                 if (errAlter) console.error("❌ pitch_objects.shower kolonu eklenemedi:", errAlter);
-                else console.log("✅ pitch_objects.shower kolonu veritabanına başarıyla eklendi.");
+                
             });
         }
     });
@@ -204,7 +199,7 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE pitch_objects ADD COLUMN market VARCHAR(50) DEFAULT 'Market Yok'", (errAlter) => {
                 if (errAlter) console.error("❌ pitch_objects.market kolonu eklenemedi:", errAlter);
-                else console.log("✅ pitch_objects.market kolonu veritabanına başarıyla eklendi.");
+                
             });
         }
     });
@@ -215,11 +210,11 @@ db.getConnection((err, connection) => {
             connection.query("ALTER TABLE subscriptions ADD COLUMN dayOfWeek VARCHAR(50) DEFAULT 'PAZARTESİ'", (errAlter) => {
                 if (errAlter) console.error("❌ subscriptions.dayOfWeek kolonu eklenemedi:", errAlter);
                 else {
-                    console.log("✅ subscriptions.dayOfWeek kolonu veritabanına başarıyla eklendi.");
+                    
                     connection.query("ALTER TABLE subscriptions DROP INDEX unique_subscription", (errDrop) => {
                         connection.query("ALTER TABLE subscriptions ADD UNIQUE KEY unique_subscription_day (fieldKey, pitchNumber, dayOfWeek, hourText)", (errAddKey) => {
                             if (errAddKey) console.error("❌ New unique_subscription_day key could not be added:", errAddKey);
-                            else console.log("✅ New unique_subscription_day key added.");
+                            
                         });
                     });
                 }
@@ -239,7 +234,7 @@ db.getConnection((err, connection) => {
             if (!ec && r.length === 0) {
                 connection.query(def, (ea) => {
                     if (ea) console.error(`❌ reservations.${col} eklenemedi:`, ea);
-                    else console.log(`✅ reservations.${col} eklendi.`);
+                    
                 });
             }
         });
@@ -250,7 +245,7 @@ db.getConnection((err, connection) => {
         if (!ec && r.length === 0) {
             connection.query("ALTER TABLE pitch_objects ADD COLUMN closedDays VARCHAR(255) DEFAULT '[]'", (ea) => {
                 if (ea) console.error("❌ pitch_objects.closedDays eklenemedi:", ea);
-                else console.log("✅ pitch_objects.closedDays eklendi.");
+                
             });
         }
     });
@@ -274,7 +269,7 @@ db.getConnection((err, connection) => {
         )
     `, (err) => {
         if (err) console.error('❌ team_seekers tablosu oluşturulamadı:', err);
-        else console.log('✅ team_seekers tablosu hazır.');
+        
     });
 
     ['forum_posts', 'match_seekers', 'team_seekers'].forEach(table => {
@@ -289,7 +284,7 @@ db.getConnection((err, connection) => {
                 connection.query(`ALTER TABLE ${table} ADD COLUMN status ENUM('aktif','bulundu','suresi_gecti') DEFAULT 'aktif'`, (ea) => {
                     if (ea) console.error(`❌ ${table}.status eklenemedi:`, ea);
                     else {
-                        console.log(`✅ ${table}.status eklendi.`);
+                        
                         runUpdateExpired();
                     }
                 });
@@ -301,7 +296,7 @@ db.getConnection((err, connection) => {
             if (!ec && r.length === 0) {
                 connection.query(`ALTER TABLE ${table} ADD COLUMN user_id INT DEFAULT NULL`, (ea) => {
                     if (ea) console.error(`❌ ${table}.user_id eklenemedi:`, ea);
-                    else console.log(`✅ ${table}.user_id eklendi.`);
+                    
                 });
             }
         });
@@ -313,7 +308,7 @@ db.getConnection((err, connection) => {
             if (!ec && r.length === 0) {
                 connection.query(`ALTER TABLE ${table} ADD COLUMN user_name VARCHAR(100) DEFAULT NULL`, (ea) => {
                     if (ea) console.error(`❌ ${table}.user_name eklenemedi:`, ea);
-                    else console.log(`✅ ${table}.user_name eklendi.`);
+                    
                 });
             }
         });
@@ -321,7 +316,7 @@ db.getConnection((err, connection) => {
             if (!ec && r.length === 0) {
                 connection.query(`ALTER TABLE ${table} ADD COLUMN user_phone VARCHAR(20) DEFAULT NULL`, (ea) => {
                     if (ea) console.error(`❌ ${table}.user_phone eklenemedi:`, ea);
-                    else console.log(`✅ ${table}.user_phone eklendi.`);
+                    
                 });
             }
         });
@@ -329,7 +324,7 @@ db.getConnection((err, connection) => {
             if (!ec && r.length === 0) {
                 connection.query(`ALTER TABLE ${table} ADD COLUMN user_email VARCHAR(100) DEFAULT NULL`, (ea) => {
                     if (ea) console.error(`❌ ${table}.user_email eklenemedi:`, ea);
-                    else console.log(`✅ ${table}.user_email eklendi.`);
+                    
                 });
             }
         });
@@ -346,7 +341,7 @@ db.getConnection((err, connection) => {
             if (!ec && r.length === 0) {
                 connection.query(def, (ea) => {
                     if (ea) console.error(`❌ users.${col} eklenemedi:`, ea);
-                    else console.log(`✅ users.${col} eklendi.`);
+                    
                 });
             }
         });
@@ -357,7 +352,7 @@ db.getConnection((err, connection) => {
         if (!ec && r.length === 0) {
             connection.query("ALTER TABLE users ADD UNIQUE KEY unique_phone (phone)", (ea) => {
                 if (ea) console.error("❌ users.phone unique yapılamadı:", ea);
-                else console.log("✅ users.phone unique yapıldı.");
+                
             });
         }
     });
@@ -367,7 +362,7 @@ db.getConnection((err, connection) => {
         if (!ec && r.length === 0) {
             connection.query("ALTER TABLE reservations ADD COLUMN type VARCHAR(20) DEFAULT 'normal'", (ea) => {
                 if (ea) console.error("❌ reservations.type eklenemedi:", ea);
-                else console.log("✅ reservations.type eklendi.");
+                
             });
         }
     });
@@ -377,7 +372,7 @@ db.getConnection((err, connection) => {
         if (!ec && r.length === 0) {
             connection.query("ALTER TABLE reservations ADD COLUMN status VARCHAR(20) DEFAULT 'active'", (ea) => {
                 if (ea) console.error("❌ reservations.status eklenemedi:", ea);
-                else console.log("✅ reservations.status eklendi.");
+                
             });
         }
     });
@@ -400,7 +395,7 @@ db.getConnection((err, connection) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`, (ec) => {
         if (ec) console.error('❌ reviews tablosu oluşturulamadı:', ec);
-        else console.log('✅ reviews tablosu hazır.');
+        
     });
 
     // Create field_blacklists table if not exists
@@ -412,7 +407,7 @@ db.getConnection((err, connection) => {
         UNIQUE KEY unique_field_phone (fieldKey, phone_number)
     )`, (ec) => {
         if (ec) console.error('❌ field_blacklists tablosu oluşturulamadı:', ec);
-        else console.log('✅ field_blacklists tablosu hazır.');
+        
     });
 
     // Create field_photos table if not exists
@@ -426,7 +421,7 @@ db.getConnection((err, connection) => {
         INDEX idx_field (fieldKey)
     )`, (ec) => {
         if (ec) console.error('❌ field_photos tablosu oluşturulamadı:', ec);
-        else console.log('✅ field_photos tablosu hazır.');
+        
     });
 
     // Create business_passwords table
@@ -438,7 +433,7 @@ db.getConnection((err, connection) => {
             console.error('❌ business_passwords tablosu oluşturulamadı:', ec);
             return;
         }
-        console.log('✅ business_passwords tablosu hazır.');
+        
         // Seed demo passwords if empty
         connection.query('SELECT COUNT(*) as cnt FROM business_passwords', (sec, sres) => {
             if (sec) return;
@@ -455,7 +450,7 @@ db.getConnection((err, connection) => {
                 const values = Object.entries(demoPasswords).map(([k, v]) => [k, bcrypt.hashSync(v, 10)]);
                 connection.query(stmt, [values], (ie) => {
                     if (ie) console.error('❌ Demo şifreler eklenemedi:', ie);
-                    else console.log('✅ Demo işletme şifreleri hashlenerek kaydedildi.');
+                    
                 });
             }
         });
@@ -466,7 +461,7 @@ db.getConnection((err, connection) => {
         if (!ec && r.length === 0) {
             connection.query(`ALTER TABLE pitch_settings ADD COLUMN average_rating DECIMAL(3,2) DEFAULT 0.00`, (ea) => {
                 if (ea) console.error("❌ pitch_settings.average_rating eklenemedi:", ea);
-                else console.log("✅ pitch_settings.average_rating eklendi.");
+                
             });
         }
     });
@@ -474,7 +469,7 @@ db.getConnection((err, connection) => {
         if (!ec && r.length === 0) {
             connection.query(`ALTER TABLE pitch_objects ADD COLUMN average_rating DECIMAL(3,2) DEFAULT 0.00`, (ea) => {
                 if (ea) console.error("❌ pitch_objects.average_rating eklenemedi:", ea);
-                else console.log("✅ pitch_objects.average_rating eklendi.");
+                
             });
         }
     });
@@ -490,7 +485,7 @@ db.getConnection((err, connection) => {
         INDEX idx_post (post_type, post_id)
     )`, (ec) => {
         if (ec) console.error('❌ forum_comments tablosu oluşturulamadı:', ec);
-        else console.log('✅ forum_comments tablosu hazır.');
+        
     });
 
     // Create field_comments table if not exists
@@ -502,7 +497,7 @@ db.getConnection((err, connection) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`, (ec) => {
         if (ec) console.error('❌ field_comments tablosu oluşturulamadı:', ec);
-        else console.log('✅ field_comments tablosu hazır.');
+        
     });
 
     // Create field_daily_hours table if not exists
@@ -516,7 +511,7 @@ db.getConnection((err, connection) => {
     )`, (ec) => {
         if (ec) console.error('❌ field_daily_hours tablosu oluşturulamadı:', ec);
         else {
-            console.log('✅ field_daily_hours tablosu hazır.');
+            
             // Populate default daily hours for all fields if empty
             const fields = ['final', 'arena', 'ciragan', 'olimpiyat', 'sporium05', 'ziyaret'];
             fields.forEach(fk => {
@@ -534,22 +529,16 @@ db.getConnection((err, connection) => {
     const markerFile = path.join(__dirname, '.db_migrated');
     if (!fs.existsSync(markerFile)) {
         connection.query('DELETE FROM reservations', (err) => {
-            if (!err) console.log('✅ Tüm rezervasyonlar temizlendi.');
-            else console.error("❌ Rezervasyon silme hatası:", err);
+            if (err) console.error("❌ Rezervasyon silme hatası:", err);
         });
         connection.query('DELETE FROM subscriptions', (err) => {
-            if (!err) console.log('✅ Tüm abonelikler temizlendi.');
-            else console.error("❌ Abonelik silme hatası:", err);
+            if (err) console.error("❌ Abonelik silme hatası:", err);
         });
-        connection.query("UPDATE pitch_objects SET openingHour='15:00', closingHour='02:00'", (err) => {
-            if (!err) console.log('✅ pitch_objects saatleri güncellendi.');
-        });
-        connection.query("UPDATE pitch_settings SET openingHour='15:00', closingHour='02:00'", (err) => {
-            if (!err) console.log('✅ pitch_settings saatleri güncellendi.');
-        });
+        connection.query("UPDATE pitch_objects SET openingHour='15:00', closingHour='02:00'");
+        connection.query("UPDATE pitch_settings SET openingHour='15:00', closingHour='02:00'");
         try {
             fs.writeFileSync(markerFile, 'done');
-            console.log('✅ Veritabanı temizleme ve saat ayarlama markeri oluşturuldu.');
+            
         } catch (fErr) {
             console.error("❌ Marker dosyası oluşturulamadı:", fErr);
         }
@@ -559,7 +548,7 @@ db.getConnection((err, connection) => {
     const defaultAdminPass = bcrypt.hashSync('admin123', 10);
     db.query("INSERT IGNORE INTO super_admins (username, password, display_name) VALUES (?, ?, ?)", ['admin', defaultAdminPass, 'Süper Yönetici'], (adminErr) => {
         if (adminErr) console.error('❌ Varsayılan admin oluşturulamadı:', adminErr.message);
-        else console.log('✅ Varsayılan admin hesabı hazır (admin / admin123)');
+        
     });
 
     connection.release();
