@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSK - YÖNETİCİ PANELİ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=1.0.4">
+</head>
+<body class="admin-mode">
+    <div id="toastContainer"></div>
+    
+    <header>
+        <div class="logo-area">
+            <div class="logo-row">
+                <svg class="football-logo" viewBox="0 0 100 100" width="52" height="52" role="img" aria-label="Futbol Logo">
+                    <circle cx="50" cy="50" r="46" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
+                    <path d="M 50.00 64.00 Q 42.17 60.78 36.69 54.33 Q 37.33 45.88 41.77 38.67 Q 50.00 36.67 58.23 38.67 Q 62.67 45.88 63.31 54.33 Q 57.83 60.78 50.00 64.00 Z" fill="#10b981" stroke="#10b981" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M 43.77100646790537 37.67376207875074 Q 50.5 37.17376207875074 59.22899353209462 40.173762078750734 Q 60.771892380113385 48 61.31479122813215 55.82623792124926" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+                    <path d="M 50.00 79.00 Q 35.33 70.19 22.42 58.96 L 11.86 75.72 A 46 46 0 0 0 37.32 94.22 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="50.00" y1="64.00" x2="50.00" y2="79.00" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="50.00" y1="79.00" x2="50.00" y2="96.00" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 22.42 58.96 Q 26.26 42.29 32.95 26.54 L 13.75 21.68 A 46 46 0 0 0 4.03 51.61 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="36.69" y1="54.33" x2="22.42" y2="58.96" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="22.42" y1="58.96" x2="6.25" y2="64.21" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 6.56 47.72 A 43.5 43.5 0 0 1 13.52 26.31" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M 32.95 26.54 Q 50.00 25.04 67.05 26.54 L 65.73 6.77 A 46 46 0 0 0 34.27 6.77 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="41.77" y1="38.67" x2="32.95" y2="26.54" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="32.95" y1="26.54" x2="22.96" y2="12.79" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 38.74 7.98 A 43.5 43.5 0 0 1 61.26 7.98" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+                </svg>
+                <span class="logo-title" style="margin-left:10px; font-weight:800; color:#fff; font-family:'Montserrat',sans-serif;">KSK YÖNETİCİ</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <!-- Yönetici Çıkış -->
+            <div id="adminLogoutSection" class="user-auth-zone" style="display: none;">
+                <span id="adminWelcomeText" style="font-weight: bold; color: #8b5cf6; margin-right: 10px; align-self: center;"></span>
+                <button class="nav-btn red-btn" onclick="handleAdminLogout()">ÇIKIŞ</button>
+            </div>
+        </div>
+    </header>
+
+    <main style="padding: 20px; max-width: 1200px; margin: 0 auto; min-height: 80vh;">
+        <!-- Boş Arka Planlı Temiz Yönetici Giriş Paneli -->
+        <div id="adminLoginWrapper" style="display: flex; justify-content: center; align-items: center; min-height: 60vh;">
+            <div class="modal-card" style="max-width: 450px; width: 100%; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); background: rgba(15, 23, 42, 0.95); padding: 30px; border-radius: 16px;">
+                <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; margin-bottom: 20px;">
+                    <h2 style="font-size: 1.5rem; font-weight: 800; color: #8b5cf6; font-family: 'Oswald', sans-serif;">YÖNETİCİ GİRİŞİ</h2>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">KULLANICI ADI</label>
+                    <input type="text" id="adminUsername" placeholder="admin" class="form-control" style="padding: 12px;" onkeypress="if(event.key === 'Enter') handleAdminLogin()">
+                </div>
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">ŞİFRE</label>
+                    <input type="password" id="adminPassword" placeholder="••••••••" class="form-control" style="padding: 12px;" onkeypress="if(event.key === 'Enter') handleAdminLogin()">
+                </div>
+                <div id="adminLoginError" style="color: var(--danger-red); font-size: 0.85rem; margin-bottom: 15px; display: none;"></div>
+                <button class="modal-btn" onclick="handleAdminLogin()" id="adminLoginBtn" style="width: 100%; padding: 14px; background: #8b5cf6; color: #fff; border: none; font-weight: bold; font-size: 1rem; border-radius: 8px; cursor: pointer;">GİRİŞ YAP</button>
+            </div>
+        </div>
+
+        <!-- YÖNETİCİ PANELİ -->
+        <section class="business-panel" id="adminPanel" style="display: none; width: 100%;">
+            <div class="admin-banner" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+                <span id="adminBannerText" style="margin: 0;">🛡️ YÖNETİCİ PANELİ</span>
+            </div>
+            <div class="admin-tabs">
+                <button class="tab-btn active" onclick="switchAdminTab('dashboard')">DASHBOARD</button>
+                <button class="tab-btn" onclick="switchAdminTab('fields')">SAHALAR</button>
+                <button class="tab-btn" onclick="switchAdminTab('users')">KULLANICILAR</button>
+                <button class="tab-btn" onclick="switchAdminTab('activity')">AKTİVİTE</button>
+                <button class="tab-btn" onclick="switchAdminTab('blacklist')">KARA LİSTE</button>
+                <button class="tab-btn" onclick="switchAdminTab('announcements')">DUYURULAR</button>
+                <button class="tab-btn" onclick="switchAdminTab('revenue')">GELİR</button>
+            </div>
+
+            <!-- Dashboard -->
+            <div class="admin-tab-content" id="adminDashboard">
+                <div class="admin-stats-grid">
+                    <div class="admin-stat-card"><div class="admin-stat-label">TOPLAM SAHA</div><div class="admin-stat-value" id="adminStatPitches">-</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-label">AKTİF SAHA</div><div class="admin-stat-value" id="adminStatActive">-</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-label">TOPLAM KULLANICI</div><div class="admin-stat-value" id="adminStatUsers">-</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-label">REZERVASYON (BUGÜN)</div><div class="admin-stat-value" id="adminStatReservations">-</div></div>
+                </div>
+
+                <!-- Rezervasyon Kırılımı -->
+                <h3 class="section-subtitle" style="margin-top: 25px; margin-bottom: 15px; font-size: 0.95rem; font-weight: 700; color: #fff;">📊 REZERVASYON DETAYLARI</h3>
+                <div class="admin-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 25px;">
+                    <div class="admin-stat-card" style="background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.2);"><div class="admin-stat-label">BUGÜN</div><div class="admin-stat-value" id="rStatToday" style="font-size:1.8rem; color:#a78bfa;">-</div></div>
+                    <div class="admin-stat-card" style="background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.2);"><div class="admin-stat-label">SON 7 GÜN</div><div class="admin-stat-value" id="rStatWeekly" style="font-size:1.8rem; color:#60a5fa;">-</div></div>
+                    <div class="admin-stat-card" style="background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.2);"><div class="admin-stat-label">SON 30 GÜN</div><div class="admin-stat-value" id="rStatMonthly" style="font-size:1.8rem; color:#34d399;">-</div></div>
+                    <div class="admin-stat-card" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2);"><div class="admin-stat-label">TÜM ZAMANLAR</div><div class="admin-stat-value" id="rStatTotal" style="font-size:1.8rem; color:#fbbf24;">-</div></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;" class="admin-two-cols">
+                    <!-- En Aktif Sahalar -->
+                    <div style="background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 12px;">
+                        <h4 style="color:#fff; margin-bottom:12px; font-size:0.95rem; font-weight:700;">🏟️ EN AKTİF SAHALAR</h4>
+                        <div id="adminActivePitchesList" style="display:flex; flex-direction:column; gap:8px;"></div>
+                    </div>
+
+                    <!-- En Çok Rezervasyon Yapanlar -->
+                    <div style="background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 12px;">
+                        <h4 style="color:#fff; margin-bottom:12px; font-size:0.95rem; font-weight:700;">👑 TOP ÜYELER (REZERVASYON)</h4>
+                        <div id="adminTopUsersList" style="display:flex; flex-direction:column; gap:8px;"></div>
+                    </div>
+                </div>
+
+                <!-- 30 Günlük Rezervasyon Trendi (CSS Bar Grafik) -->
+                <div style="background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 12px; margin-top: 25px;">
+                    <h4 style="color:#fff; margin-bottom:15px; font-size:0.95rem; font-weight:700;">📈 SON 30 GÜNLÜK REZERVASYON TRENDİ</h4>
+                    <div id="adminTrendChart" style="display:flex; align-items:flex-end; gap:6px; height: 160px; padding-bottom: 20px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.1);"></div>
+                </div>
+            </div>
+
+            <!-- Sahalar -->
+            <div class="admin-tab-content" id="adminFields" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <button class="action-btn" onclick="showAddFieldForm()">+ SAHA EKLE</button>
+                    <input type="text" id="adminFieldSearch" placeholder="Saha ara..." oninput="renderAdminFields()" style="flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
+                </div>
+                <div id="adminFieldList"></div>
+                <!-- Saha ekleme formu -->
+                <div id="adminAddFieldForm" style="display:none;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:20px;margin-top:15px;">
+                    <h3 style="color:#8b5cf6;margin-bottom:15px;">YENİ SAHA EKLE</h3>
+                    <div class="inline-inputs">
+                        <input type="text" id="afKey" placeholder="Saha anahtarı (final)" style="flex:1;">
+                        <input type="text" id="afName" placeholder="Saha adı" style="flex:2;">
+                    </div>
+                    <div class="inline-inputs">
+                        <input type="text" id="afAddress" placeholder="Adres" style="flex:2;">
+                        <input type="text" id="afPhone" placeholder="Telefon" style="flex:1;">
+                    </div>
+                    <div class="inline-inputs">
+                        <input type="text" id="afOpening" placeholder="Açılış (09:00)" style="flex:1;">
+                        <input type="text" id="afClosing" placeholder="Kapanış (23:00)" style="flex:1;">
+                        <input type="number" id="afPitchCount" placeholder="Saha sayısı" value="1" style="flex:1;">
+                    </div>
+                    <div class="inline-inputs">
+                        <input type="number" id="afMorningPrice" placeholder="Gündüz ücreti" value="2500" style="flex:1;">
+                        <input type="number" id="afEveningPrice" placeholder="Akşam ücreti" value="3000" style="flex:1;">
+                    </div>
+                    <button class="action-btn" onclick="submitAddField()" style="background:#8b5cf6;border-color:#8b5cf6;margin-top:10px;">SAHA EKLE</button>
+                </div>
+            </div>
+
+            <div class="admin-tab-content" id="adminUsers" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+                    <input type="text" id="adminUserSearch" placeholder="İsim, telefon veya e-posta ile ara..." oninput="renderAdminUsers()" style="flex:2;min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
+                    <select id="adminUserStatusFilter" onchange="renderAdminUsers()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="">TÜMÜ</option>
+                        <option value="active">Aktif</option>
+                        <option value="banned">Banlı</option>
+                        <option value="globally_banned">Global Banlı</option>
+                    </select>
+                    <select id="adminUserSortBy" onchange="renderAdminUsers()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="newest">En Yeni Üye</option>
+                        <option value="oldest">En Eski Üye</option>
+                        <option value="most_reservations">En Çok Rezervasyon</option>
+                        <option value="least_reservations">En Az Rezervasyon</option>
+                    </select>
+                    <div style="display:flex;gap:5px;align-items:center;">
+                        <span style="font-size:0.75rem;color:var(--text-muted);">Kayıt:</span>
+                        <input type="date" id="adminUserStartDate" onchange="renderAdminUsers()" style="padding:8px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;font-size:0.75rem;">
+                        <input type="date" id="adminUserEndDate" onchange="renderAdminUsers()" style="padding:8px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;font-size:0.75rem;">
+                    </div>
+                    <label style="display:flex;align-items:center;gap:5px;font-size:0.85rem;color:#fff;cursor:pointer;">
+                        <input type="checkbox" id="adminUserSuspicious" onchange="renderAdminUsers()"> ⚠️ Şüpheliler
+                    </label>
+                    <button class="action-btn" onclick="exportAdminUsersCSV()" style="padding:8px 15px;font-size:0.8rem;background:rgba(16,185,129,0.2);border-color:#10b981;color:#34d399;max-width:140px;margin-left:auto;">📥 CSV AKTAR</button>
+                </div>
+                <div id="adminUserList"></div>
+                <div id="adminUserDetail" style="display:none;"></div>
+            </div>
+
+            <!-- Aktivite Günlüğü -->
+            <div class="admin-tab-content" id="adminActivity" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <select id="adminActivityFilter" onchange="renderAdminActivity()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="">Tümü</option>
+                        <option value="field">Saha İşlemleri</option>
+                        <option value="user">Kullanıcı İşlemleri</option>
+                    </select>
+                </div>
+                <div id="adminActivityList"></div>
+            </div>
+
+            <!-- Global Kara Liste -->
+            <div class="admin-tab-content" id="adminBlacklist" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <input type="text" id="adminGlobalBanPhone" placeholder="Telefon numarası (manuel global ban)" style="flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
+                    <button class="action-btn" onclick="adminManualGlobalBan()" style="background:#ef4444;border-color:#ef4444;">GLOBAL BANLA</button>
+                </div>
+                <div id="adminGlobalBlacklist"></div>
+            </div>
+
+            <!-- Duyurular -->
+            <div class="admin-tab-content" id="adminAnnouncements" style="display:none;">
+                <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:20px;margin-bottom:20px;">
+                    <h3 style="color:#8b5cf6;margin-bottom:15px;">YENİ DUYURU</h3>
+                    <input type="text" id="annTitle" placeholder="Duyuru başlığı" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;margin-bottom:10px;">
+                    <textarea id="annMessage" placeholder="Mesaj" rows="3" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;margin-bottom:10px;resize:vertical;"></textarea>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <select id="annTarget" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                            <option value="all">Tüm Kullanıcılar</option>
+                            <option value="businesses">Tüm İşletmeler</option>
+                        </select>
+                        <button class="action-btn" onclick="submitAnnouncement()" style="background:#8b5cf6;border-color:#8b5cf6;">GÖNDER</button>
+                    </div>
+                </div>
+                <div id="adminAnnouncementList"></div>
+            </div>
+
+            <!-- Gelir Raporu -->
+            <div class="admin-tab-content" id="adminRevenue" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+                    <select id="adminRevenuePeriod" onchange="renderAdminRevenue()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(11,15,25,0.9);color:#fff;">
+                        <option value="all">Tüm Zamanlar</option>
+                        <option value="today">Bugün</option>
+                        <option value="week">Bu Hafta</option>
+                        <option value="month">Bu Ay</option>
+                    </select>
+                    <button class="action-btn" onclick="exportAdminRevenueCSV()" style="padding:8px 15px;font-size:0.8rem;background:rgba(16,185,129,0.2);border-color:#10b981;color:#34d399;max-width:140px;margin-left:auto;">📥 CSV AKTAR</button>
+                </div>
+                <div id="adminRevenueList"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ONAY MODALI -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-card mini-modal" style="text-align:center;max-width:400px;">
+            <div class="modal-header">
+                <h2>ONAY GEREKLİ</h2>
+                <button type="button" class="close-modal" onclick="closeConfirmModal(false)">X</button>
+            </div>
+            <p id="confirmModalMessage" style="font-size:1.1rem;margin:20px 0;color:#fff;">Emin misiniz?</p>
+            <div style="display:flex;gap:15px;justify-content:center;">
+                <button id="confirmYesBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#10b981;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">EVET</button>
+                <button id="confirmNoBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#ef4444;color:#fff;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">HAYIR</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=1.0.4"></script>
+</body>
+</html>

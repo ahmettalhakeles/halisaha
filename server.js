@@ -34,6 +34,14 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
+app.get('/isletme', (req, res) => {
+    res.sendFile(__dirname + '/isletme.html');
+});
+
+app.get('/yonetici', (req, res) => {
+    res.sendFile(__dirname + '/yonetici.html');
+});
+
 // Body parsing error handler - always return JSON
 app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
@@ -74,7 +82,8 @@ const db = mysql.createPool({
     connectTimeout: 30000,
     maxIdle: 5,
     idleTimeout: 60000,
-    multipleStatements: true
+    multipleStatements: true,
+    charset: 'utf8mb4'
 });
 
 db.on('error', (err) => {
@@ -84,6 +93,15 @@ db.on('error', (err) => {
 db.getConnection((err, connection) => {
     if (err) return console.error('❌ MySQL Bağlantı Hatası:', err.message);
     console.log('MySQL veritabanina basariyla baglanildi!');
+    
+    // Set charset and ensure column lengths are correct (fixes login 401 truncation issue)
+    connection.query("SET NAMES utf8mb4");
+    connection.query("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NOT NULL", (alterErr) => {
+        if (alterErr) console.warn("⚠️ users tablosu alter edilemedi:", alterErr.message);
+    });
+    connection.query("ALTER TABLE super_admins MODIFY COLUMN password VARCHAR(255) NOT NULL", (alterErr) => {
+        if (alterErr) console.warn("⚠️ super_admins tablosu alter edilemedi:", alterErr.message);
+    });
     
     // Run database migration (safe - uses IF NOT EXISTS)
     let migrationSql;

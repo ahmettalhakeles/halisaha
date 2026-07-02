@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSK - İŞLETME YÖNETİM PANELİ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=1.0.4">
+</head>
+<body class="business-mode">
+    <div id="toastContainer"></div>
+    
+    <header>
+        <div class="logo-area">
+            <div class="logo-row">
+                <svg class="football-logo" viewBox="0 0 100 100" width="52" height="52" role="img" aria-label="Futbol Logo">
+                    <circle cx="50" cy="50" r="46" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
+                    <path d="M 50.00 64.00 Q 42.17 60.78 36.69 54.33 Q 37.33 45.88 41.77 38.67 Q 50.00 36.67 58.23 38.67 Q 62.67 45.88 63.31 54.33 Q 57.83 60.78 50.00 64.00 Z" fill="#10b981" stroke="#10b981" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M 43.77100646790537 37.67376207875074 Q 50.5 37.17376207875074 59.22899353209462 40.173762078750734 Q 60.771892380113385 48 61.31479122813215 55.82623792124926" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+                    <path d="M 50.00 79.00 Q 35.33 70.19 22.42 58.96 L 11.86 75.72 A 46 46 0 0 0 37.32 94.22 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="50.00" y1="64.00" x2="50.00" y2="79.00" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="50.00" y1="79.00" x2="50.00" y2="96.00" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 22.42 58.96 Q 26.26 42.29 32.95 26.54 L 13.75 21.68 A 46 46 0 0 0 4.03 51.61 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="36.69" y1="54.33" x2="22.42" y2="58.96" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="22.42" y1="58.96" x2="6.25" y2="64.21" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 6.56 47.72 A 43.5 43.5 0 0 1 13.52 26.31" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M 32.95 26.54 Q 50.00 25.04 67.05 26.54 L 65.73 6.77 A 46 46 0 0 0 34.27 6.77 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
+                    <line x1="41.77" y1="38.67" x2="32.95" y2="26.54" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="32.95" y1="26.54" x2="22.96" y2="12.79" stroke="#10b981" stroke-width="2.5"/>
+                    <path d="M 38.74 7.98 A 43.5 43.5 0 0 1 61.26 7.98" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+                </svg>
+                <span class="logo-title" style="margin-left:10px; font-weight:800; color:#fff; font-family:'Montserrat',sans-serif;">KSK İŞLETME</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <!-- İşletme Çıkış -->
+            <div id="businessLogoutSection" class="user-auth-zone" style="display: none;">
+                <span id="businessWelcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px; align-self: center;"></span>
+                <button class="nav-btn red-btn" onclick="handleBusinessLogout()">ÇIKIŞ</button>
+            </div>
+        </div>
+    </header>
+
+    <main style="padding: 20px; max-width: 1200px; margin: 0 auto; min-height: 80vh;">
+        <!-- Boş Arka Planlı Temiz İşletme Giriş Paneli -->
+        <div id="businessLoginWrapper" style="display: flex; justify-content: center; align-items: center; min-height: 60vh;">
+            <div class="modal-card" style="max-width: 450px; width: 100%; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); background: rgba(15, 23, 42, 0.95); padding: 30px; border-radius: 16px;">
+                <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; margin-bottom: 20px;">
+                    <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--warning-orange); font-family: 'Oswald', sans-serif;">İŞLETME GİRİŞİ</h2>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">İŞLETME ADI / SAHA KEY</label>
+                    <input type="text" id="businessKey" class="form-control" placeholder="Örn: final, arena" style="padding: 12px;" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
+                </div>
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">ŞİFRE</label>
+                    <input type="password" id="businessPassword" class="form-control" placeholder="İşletme şifresi" style="padding: 12px;" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
+                </div>
+                <button class="action-btn" onclick="handleBusinessLogin()" style="width: 100%; padding: 14px; background: var(--warning-orange); color: #000; font-weight: bold; font-size: 1rem; border-radius: 8px;">GİRİŞ YAP</button>
+            </div>
+        </div>
+
+        <!-- İŞLETME PANELİ -->
+        <section class="business-panel" id="businessPanel" style="display: none; width: 100%;">
+            <h2 class="section-title" id="businessPanelTitle">İŞLETME PANELİ</h2>
+
+            <!-- İŞLETME SEKME MENÜSÜ -->
+            <div class="business-tabs">
+                <button class="tab-btn active" id="tab-btn-stats" onclick="switchBusinessTab('stats')">İSTATİSTİKLER</button>
+                <button class="tab-btn" id="tab-btn-reservations" onclick="switchBusinessTab('reservations')">REZERVASYONLAR</button>
+                <button class="tab-btn" id="tab-btn-debts" onclick="switchBusinessTab('debts')">BORÇLAR</button>
+                <button class="tab-btn" id="tab-btn-comments" onclick="switchBusinessTab('comments')">YORUMLAR</button>
+                <button class="tab-btn" id="tab-btn-blacklist" onclick="switchBusinessTab('blacklist')">KARA LİSTE</button>
+                <button class="tab-btn" id="tab-btn-pricing" onclick="switchBusinessTab('pricing')">FİYAT TARİFESİ</button>
+                <button class="tab-btn" id="tab-btn-hours" onclick="switchBusinessTab('hours')">SAAT & ENGEL AYARLARI</button>
+                <button class="tab-btn" id="tab-btn-subscriptions" onclick="switchBusinessTab('subscriptions')">ABONELİK YÖNETİMİ</button>
+                <button class="tab-btn" id="tab-btn-settings" onclick="switchBusinessTab('settings')">İŞLETME AYARLARI</button>
+            </div>
+
+            <!-- TAB 1: İSTATİSTİKLER -->
+            <div id="tab-stats" class="tab-content-zone">
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <h3>TOPLAM REZERVASYON</h3>
+                        <div class="stat-value" id="statTotal">-</div>
+                        <div class="stat-earnings" id="earnTotal">-</div>
+                        <p class="stat-label">Tüm zamanlar</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>BU AY</h3>
+                        <div class="stat-value" id="statMonth">-</div>
+                        <div class="stat-earnings" id="earnMonth">-</div>
+                        <p class="stat-label">Ay bazında</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>BUGÜN</h3>
+                        <div class="stat-value" id="statToday">-</div>
+                        <div class="stat-earnings" id="earnToday">-</div>
+                        <p class="stat-label">Günlük</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>SON 7 GÜN</h3>
+                        <div class="stat-value" id="statLast7Days">-</div>
+                        <div class="stat-earnings" id="earnLast7Days">-</div>
+                        <p class="stat-label">Haftalık</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: REZERVASYONLAR -->
+            <div id="tab-reservations" class="tab-content-zone" style="display: none;">
+                <div class="reservations-list-container">
+                    <h3 class="section-subtitle">REZERVASYON GRİD GÖRÜNÜMÜ</h3>
+                    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                        <select id="businessGridDateSelect" class="form-control" style="max-width:200px;padding:6px 10px;font-size:0.8rem;" onchange="renderBusinessHoursGrid()"></select>
+                        <button class="btn-filter-res active" id="bizGridFilterAll" onclick="filterBusinessGrid('all')" style="background:var(--primary-green);color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">TÜMÜ</button>
+                        <button class="btn-filter-res" id="bizGridFilterNormal" onclick="filterBusinessGrid('normal')" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">NORMAL</button>
+                        <button class="btn-filter-res" id="bizGridFilterAbone" onclick="filterBusinessGrid('abone')" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
+                    </div>
+                    <div id="businessHoursGrid" class="hours-grid" style="margin-bottom:20px;"></div>
+                    <div id="businessGridSelectedInfo" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:15px;margin-bottom:20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <strong id="bizGridSelName" style="font-size:1.1rem;"></strong><br>
+                                <small id="bizGridSelDetail" style="color:var(--text-muted);"></small>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="action-btn" style="background:var(--primary-green);color:#000;padding:6px 14px;font-size:0.75rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;" onclick="quickBusinessWhatsApp()">📱 MESAJ GÖNDER</button>
+                                <button class="btn-danger-sm" onclick="quickBusinessCancel()">İPTAL</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="section-subtitle">AKTİF REZERVASYONLAR VE ERTELEME</h3>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                        <button class="btn-filter-res active" id="resFilterAll" onclick="filterBusinessReservations('all')" style="background:var(--primary-green);color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">TÜMÜ</button>
+                        <button class="btn-filter-res" id="resFilterNormal" onclick="filterBusinessReservations('normal')" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">NORMAL</button>
+                        <button class="btn-filter-res" id="resFilterAbone" onclick="filterBusinessReservations('abone')" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
+                    </div>
+                    <div id="businessActiveReservationsContainer" class="reservations-scroll" style="margin-bottom: 25px;">
+                    </div>
+                    
+                    <h3 class="section-subtitle" style="margin-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px;">GEÇMİŞ REZERVASYONLAR</h3>
+                    <div id="businessPastReservationsContainer" class="reservations-scroll" style="opacity: 0.75;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: BORÇLAR -->
+            <div id="tab-debts" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <h3 class="section-subtitle" style="margin-bottom: 5px;">💰 BORÇ YÖNETİMİ</h3>
+                            <p class="section-desc" style="margin-bottom: 0;">Rezervasyon yapan kişilerin ödeme durumlarını buradan yönetin.</p>
+                        </div>
+                        <div id="debtsSummaryStats" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 12px 18px; border-radius: 8px; font-size: 0.95rem; color: #fff; min-width: 220px; box-shadow: var(--shadow-sm); backdrop-filter: blur(5px);">
+                            <div style="font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 5px; font-size: 0.85rem; color: rgba(255,255,255,0.6); text-transform: uppercase;">Dönem Toplamı</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Ödenen:</span>
+                                <strong style="color: var(--neon-green);"><span id="debtsSumPaid">0</span> TL</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Ödenmeyen:</span>
+                                <strong style="color: #fca5a5;"><span id="debtsSumUnpaid">0</span> TL</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="debt-filter-bar" style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
+                        <button class="debt-filter-btn active" id="debt-filter-all" onclick="loadBusinessDebts('all')">TÜMÜ</button>
+                        <button class="debt-filter-btn" id="debt-filter-daily" onclick="loadBusinessDebts('daily')">BUGÜN</button>
+                        <button class="debt-filter-btn" id="debt-filter-weekly" onclick="loadBusinessDebts('weekly')">SON 7 GÜN</button>
+                        <button class="debt-filter-btn" id="debt-filter-monthly" onclick="loadBusinessDebts('monthly')">SON 30 GÜN</button>
+                    </div>
+                    <div class="debt-status-filter-bar" style="display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap;">
+                        <button class="debt-filter-btn active" id="debt-status-all" onclick="setDebtStatusFilter('all')">TÜM ÖDEMELER</button>
+                        <button class="debt-filter-btn" id="debt-status-unpaid" onclick="setDebtStatusFilter('unpaid')">⚠️ ÖDENMEDİ</button>
+                        <button class="debt-filter-btn" id="debt-status-paid" onclick="setDebtStatusFilter('paid')">✅ ÖDENDİ</button>
+                        <button class="debt-filter-btn" id="debt-sort-toggle" onclick="toggleDebtSortOrder()" style="margin-left:auto;background:rgba(255,255,255,0.08);">⬇️ YENİDEN ESKİYE</button>
+                    </div>
+                    
+                    <div id="businessDebtsContainer" class="reservations-scroll"></div>
+                </div>
+            </div>
+
+            <!-- TAB: YORUMLAR -->
+            <div id="tab-comments" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">💬 YORUM YÖNETİMİ</h3>
+                    <p class="section-desc">Müşterilerinizin yaptığı yorumları inceleyin ve cevaplayın.</p>
+                    
+                    <div class="debt-status-filter-bar" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+                        <button class="tab-btn active" id="comment-filter-all" onclick="setBusinessCommentFilter('all')">TÜM YORUMLAR</button>
+                        <button class="tab-btn" id="comment-filter-unanswered" onclick="setBusinessCommentFilter('unanswered')">⚠️ CEVAPLANMAMIŞ</button>
+                        <button class="tab-btn" id="comment-filter-answered" onclick="setBusinessCommentFilter('answered')">✅ CEVAPLANMIŞ</button>
+                    </div>
+
+                    <div id="businessCommentsList" style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- Dinamik yorumlar buraya eklenecek -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: KARA LİSTE -->
+            <div id="tab-blacklist" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">🚫 SAHA KARA LİSTESİ</h3>
+                    <p class="section-desc">Maça gelmeyen veya sorun çıkaran kullanıcıları bu listeden engelleyebilirsiniz. Bir kullanıcı 3 farklı saha tarafından engellenirse sistem genelinde küresel olarak engellenir (Globally Banned).</p>
+                    
+                    <div class="settings-grid" style="max-width: 400px; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px;">
+                        <div class="form-group">
+                            <label for="blacklistPhoneInput">ENGELLEYECEK TELEFON NUMARASI</label>
+                            <input type="text" id="blacklistPhoneInput" class="form-control" placeholder="(0555) 555 5555">
+                        </div>
+                        <button class="action-btn" onclick="addToBusinessBlacklist()" style="margin-top: 10px;">NUMARAYI ENGELLE</button>
+                    </div>
+
+                    <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 12px; font-weight: 600;">ENGELENEN NUMARALAR</h4>
+                    <div id="businessBlacklistContainer" class="reservations-scroll">
+                        <!-- Kara liste kayıtları buraya eklenecek -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: FİYAT TARİFESİ -->
+            <div id="tab-pricing" class="tab-content-zone" style="display: none;">
+                <div class="pricing-calendar card-block">
+                    <h3 class="section-subtitle">FİYAT AYARLARI</h3>
+                    
+                    <div id="pricingPitchSelectorZone" class="form-group" style="display: none; max-width: 300px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 15px;">
+                        <label for="pricingPitchSelect">AYARLANACAK SAHA SEÇİN</label>
+                        <select id="pricingPitchSelect" class="form-control" onchange="loadPricingForSelectedPitch()">
+                            <option value="">Lütfen saha seçin...</option>
+                            <option value="1">Saha 1</option>
+                            <option value="2">Saha 2</option>
+                        </select>
+                    </div>
+
+                    <div id="pricingInputsZone">
+                        <div class="pricing-inputs">
+                            <div class="form-group">
+                                <label>SABAH SAATLERİ FİYATI (Örn: 2500)</label>
+                                <input type="number" id="businessPriceMorning" class="form-control" placeholder="2500">
+                            </div>
+                            <div class="form-group">
+                                <label>AKŞAM SAATLERİ FİYATI (Örn: 3000)</label>
+                                <input type="number" id="businessPriceEvening" class="form-control" placeholder="3000">
+                            </div>
+                        </div>
+                        <div class="pricing-preview">
+                            <p class="section-desc">Seçili Saha Fiyatı: <strong id="businessCurrentPricePreview" style="color: var(--neon-green); font-size: 1.5rem;">-</strong></p>
+                        </div>
+                        <button class="action-btn" onclick="savePricingSchedule()">FİYAT TARİFESİNİ KAYDET</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: ÇALIŞMA SAATLERİ VE ENGELLER -->
+            <div id="tab-hours" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">ÇALIŞMA SAATLERİ VE SAAT KİLİTLEME</h3>
+                    
+                    <div id="hoursPitchSelectorZone" class="form-group" style="display: none; max-width: 300px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 15px;">
+                        <label for="hoursPitchSelect">AYARLANACAK SAHA SEÇİN</label>
+                        <select id="hoursPitchSelect" class="form-control" onchange="loadHoursForSelectedPitch()">
+                            <option value="">Lütfen saha seçin...</option>
+                            <option value="1">Saha 1</option>
+                            <option value="2">Saha 2</option>
+                        </select>
+                    </div>
+
+                    <div id="hoursInputsZone">
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                            <div class="toggle-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="fieldClosureToggle" onchange="toggleFieldClosure()">
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="toggle-text"><strong>Tüm Günleri Kapat (Komple Bakım)</strong></span>
+                            </div>
+
+                            <div class="toggle-container" id="weekdayClosureContainer" style="display: none;">
+                                <label class="switch">
+                                    <input type="checkbox" id="weekdayClosureToggle" onchange="toggleWeekdayClosure()">
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="toggle-text"><strong>Seçili Günü Kapat (<span id="selectedClosureDayName">PAZARTESİ</span>)</strong></span>
+                            </div>
+                        </div>
+
+                        <div class="admin-time-range" style="border-top: none; margin-top: 15px; padding-top: 0;">
+                            <div class="inline-inputs" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                                <div>
+                                    <label>HAFTANIN GÜNÜ</label>
+                                    <select id="adminHoursDaySelect" class="form-control" onchange="onAdminHoursDayChange()">
+                                        <option value="all">TÜM GÜNLER (GENEL)</option>
+                                        <option value="1">PAZARTESİ</option>
+                                        <option value="2">SALI</option>
+                                        <option value="3">ÇARŞAMBA</option>
+                                        <option value="4">PERŞEMBE</option>
+                                        <option value="5">CUMA</option>
+                                        <option value="6">CUMARTESİ</option>
+                                        <option value="0">PAZAR</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>AÇILIŞ SAATİ</label>
+                                    <select id="adminOpeningHour" class="form-control"></select>
+                                </div>
+                                <div>
+                                    <label>KAPANIŞ SAATİ</label>
+                                    <select id="adminClosingHour" class="form-control"></select>
+                                </div>
+                            </div>
+                            <button class="action-btn" onclick="saveOperatingHours()" style="margin-top: 15px; max-width: 300px;">ÇALIŞMA SAATLERİNİ KAYDET</button>
+                        </div>
+
+                        <div class="admin-hours-section card-block" style="margin-top: 20px;">
+                            <h3>CALISMA SAATLERI & ENGELLER</h3>
+                            <p class="section-desc">KİLİTLEMEK VEYA BOŞALTMAK İSTEDİĞİNİZ SAATİN ÜZERİNE TIKLAYIN</p>
+                            <div class="hours-grid" id="adminHoursGrid">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: ABONELİK YÖNETİMİ -->
+            <div id="tab-subscriptions" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">YENİ ABONELİK TANIMLA</h3>
+                    <div class="settings-grid">
+                        <div class="form-group" id="subPitchSelectZone">
+                            <label for="subPitchSelect">SAHA SEÇİN</label>
+                            <select id="subPitchSelect" class="form-control">
+                                <option value="1">Saha 1</option>
+                                <option value="2">Saha 2</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="subDaySelect">HAFTANIN GÜNÜ SEÇİN</label>
+                            <select id="subDaySelect" class="form-control">
+                                <option value="PAZARTESİ">PAZARTESİ</option>
+                                <option value="SALI">SALI</option>
+                                <option value="ÇARŞAMBA">ÇARŞAMBA</option>
+                                <option value="PERŞEMBE">PERŞEMBE</option>
+                                <option value="CUMA">CUMA</option>
+                                <option value="CUMARTESİ">CUMARTESİ</option>
+                                <option value="PAZAR">PAZAR</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="subHourSelect">SAAT DİLİMİ SEÇİN</label>
+                            <select id="subHourSelect" class="form-control">
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="subNameInput">ABONE İSİM SOYİSİM</label>
+                            <input type="text" id="subNameInput" class="form-control" placeholder="Ahmet Yılmaz">
+                        </div>
+                        <div class="form-group">
+                            <label for="subPhoneInput">ABONE TELEFON (WHATSAPP)</label>
+                            <input type="tel" id="subPhoneInput" class="form-control" placeholder="Telefon Numarası (Zorunlu)" required>
+                        </div>
+                    </div>
+                    <button class="action-btn" onclick="saveSubscription()" style="max-width: 300px;">ABONELİK OLUŞTUR</button>
+                </div>
+
+                <div class="reservations-list-container" style="margin-top: 20px; max-height: 400px;">
+                    <h3 class="section-subtitle">AKTİF HAFTALIK ABONELİKLER</h3>
+                    <div id="businessSubscriptionsContainer" class="reservations-scroll">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: İŞLETME AYARLARI -->
+            <div id="tab-settings" class="tab-content-zone" style="display: none;">
+                <div class="business-settings card-block">
+                    <h3 class="section-subtitle">İŞLETME GENEL AYARLARI</h3>
+                    <p class="section-desc">İşletmenizin genel ayarlarını, iletişim ve servis bilgilerini, harita koordinatlarını bu alandan düzenleyebilirsiniz.</p>
+                    
+                    <div class="settings-grid-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; margin-bottom: 25px;">
+                        <div class="form-group">
+                            <label>HALI SAHA SAYISI</label>
+                            <select id="businessSettingFieldCount" class="form-control" onchange="onAdminFieldCountChange()">
+                                <option value="1">1 Saha</option>
+                                <option value="2">2 Saha (Saha 1 & Saha 2)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>TELEFON NUMARASI</label>
+                            <input type="text" id="businessSettingPhone" class="form-control" placeholder="+905XXXXXXXXX">
+                        </div>
+                        <div class="form-group">
+                            <label>SERVİS HİZMETİ</label>
+                            <select id="businessSettingService" class="form-control">
+                                <option value="Servis: Var">SERVİS: VAR</option>
+                                <option value="Servis: Yok">SERVİS: YOK</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>KRAMPON KİRALAMA</label>
+                            <select id="businessSettingCleats" class="form-control">
+                                <option value="Krampon Kiralanır">KRAMPON KİRALANIR</option>
+                                <option value="Krampon Kiralanmaz">KRAMPON KİRALANMAZ</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>DUŞ HİZMETİ</label>
+                            <select id="businessSettingShower" class="form-control">
+                                <option value="Duş Var">DUŞ VAR</option>
+                                <option value="Duş Yok">DUŞ YOK</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>MARKET HİZMETİ</label>
+                            <select id="businessSettingMarket" class="form-control">
+                                <option value="Market Var">MARKET VAR</option>
+                                <option value="Market Yok">MARKET YOK</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>İKRAMLAR (Virgülle Ayırın)</label>
+                            <input type="text" id="businessSettingRefreshments" class="form-control" placeholder="Örn: Çay, gofret, kraker">
+                        </div>
+                        <div class="form-group">
+                            <label>HARİTA KOORDİNATLARI (Google Maps)</label>
+                            <input type="text" id="businessSettingCoordinates" class="form-control" placeholder="Örn: 40.6558,35.8272">
+                        </div>
+                    </div>
+                    
+                    <button class="action-btn" onclick="saveAllBusinessSettings()" style="max-width: 300px;">BİLGİLERİ KAYDET</button>
+                </div>
+
+                <div class="business-settings card-block" style="margin-top: 20px;">
+                    <h3 class="section-subtitle">SAHA FOTOĞRAFLARI</h3>
+                    <p class="section-desc">Sahanıza ait fotoğrafları yükleyin. Bunlar saha kartında ve rezervasyon panelinde gösterilecektir.</p>
+                    <div class="settings-grid-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; margin-bottom: 25px;">
+                        <div class="form-group">
+                            <label>YENİ FOTOĞRAF</label>
+                            <input type="file" id="fieldPhotoInput" accept="image/*" class="form-control" style="padding: 6px;">
+                        </div>
+                        <div class="form-group">
+                            <label>AÇIKLAMA</label>
+                            <input type="text" id="fieldPhotoCaption" class="form-control" placeholder="Fotoğraf açıklaması (opsiyonel)">
+                        </div>
+                    </div>
+                    <button class="action-btn" onclick="uploadFieldPhoto()" style="max-width: 300px;">FOTOĞRAF YÜKLE</button>
+                    <div id="fieldPhotoGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 20px;"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Hızlı Rezervasyon İptal/Onay Modalları -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-card mini-modal" style="text-align:center;max-width:400px;">
+            <div class="modal-header">
+                <h2>ONAY GEREKLİ</h2>
+                <button type="button" class="close-modal" onclick="closeConfirmModal(false)">X</button>
+            </div>
+            <p id="confirmModalMessage" style="font-size:1.1rem;margin:20px 0;color:#fff;">Emin misiniz?</p>
+            <div style="display:flex;gap:15px;justify-content:center;">
+                <button id="confirmYesBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#10b981;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">EVET</button>
+                <button id="confirmNoBtn" class="modal-btn" style="flex:0;padding:12px 40px;font-size:1rem;background:#ef4444;color:#fff;font-weight:700;border:none;border-radius:8px;cursor:pointer;text-align:center;">HAYIR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saat Engelleme Modalı -->
+    <div class="modal-overlay" id="hourActionModal" style="z-index: 1100;">
+        <div class="modal-card mini-modal">
+            <div class="modal-header">
+                <h2 id="hourActionTitle">SAAT YONETIMI</h2>
+                <button type="button" class="close-modal" onclick="closeModal('hourActionModal')">X</button>
+            </div>
+            <div class="form-group">
+                <label>YAPILACAK ISLEM</label>
+                <select id="hourActionSelect" class="form-control">
+                    <option value="KAPAT">BU SAATI GENEL KULLANIMA KAPAT/ENGELLE</option>
+                    <option value="TEMIZLE">SAATI TEMIZLE/BOSA CIKAR</option>
+                </select>
+            </div>
+            <button class="action-btn" onclick="saveHourAction()">AYARLARI KAYDET</button>
+        </div>
+    </div>
+
+    <script src="script.js?v=1.0.4"></script>
+</body>
+</html>

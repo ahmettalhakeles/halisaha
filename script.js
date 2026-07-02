@@ -2,6 +2,10 @@ let isAdminLoggedIn = false;
 let adminToken = null;
 let adminData = null;
 
+const isBusinessPage = window.location.pathname.includes('isletme');
+const isAdminPage = window.location.pathname.includes('yonetici');
+const isUserPage = !isBusinessPage && !isAdminPage;
+
 const masterHoursList = [
     "06:00 - 07:00", "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
     "10:00 - 11:00", "11:00 - 12:00", "12:00 - 13:00", "13:00 - 14:00",
@@ -161,37 +165,78 @@ let userBlacklistedFields = [];
 // =======================================================
 window.onload = async function() {
     await loadPitchSettingsFromDatabase();
-    await initWeatherWidget();
-    initDateDropdowns();
-    await initPitchSelector();
-    await loadDailyHoursList();
-    renderFieldsGrid();
-    initMatchSeekerForm();
-    initTeamSeekerForm();
-    updateLoginUIVisibility();
+    
+    if (isUserPage) {
+        await initWeatherWidget();
+        initDateDropdowns();
+        await initPitchSelector();
+        await loadDailyHoursList();
+        renderFieldsGrid();
+        initMatchSeekerForm();
+        initTeamSeekerForm();
+        updateLoginUIVisibility();
 
-    await loadReservationsFromServer();
-    await loadForumPostsFromServer();
-    await loadMatchSeekers();
-    await loadTeamSeekers();
+        await loadReservationsFromServer();
+        await loadForumPostsFromServer();
+        await loadMatchSeekers();
+        await loadTeamSeekers();
 
-    // Rezervasyonlar zaten loadReservationsFromServer() ile yüklendi (cancelled hariç)
+        if (currentUser) {
+            await loadUserBlacklist();
+            renderFieldsGrid();
+        }
+
+        const confirmYes = document.getElementById('confirmYesBtn');
+        if (confirmYes) confirmYes.onclick = () => closeConfirmModal(true);
+        const confirmNo = document.getElementById('confirmNoBtn');
+        if (confirmNo) confirmNo.onclick = () => closeConfirmModal(false);
+
+        const bookingConfirmYes = document.getElementById('bookingConfirmYesBtn');
+        if (bookingConfirmYes) bookingConfirmYes.onclick = () => closeBookingConfirmModal(true);
+        const bookingConfirmNo = document.getElementById('bookingConfirmNoBtn');
+        if (bookingConfirmNo) bookingConfirmNo.onclick = () => closeBookingConfirmModal(false);
+    }
+    
+    if (isBusinessPage) {
+        await loadDailyHoursList();
+        const storedKey = localStorage.getItem('businessFieldKey');
+        if (storedKey) {
+            currentBusinessFieldKey = storedKey;
+            isBusinessLoggedIn = true;
+            showBusinessUI();
+        } else {
+            showBusinessLoginWrapper();
+        }
+        
+        const confirmYes = document.getElementById('confirmYesBtn');
+        if (confirmYes) confirmYes.onclick = () => closeConfirmModal(true);
+        const confirmNo = document.getElementById('confirmNoBtn');
+        if (confirmNo) confirmNo.onclick = () => closeConfirmModal(false);
+    }
+    
+    if (isAdminPage) {
+        const storedToken = localStorage.getItem('adminToken');
+        const storedData = localStorage.getItem('adminData');
+        if (storedToken && storedData) {
+            isAdminLoggedIn = true;
+            adminToken = storedToken;
+            adminData = JSON.parse(storedData);
+            showAdminUI();
+        } else {
+            showAdminLoginWrapper();
+        }
+        
+        const confirmYes = document.getElementById('confirmYesBtn');
+        if (confirmYes) confirmYes.onclick = () => closeConfirmModal(true);
+        const confirmNo = document.getElementById('confirmNoBtn');
+        if (confirmNo) confirmNo.onclick = () => closeConfirmModal(false);
+    }
+
     // Telefon maskelerini bağlama
     ['forumPhone', 'matchPhone', 'regPhone', 'subPhoneInput', 'profilePhoneInput', 'businessSettingPhone', 'blacklistPhoneInput'].forEach(id => {
         const input = document.getElementById(id);
         if (input) applyPhoneMask(input);
     });
-
-    if (currentUser) {
-        await loadUserBlacklist();
-        renderFieldsGrid();
-    }
-
-    document.getElementById('confirmYesBtn').onclick = () => closeConfirmModal(true);
-    document.getElementById('confirmNoBtn').onclick = () => closeConfirmModal(false);
-
-    document.getElementById('bookingConfirmYesBtn').onclick = () => closeBookingConfirmModal(true);
-    document.getElementById('bookingConfirmNoBtn').onclick = () => closeBookingConfirmModal(false);
 };
 
 // =======================================================
@@ -314,61 +359,35 @@ function switchBusinessTab(tabName) {
     }
 }
 
-async function handleBusinessLogin() {
-    const key = document.getElementById('businessKey').value.trim().toLowerCase();
-    const password = document.getElementById('businessPassword').value;
+function showBusinessLoginWrapper() {
+    const loginWrapper = document.getElementById('businessLoginWrapper');
+    if (loginWrapper) loginWrapper.style.display = 'flex';
+    const panel = document.getElementById('businessPanel');
+    if (panel) panel.style.display = 'none';
+    const logoutSec = document.getElementById('businessLogoutSection');
+    if (logoutSec) logoutSec.style.display = 'none';
+}
 
-    if (!key || !password) {
-        alert("Lütfen işletme adı ve şifreyi giriniz.");
-        return;
-    }
+function showBusinessUI() {
+    const loginWrapper = document.getElementById('businessLoginWrapper');
+    if (loginWrapper) loginWrapper.style.display = 'none';
+    const panel = document.getElementById('businessPanel');
+    if (panel) panel.style.display = 'block';
+    const logoutSec = document.getElementById('businessLogoutSection');
+    if (logoutSec) logoutSec.style.display = 'flex';
 
-    try {
-        const resp = await fetch('/api/business-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fieldKey: key, password })
-        });
-        const data = await resp.json();
-        if (!data.success) {
-            alert(data.message || "Hatalı şifre!");
-            return;
-        }
-    } catch (e) {
-        alert("Sunucu hatası! Lütfen tekrar deneyin.");
-        return;
-    }
-
-    currentBusinessFieldKey = key;
-    isBusinessLoggedIn = true;
-    closeModal('businessLoginModal');
-    document.getElementById('businessPassword').value = "";
-
-    document.getElementById('userAuthSection').style.display = 'none';
-    document.getElementById('businessAuthSection').style.display = 'none';
-    document.getElementById('adminAuthSection').style.display = 'none';
-    document.getElementById('adminLogoutSection').style.display = 'none';
-    document.getElementById('businessLogoutSection').style.display = 'flex';
-    document.getElementById('welcomeText').style.display = 'none';
-
-    const customerContainer = document.getElementById('customerContainer');
-    if (customerContainer) customerContainer.style.display = 'none';
-
-    document.querySelector('main').classList.add('business-mode');
-    document.body.classList.add('business-mode');
-    const weatherEl = document.querySelector('.weather-container');
-    if (weatherEl) weatherEl.style.display = 'none';
-    const textDivider = document.querySelector('.text-divider');
-    if (textDivider) textDivider.style.display = 'none';
-    document.getElementById('businessPanel').style.display = 'block';
     const field = fieldsData[currentBusinessFieldKey];
-    document.getElementById('businessPanelTitle').innerText = `YÖNETİM PANELİ`;
-    document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
-    const hbf = document.getElementById('hamburgerFieldName');
-    if (hbf) hbf.innerText = field.name.toLocaleUpperCase('tr-TR');
-    // Her zaman işletme menü öğelerini hamburger menüsüne ekle (PC'de de hamburger ile kullanılabilir)
+    if (field) {
+        const welcome = document.getElementById('businessWelcomeText');
+        if (welcome) welcome.innerText = `İŞLETME: ${field.name}`;
+        const titleEl = document.getElementById('businessPanelTitle');
+        if (titleEl) titleEl.innerText = `YÖNETİM PANELİ`;
+        const hbf = document.getElementById('hamburgerFieldName');
+        if (hbf) hbf.innerText = field.name.toLocaleUpperCase('tr-TR');
+    }
+
     const headerActions = document.querySelector('.header-actions');
-    if (headerActions) {
+    if (headerActions && field) {
         const existingClone = document.getElementById('businessMobileMenuClone');
         if (existingClone) existingClone.remove();
         const menuDiv = document.createElement('div');
@@ -406,48 +425,68 @@ async function handleBusinessLogin() {
     }
 
     switchBusinessTab('stats');
-    await loadBusinessDashboard();
+    loadBusinessDashboard();
+}
+
+async function handleBusinessLogin() {
+    const keyInput = document.getElementById('businessKey');
+    const passInput = document.getElementById('businessPassword');
+    if (!keyInput || !passInput) return;
+
+    const key = keyInput.value.trim().toLowerCase();
+    const password = passInput.value;
+
+    if (!key || !password) {
+        alert("Lütfen işletme adı ve şifreyi giriniz.");
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/business-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fieldKey: key, password })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            alert(data.message || "Hatalı şifre!");
+            return;
+        }
+    } catch (e) {
+        alert("Sunucu hatası! Lütfen tekrar deneyin.");
+        return;
+    }
+
+    currentBusinessFieldKey = key;
+    isBusinessLoggedIn = true;
+    localStorage.setItem('businessFieldKey', key);
+    passInput.value = "";
+
+    showBusinessUI();
 }
 
 function handleBusinessLogout() {
     isBusinessLoggedIn = false;
     currentBusinessFieldKey = "";
-
-    document.getElementById('userAuthSection').style.display = 'flex';
-    document.getElementById('businessAuthSection').style.display = 'flex';
-    document.getElementById('adminAuthSection').style.display = 'flex';
-    document.getElementById('adminLogoutSection').style.display = 'none';
-    document.getElementById('businessLogoutSection').style.display = 'none';
-
-    const customerContainer = document.getElementById('customerContainer');
-    if (customerContainer) customerContainer.style.display = 'block';
-
-    document.querySelector('main').classList.remove('business-mode');
-    document.body.classList.remove('business-mode');
-    const weatherEl = document.querySelector('.weather-container');
-    if (weatherEl) weatherEl.style.display = '';
-    const textDivider = document.querySelector('.text-divider');
-    if (textDivider) textDivider.style.display = '';
-    document.getElementById('businessPanel').style.display = 'none';
+    localStorage.removeItem('businessFieldKey');
 
     // İşletme menüsünü kaldır
     const clone = document.getElementById('businessMobileMenuClone');
     if (clone) clone.remove();
 
     // Admin modunda işletme panelinden çıkış: admin paneline dön
-    if (isAdminLoggedIn) {
+    if (isAdminLoggedIn && isAdminPage) {
         document.querySelector('main').classList.remove('business-mode');
         document.body.classList.remove('business-mode');
-        document.getElementById('adminPanel').style.display = 'block';
+        const adminPanel = document.getElementById('adminPanel');
+        if (adminPanel) adminPanel.style.display = 'block';
         document.querySelector('main').classList.add('admin-mode');
         document.body.classList.add('admin-mode');
-        document.getElementById('customerContainer').style.display = 'none';
         switchAdminTab('fields');
         return;
     }
 
-    alert("İşletme panelinden çıkış yapıldı.");
-    if (currentSelectedFieldKey) onDateOrFieldChange();
+    showBusinessLoginWrapper();
 }
 
 // =======================================================
@@ -4038,14 +4077,46 @@ async function loadBusinessComments() {
 // SÜPER YÖNETİCİ PANELİ
 // =======================================================
 
+function showAdminLoginWrapper() {
+    const loginWrapper = document.getElementById('adminLoginWrapper');
+    if (loginWrapper) loginWrapper.style.display = 'flex';
+    const panel = document.getElementById('adminPanel');
+    if (panel) panel.style.display = 'none';
+    const logoutSec = document.getElementById('adminLogoutSection');
+    if (logoutSec) logoutSec.style.display = 'none';
+}
+
+function showAdminUI() {
+    const loginWrapper = document.getElementById('adminLoginWrapper');
+    if (loginWrapper) loginWrapper.style.display = 'none';
+    const panel = document.getElementById('adminPanel');
+    if (panel) panel.style.display = 'block';
+    const logoutSec = document.getElementById('adminLogoutSection');
+    if (logoutSec) logoutSec.style.display = 'flex';
+
+    const welcome = document.getElementById('adminWelcomeText');
+    if (welcome && adminData) welcome.textContent = `🛡️ ${adminData.display_name}`;
+
+    switchAdminTab('dashboard');
+}
+
 function handleAdminLogin() {
-    const username = document.getElementById('adminUsername').value.trim();
-    const password = document.getElementById('adminPassword').value.trim();
+    const usernameEl = document.getElementById('adminUsername');
+    const passwordEl = document.getElementById('adminPassword');
+    if (!usernameEl || !passwordEl) return;
+
+    const username = usernameEl.value.trim();
+    const password = passwordEl.value.trim();
     const errorEl = document.getElementById('adminLoginError');
     const loginBtn = document.getElementById('adminLoginBtn');
-    if (!username || !password) { errorEl.textContent = 'Kullanıcı adı ve şifre girin!'; errorEl.style.display = 'block'; return; }
-    errorEl.style.display = 'none';
+    
+    if (!username || !password) { 
+        if (errorEl) { errorEl.textContent = 'Kullanıcı adı ve şifre girin!'; errorEl.style.display = 'block'; } 
+        return; 
+    }
+    if (errorEl) errorEl.style.display = 'none';
     if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'GİRİŞ YAPILIYOR...'; }
+    
     fetch('/api/admin/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -4053,22 +4124,23 @@ function handleAdminLogin() {
     .then(r => { if (!r.ok) return r.text().then(t => { throw new Error(t); }); return r.json(); })
     .then(data => {
         if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'GİRİŞ YAP'; }
-        if (!data.success) { errorEl.textContent = data.message; errorEl.style.display = 'block'; return; }
-        closeModal('adminLoginModal');
+        if (!data.success) { 
+            if (errorEl) { errorEl.textContent = data.message; errorEl.style.display = 'block'; } 
+            return; 
+        }
         isAdminLoggedIn = true;
         adminToken = data.token;
         adminData = data.admin;
-        document.getElementById('adminAuthSection').style.display = 'none';
-        document.getElementById('adminLogoutSection').style.display = 'flex';
-        document.getElementById('adminWelcomeText').textContent = `🛡️ ${data.admin.display_name}`;
-        openAdminPanel();
+        localStorage.setItem('adminToken', data.token);
+        localStorage.setItem('adminData', JSON.stringify(data.admin));
+        passwordEl.value = "";
+        showAdminUI();
     })
     .catch((err) => {
         if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'GİRİŞ YAP'; }
         let msg = 'Sunucu hatası!';
         try { const e = JSON.parse(err.message); if (e.message) msg = e.message; } catch(e) { msg = err.message || 'Sunucu hatası!'; }
-        errorEl.textContent = msg;
-        errorEl.style.display = 'block';
+        if (errorEl) { errorEl.textContent = msg; errorEl.style.display = 'block'; }
     });
 }
 
@@ -4076,25 +4148,17 @@ function handleAdminLogout() {
     isAdminLoggedIn = false;
     adminToken = null;
     adminData = null;
-    document.getElementById('adminAuthSection').style.display = 'flex';
-    document.getElementById('adminLogoutSection').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'none';
-    document.querySelector('main').classList.remove('admin-mode');
-    document.getElementById('customerContainer').style.display = 'block';
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminData');
+    showAdminLoginWrapper();
 }
 
 function openAdminPanel() {
-    document.getElementById('adminPanel').style.display = 'block';
-    document.querySelector('main').classList.add('admin-mode');
-    document.getElementById('customerContainer').style.display = 'none';
-    switchAdminTab('dashboard');
-    loadAdminDashboard();
+    showAdminUI();
 }
 
 function exitAdminPanel() {
-    document.getElementById('adminPanel').style.display = 'none';
-    document.querySelector('main').classList.remove('admin-mode');
-    document.getElementById('customerContainer').style.display = 'block';
+    handleAdminLogout();
 }
 
 function getAdminHeaders() {
@@ -4107,9 +4171,23 @@ function switchAdminTab(tab) {
         const el = document.getElementById('admin' + t.charAt(0).toUpperCase() + t.slice(1));
         if (el) el.style.display = t === tab ? 'block' : 'none';
     });
+
+    const tabMap = {
+        'dashboard': 'dashboard',
+        'fields': 'sahalar',
+        'users': 'kullanıcılar',
+        'activity': 'aktivite',
+        'blacklist': 'kara liste',
+        'announcements': 'duyurular',
+        'revenue': 'gelir'
+    };
+
     document.querySelectorAll('#adminPanel .admin-tabs .tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent.trim().toLowerCase().includes(tab));
+        const btnText = btn.textContent.trim().toLowerCase();
+        const expected = tabMap[tab];
+        btn.classList.toggle('active', btnText.includes(expected));
     });
+
     if (tab === 'dashboard') loadAdminDashboard();
     if (tab === 'fields') renderAdminFields();
     if (tab === 'users') renderAdminUsers();
