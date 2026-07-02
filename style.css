@@ -1490,7 +1490,12 @@ input:checked+.slider:before {
 
 /* İŞLETME PANELİ TAB TASARIMI */
 .business-tabs {
-    display: none !important;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #1e293b;
+    padding-bottom: 12px;
+    flex-wrap: wrap;
 }
 
 .tab-btn {
@@ -3918,15 +3923,6 @@ main.business-mode {
     }
 }
 
-/* PC'de de hamburger butonunu belirli modlarda göster */
-@media (min-width: 769px) {
-
-    body.business-mode .hamburger-btn,
-    body.admin-mode .hamburger-btn,
-    body.admin-impersonating .hamburger-btn {
-        display: block !important;
-    }
-}
 
 /* Admin Impersonating Stilleri */
 body.admin-impersonating {
@@ -3961,7 +3957,24 @@ body.business-mode .header-actions #userAuthSection {
 
 @media (max-width: 768px) {
     /* Mobilde klonlanmış işletme menüsünün gösterilmesini garanti et */
-    body.business-mode .header-actions #businessMobileMenuClone {
-        display: block !important;
+    }
+}
+
+/* Footer Auth Bar Gizleme */
+body.business-mode #footerAuthBar,
+body.admin-mode #footerAuthBar,
+body.admin-impersonating #footerAuthBar {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    #footerAuthBar {
+        padding: 15px !important;
+        justify-content: center !important;
+        gap: 10px !important;
+    }
+    #footerAuthBar .announcements-menu-btn {
+        width: 100% !important;
+        margin-top: 5px !important;
     }
 }
