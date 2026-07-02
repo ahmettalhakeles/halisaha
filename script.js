@@ -342,7 +342,9 @@ async function handleBusinessLogin() {
 
     document.getElementById('userAuthSection').style.display = 'none';
     document.getElementById('businessAuthSection').style.display = 'none';
-    document.getElementById('businessLogoutSection').style.display = 'none';
+    document.getElementById('adminAuthSection').style.display = 'none';
+    document.getElementById('adminLogoutSection').style.display = 'none';
+    document.getElementById('businessLogoutSection').style.display = 'flex';
     document.getElementById('welcomeText').style.display = 'none';
 
     const customerContainer = document.getElementById('customerContainer');
@@ -360,20 +362,42 @@ async function handleBusinessLogin() {
     document.getElementById('hamburgerFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
     // İşletme menü öğelerini sadece mobilde hamburger menüsüne ekle
     if (window.innerWidth <= 768) {
-        const businessMenuItems = document.getElementById('businessMobileMenuItems');
-        if (businessMenuItems) {
-            const headerActions = document.querySelector('.header-actions');
-            if (headerActions) {
-                const clone = businessMenuItems.cloneNode(true);
-                clone.id = 'businessMobileMenuClone';
-                clone.style.display = 'block';
-                const existingClone = document.getElementById('businessMobileMenuClone');
-                if (existingClone) existingClone.remove();
-                const btns = Array.from(clone.querySelectorAll('.business-mobile-nav'));
-                btns.sort((a, b) => a.textContent.trim().localeCompare(b.textContent.trim(), 'tr'));
-                btns.forEach(btn => clone.appendChild(btn));
-                headerActions.insertBefore(clone, headerActions.firstChild);
-            }
+        const headerActions = document.querySelector('.header-actions');
+        if (headerActions) {
+            const existingClone = document.getElementById('businessMobileMenuClone');
+            if (existingClone) existingClone.remove();
+            const menuDiv = document.createElement('div');
+            menuDiv.id = 'businessMobileMenuClone';
+            menuDiv.style.display = 'block';
+            const titleEl = document.createElement('div');
+            titleEl.className = 'mobile-menu-section-title';
+            titleEl.textContent = field.name.toLocaleUpperCase('tr-TR');
+            menuDiv.appendChild(titleEl);
+            const tabDefs = [
+                { label: 'İSTATİSTİKLER', tab: 'stats' },
+                { label: 'BORÇLAR', tab: 'debts' },
+                { label: 'FİYAT TARİFESİ', tab: 'pricing' },
+                { label: 'İŞLETME AYARLARI', tab: 'settings' },
+                { label: 'KARA LİSTE', tab: 'blacklist' },
+                { label: 'REZERVASYONLAR', tab: 'reservations' },
+                { label: 'SAAT & ENGEL', tab: 'hours' },
+                { label: 'ABONELİK', tab: 'subscriptions' },
+                { label: 'YORUMLAR', tab: 'comments' }
+            ];
+            tabDefs.sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+            tabDefs.forEach(td => {
+                const btn = document.createElement('button');
+                btn.className = 'nav-btn business-mobile-nav';
+                btn.textContent = td.label;
+                btn.onclick = function() { switchBusinessTab(td.tab); closeMobileMenu(); };
+                menuDiv.appendChild(btn);
+            });
+            const logoutBtn = document.createElement('button');
+            logoutBtn.className = 'nav-btn red-btn business-mobile-nav';
+            logoutBtn.textContent = 'ÇIKIŞ YAP';
+            logoutBtn.onclick = function() { handleBusinessLogout(); closeMobileMenu(); };
+            menuDiv.appendChild(logoutBtn);
+            headerActions.insertBefore(menuDiv, headerActions.firstChild);
         }
     }
 
@@ -387,6 +411,8 @@ function handleBusinessLogout() {
 
     document.getElementById('userAuthSection').style.display = 'flex';
     document.getElementById('businessAuthSection').style.display = 'flex';
+    document.getElementById('adminAuthSection').style.display = 'flex';
+    document.getElementById('adminLogoutSection').style.display = 'none';
     document.getElementById('businessLogoutSection').style.display = 'none';
 
     const customerContainer = document.getElementById('customerContainer');
@@ -4012,14 +4038,17 @@ function handleAdminLogin() {
     const username = document.getElementById('adminUsername').value.trim();
     const password = document.getElementById('adminPassword').value.trim();
     const errorEl = document.getElementById('adminLoginError');
+    const loginBtn = document.getElementById('adminLoginBtn');
     if (!username || !password) { errorEl.textContent = 'Kullanıcı adı ve şifre girin!'; errorEl.style.display = 'block'; return; }
     errorEl.style.display = 'none';
+    if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'GİRİŞ YAPILIYOR...'; }
     fetch('/api/admin/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
     })
-    .then(r => r.json())
+    .then(r => { if (!r.ok) return r.text().then(t => { throw new Error(t); }); return r.json(); })
     .then(data => {
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'GİRİŞ YAP'; }
         if (!data.success) { errorEl.textContent = data.message; errorEl.style.display = 'block'; return; }
         closeModal('adminLoginModal');
         isAdminLoggedIn = true;
@@ -4030,7 +4059,13 @@ function handleAdminLogin() {
         document.getElementById('adminWelcomeText').textContent = `🛡️ ${data.admin.display_name}`;
         openAdminPanel();
     })
-    .catch(() => { errorEl.textContent = 'Sunucu hatası!'; errorEl.style.display = 'block'; });
+    .catch((err) => {
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'GİRİŞ YAP'; }
+        let msg = 'Sunucu hatası!';
+        try { const e = JSON.parse(err.message); if (e.message) msg = e.message; } catch(e) { msg = err.message || 'Sunucu hatası!'; }
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+    });
 }
 
 function handleAdminLogout() {
@@ -4126,20 +4161,45 @@ function adminEnterFieldPanel(key) {
     document.querySelector('main').classList.remove('admin-mode');
     document.querySelector('main').classList.add('business-mode');
     document.getElementById('hamburgerFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
+    document.getElementById('adminAuthSection').style.display = 'none';
+    document.getElementById('adminLogoutSection').style.display = 'none';
     if (window.innerWidth <= 768) {
-        const businessMenuItems = document.getElementById('businessMobileMenuItems');
-        if (businessMenuItems) {
-            const headerActions = document.querySelector('.header-actions');
-            if (headerActions) {
-                const clone = businessMenuItems.cloneNode(true);
-                clone.id = 'businessMobileMenuClone';
-                clone.style.display = 'block';
-                const existingClone = document.getElementById('businessMobileMenuClone');
-                if (existingClone) existingClone.remove();
-                const btns = Array.from(clone.querySelectorAll('.business-mobile-nav'));
-                btns.forEach(btn => btn.setAttribute('onclick', btn.getAttribute('onclick').replace('handleBusinessLogout', 'adminReturnFromFieldPanel')));
-                headerActions.insertBefore(clone, headerActions.firstChild);
-            }
+        const headerActions = document.querySelector('.header-actions');
+        if (headerActions) {
+            const existingClone = document.getElementById('businessMobileMenuClone');
+            if (existingClone) existingClone.remove();
+            const menuDiv = document.createElement('div');
+            menuDiv.id = 'businessMobileMenuClone';
+            menuDiv.style.display = 'block';
+            const titleEl = document.createElement('div');
+            titleEl.className = 'mobile-menu-section-title';
+            titleEl.textContent = field.name.toLocaleUpperCase('tr-TR');
+            menuDiv.appendChild(titleEl);
+            const tabDefs = [
+                { label: 'İSTATİSTİKLER', tab: 'stats' },
+                { label: 'BORÇLAR', tab: 'debts' },
+                { label: 'FİYAT TARİFESİ', tab: 'pricing' },
+                { label: 'İŞLETME AYARLARI', tab: 'settings' },
+                { label: 'KARA LİSTE', tab: 'blacklist' },
+                { label: 'REZERVASYONLAR', tab: 'reservations' },
+                { label: 'SAAT & ENGEL', tab: 'hours' },
+                { label: 'ABONELİK', tab: 'subscriptions' },
+                { label: 'YORUMLAR', tab: 'comments' }
+            ];
+            tabDefs.sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+            tabDefs.forEach(td => {
+                const btn = document.createElement('button');
+                btn.className = 'nav-btn business-mobile-nav';
+                btn.textContent = td.label;
+                btn.onclick = function() { switchBusinessTab(td.tab); closeMobileMenu(); };
+                menuDiv.appendChild(btn);
+            });
+            const logoutBtn = document.createElement('button');
+            logoutBtn.className = 'nav-btn red-btn business-mobile-nav';
+            logoutBtn.textContent = 'ÇIKIŞ YAP';
+            logoutBtn.onclick = function() { adminReturnFromFieldPanel(); closeMobileMenu(); };
+            menuDiv.appendChild(logoutBtn);
+            headerActions.insertBefore(menuDiv, headerActions.firstChild);
         }
     }
     switchBusinessTab('stats');

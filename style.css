@@ -349,6 +349,24 @@ main {
     letter-spacing: 1px;
 }
 
+.business-logout-bar {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    text-align: center;
+}
+.business-logout-btn {
+    max-width: 250px !important;
+    margin: 0 auto;
+    background: rgba(239,68,68,0.2) !important;
+    color: #fca5a5 !important;
+    border: 1px solid rgba(239,68,68,0.3) !important;
+}
+.business-logout-btn:hover {
+    background: rgba(239,68,68,0.4) !important;
+    color: #fff !important;
+}
+
 /* Rezervasyon kartları */
 .res-card {
     background: rgba(11,15,25,0.5);
@@ -3113,6 +3131,7 @@ main.business-mode {
         justify-content: flex-start !important;
         align-items: stretch !important;
         gap: 15px;
+        overflow-y: auto;
         box-shadow: -5px 0 20px rgba(0,0,0,0.5);
     }
     .header-actions.open {

@@ -732,6 +732,11 @@
                 </div>
             </div>
 
+            <!-- ÇIKIŞ BUTONU -->
+            <div class="business-logout-bar">
+                <button class="action-btn business-logout-btn" onclick="handleBusinessLogout()">ÇIKIŞ YAP</button>
+            </div>
+
             <!-- TAB 7: İŞLETME AYARLARI -->
             <div id="tab-settings" class="tab-content-zone" style="display: none;">
                 <div class="business-settings card-block">
@@ -1270,11 +1275,11 @@
             </div>
             <div style="padding: 15px 0;">
                 <label>Kullanıcı Adı</label>
-                <input type="text" id="adminUsername" placeholder="admin" class="form-control" style="margin-bottom: 12px;">
+                <input type="text" id="adminUsername" placeholder="admin" class="form-control" style="margin-bottom: 12px;" onkeypress="if(event.key === 'Enter') handleAdminLogin()">
                 <label>Şifre</label>
-                <input type="password" id="adminPassword" placeholder="••••••••" class="form-control" style="margin-bottom: 15px;">
+                <input type="password" id="adminPassword" placeholder="••••••••" class="form-control" style="margin-bottom: 15px;" onkeypress="if(event.key === 'Enter') handleAdminLogin()">
                 <div id="adminLoginError" style="color: var(--danger-red); font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
-                <button class="modal-btn" onclick="handleAdminLogin()" style="width: 100%; background: #8b5cf6; color: #fff; border: none; font-weight: 700; padding: 12px; border-radius: 8px; cursor: pointer;">GİRİŞ YAP</button>
+                <button class="modal-btn" onclick="handleAdminLogin()" id="adminLoginBtn" style="width: 100%; background: #8b5cf6; color: #fff; border: none; font-weight: 700; padding: 12px; border-radius: 8px; cursor: pointer;">GİRİŞ YAP</button>
             </div>
         </div>
     </div>
