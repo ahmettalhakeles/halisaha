@@ -1,3 +1,7 @@
+let isAdminLoggedIn = false;
+let adminToken = null;
+let adminData = null;
+
 const masterHoursList = [
     "06:00 - 07:00", "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
     "10:00 - 11:00", "11:00 - 12:00", "12:00 - 13:00", "13:00 - 14:00",
@@ -4032,9 +4036,6 @@ async function loadBusinessComments() {
 // =======================================================
 // SÜPER YÖNETİCİ PANELİ
 // =======================================================
-let isAdminLoggedIn = false;
-let adminToken = null;
-let adminData = null;
 
 function handleAdminLogin() {
     const username = document.getElementById('adminUsername').value.trim();

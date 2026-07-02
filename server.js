@@ -1727,7 +1727,7 @@ app.delete('/api/match-seekers/:id', (req, res) => {
 // Tüm takım ilanlarını listele
 app.get('/api/team-seekers', (req, res) => {
     const { skillLevel } = req.query;
-    let sql = 'SELECT * FROM team_seekers WHERE 1=1';
+    let sql = "SELECT * FROM team_seekers WHERE status = 'aktif'";
     const params = [];
 
     if (skillLevel) {
@@ -2480,7 +2480,7 @@ function updateGlobalBanStatus(phone, callback) {
 function requireAdmin(req, res, next) {
     const token = req.headers['x-admin-token'];
     if (!token) return res.status(401).json({ success: false, message: 'Yetkilendirme gerekli!' });
-    db.query("SELECT * FROM super_admins WHERE username = ? AND password = ?", [token, token], (err, admins) => {
+    db.query("SELECT * FROM super_admins WHERE username = ?", [token], (err, admins) => {
         if (err || admins.length === 0) return res.status(403).json({ success: false, message: 'Geçersiz token!' });
         req.adminUser = admins[0];
         next();

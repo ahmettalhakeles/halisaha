@@ -32,11 +32,6 @@
                     <line x1="3" y1="18" x2="21" y2="18"></line>
                 </svg>
             </button>
-            <!-- Duyurular Butonu (Logonun Solunda) -->
-            <button class="nav-btn" onclick="openAnnouncementsModal()" style="position: relative; border-color: #fbbf24; color: #fbbf24; margin-left: 10px; margin-right: 20px; padding: 6px 12px; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">
-                📢 DUYURULAR
-                <span id="announcementBadge" style="display: none; position: absolute; top: -7px; right: -7px; background: #ef4444; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: bold; align-items: center; justify-content: center;">0</span>
-            </button>
             <div class="logo-row">
                 <svg class="football-logo" viewBox="0 0 100 100" width="52" height="52" role="img" aria-label="Futbol Logo">
                     <circle cx="50" cy="50" r="46" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
@@ -85,6 +80,11 @@
                 <svg viewBox="0 0 24 24" width="24" height="24" stroke="#10b981" stroke-width="3" fill="none">
                     <polyline points="15,18 9,12 15,6"></polyline>
                 </svg>
+            </button>
+            <!-- Duyurular Butonu (Menü İçinde) -->
+            <button class="nav-btn announcements-menu-btn" onclick="openAnnouncementsModal()" style="position: relative; border-color: #fbbf24; color: #fbbf24; margin: 10px 15px; display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 30px);">
+                📢 DUYURULAR
+                <span id="announcementBadge" style="display: none; position: absolute; top: -7px; right: -7px; background: #ef4444; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: bold; align-items: center; justify-content: center;">0</span>
             </button>
             <!-- Kullanıcı Giriş -->
             <div id="userAuthSection" class="user-auth-zone">
@@ -142,6 +142,9 @@
                     <section class="fields-section" id="customerFieldsSection" style="margin-bottom: 0;">
                         <h2 class="section-title">HALISAHA SECIMI</h2>
                         <div class="fields-grid" id="fieldsGrid"></div>
+                        <div style="text-align: center; margin-top: 15px; font-size: 0.8rem; color: var(--text-muted); font-family: 'Montserrat', sans-serif;">
+                            Destek ve İletişim: <a href="mailto:kskdestek@gmail.com" style="color: var(--primary-green); font-weight: bold; text-decoration: none;">kskdestek@gmail.com</a>
+                        </div>
                     </section>
                     <!-- KULLANICI REZERVASYON PANELİ -->
                     <section class="booking-section" id="customerBookingPanel" style="margin-bottom: 0;">
@@ -421,20 +424,6 @@
         <section class="business-panel" id="businessPanel" style="display: none;">
             <h2 class="section-title" id="businessPanelTitle">İŞLETME PANELİ</h2>
 
-            <!-- İşletme mobil menü elemanları (existing hamburger'a eklenir) -->
-            <div id="businessMobileMenuItems" style="display:none;">
-                <div class="mobile-menu-section-title" id="hamburgerFieldName"></div>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('stats'); closeMobileMenu();">İSTATİSTİKLER</button>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('reservations'); closeMobileMenu();">REZERVASYONLAR</button>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('debts'); closeMobileMenu();">BORÇLAR</button>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('comments'); closeMobileMenu();">YORUMLAR</button>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('blacklist'); closeMobileMenu();">KARA LİSTE</button>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('pricing'); closeMobileMenu();">FİYAT TARİFESİ</button>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('hours'); closeMobileMenu();">SAAT & ENGEL</button>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('subscriptions'); closeMobileMenu();">ABONELİK</button>
-                <button class="nav-btn business-mobile-nav" onclick="switchBusinessTab('settings'); closeMobileMenu();">İŞLETME AYARLARI</button>
-                <button class="nav-btn red-btn business-mobile-nav" onclick="handleBusinessLogout(); closeMobileMenu();">ÇIKIŞ YAP</button>
-            </div>
 
             <!-- İŞLETME SEKME MENÜSÜ -->
             <div class="business-tabs">
@@ -746,10 +735,6 @@
                 </div>
             </div>
 
-            <!-- ÇIKIŞ BUTONU -->
-            <div class="business-logout-bar">
-                <button class="action-btn business-logout-btn" onclick="handleBusinessLogout()">ÇIKIŞ YAP</button>
-            </div>
 
             <!-- TAB 7: İŞLETME AYARLARI -->
             <div id="tab-settings" class="tab-content-zone" style="display: none;">

@@ -3950,12 +3950,18 @@ body.admin-impersonating {
     }
 }
 
-/* Mobil Duyurular Butonu Düzenlemesi */
+/* Duyurular Butonu ve İşletme Modu Auth Gizleme Kuralları */
+
+/* İşletme modundayken duyuruları ve normal kullanıcı/yönetici butonlarını gizle */
+body.business-mode .announcements-menu-btn,
+body.business-mode .header-actions .user-auth-zone,
+body.business-mode .header-actions #userAuthSection {
+    display: none !important;
+}
+
 @media (max-width: 768px) {
-    .logo-area .nav-btn {
-        margin-left: 5px !important;
-        margin-right: 10px !important;
-        padding: 6px 8px !important;
-        font-size: 0.75rem !important;
+    /* Mobilde klonlanmış işletme menüsünün gösterilmesini garanti et */
+    body.business-mode .header-actions #businessMobileMenuClone {
+        display: block !important;
     }
 }
