@@ -142,6 +142,7 @@ const fieldsData = {
         market: "Market Yok"
     }
 };
+window.fieldsData = fieldsData;
 
 // Durum Yonetim Havuzu
 let loggedInUser = null;
@@ -4053,6 +4054,104 @@ async function loadBusinessComments() {
                 const rating = ((r.rating_turf + r.rating_lighting + r.rating_facilities + r.rating_service) / 4).toFixed(1);
                 const dateStr = new Date(r.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
                 
+                let actionHtml = '';
+                if (r.owner_reply) {
+                    actionHtml = `
+                        <div style="margin-top: 10px;">
+                            <div style="color: var(--neon-green); font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">YANITINIZ:</div>
+                            <div style="font-size: 0.85rem; color: #cbd5e1; font-style: italic; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px; border-left: 3px solid var(--primary-green); margin-bottom: 8px;">"${r.owner_reply}"</div>
+                            <button class="action-btn" style="background: var(--warning-orange); color: #000; font-size: 0.75rem; padding: 4px 10px; width: auto;" onclick="showReplyForm(${r.id}, \`${r.owner_reply.replace(/`/g, '\\`').replace(/"/g, '&quot;')}\`)">GÜNCELLE</button>
+                        </div>
+                    `;
+                } else {
+                    actionHtml = `
+                        <div id="reply-form-${r.id}" style="margin-top: 10px;">
+                            <textarea id="reply-text-${r.id}" class="form-control" rows="2" style="font-size: 0.8rem; padding: 8px;" placeholder="Cevabınızı buraya yazın..."></textarea>
+                            <button class="action-btn" style="font-size: 0.75rem; padding: 6px 12px; margin-top: 5px; width: auto;" onclick="submitOwnerReply(${r.id})">CEVAPLA</button>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="review-comment-card" style="background: rgba(21, 31, 50, 0.4); border: 1px solid rgba(16, 185, 129, 0.15);">
+                        <div class="review-comment-header">
+                            <span class="review-comment-user">${r.userName} <span class="review-star-badge">${rating} ⭐</span></span>
+                            <span class="review-comment-date">Saha ${r.pitchNumber} | ${dateStr}</span>
+                        </div>
+                        <div class="review-comment-text" style="margin-bottom: 10px;">"${r.comment || 'Puan verildi.'}"</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: rgba(0,0,0,0.15); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; margin-bottom: 10px;">
+                            <div style="color: var(--text-muted);">Zemin: <span style="color:#fbbf24">${r.rating_turf}⭐</span></div>
+                            <div style="color: var(--text-muted);">Işık: <span style="color:#fbbf24">${r.rating_lighting}⭐</span></div>
+                            <div style="color: var(--text-muted);">Tesis: <span style="color:#fbbf24">${r.rating_facilities}⭐</span></div>
+                            <div style="color: var(--text-muted);">Hizmet: <span style="color:#fbbf24">${r.rating_service}⭐</span></div>
+                        </div>
+                        <div id="reply-zone-${r.id}">
+                            ${actionHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error("Yorumlar yüklenemedi:", error);
+    }
+}
+
+function showReplyForm(id, currentReply) {
+    const zone = document.getElementById(`reply-zone-${id}`);
+    if (!zone) return;
+    zone.innerHTML = `
+        <div style="margin-top: 10px;">
+            <textarea id="reply-text-${id}" class="form-control" rows="2" style="font-size: 0.8rem; padding: 8px;">${currentReply}</textarea>
+            <div style="display: flex; gap: 8px; margin-top: 5px;">
+                <button class="action-btn" style="font-size: 0.75rem; padding: 6px 12px; width: auto;" onclick="submitOwnerReply(${id})">KAYDET</button>
+                <button class="action-btn" style="background: var(--text-muted); color: #000; font-size: 0.75rem; padding: 6px 12px; width: auto;" onclick="loadBusinessComments()">İPTAL</button>
+            </div>
+        </div>
+    `;
+}
+
+async function submitOwnerReply(id) {
+    const replyText = document.getElementById(`reply-text-${id}`).value.trim();
+    if (!replyText) {
+        alert("Lütfen bir cevap yazın!");
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/reviews/${id}/reply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_reply: replyText })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            await loadBusinessComments();
+        } else {
+            alert("Hata: " + result.message);
+        }
+    } catch (error) {
+        console.error("Owner reply submit error:", error);
+        alert("Sunucuya bağlanılamadı!");
+    }
+}
+
+async function loadUserBlacklist() {
+    if (!currentUser || !currentUser.phone) {
+        userBlacklistedFields = [];
+        return;
+    }
+    try {
+        const response = await fetch(`/api/blacklists/by-phone/${encodeURIComponent(currentUser.phone)}`);
+        const result = await response.json();
+        if (result.success) {
+            userBlacklistedFields = result.data;
+        }
+    } catch (error) {
+        console.error("Kara liste sorgulama hatası:", error);
+    }
+}
 
 
 // =======================================================
@@ -4774,88 +4873,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-                let actionHtml = '';
-                if (r.owner_reply) {
-                    actionHtml = `
-                        <div style="margin-top: 10px;">
-                            <div style="color: var(--neon-green); font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">YANITINIZ:</div>
-                            <div style="font-size: 0.85rem; color: #cbd5e1; font-style: italic; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px; border-left: 3px solid var(--primary-green); margin-bottom: 8px;">"${r.owner_reply}"</div>
-                            <button class="action-btn" style="background: var(--warning-orange); color: #000; font-size: 0.75rem; padding: 4px 10px; width: auto;" onclick="showReplyForm(${r.id}, \`${r.owner_reply.replace(/`/g, '\\`').replace(/"/g, '&quot;')}\`)">GÜNCELLE</button>
-                        </div>
-                    `;
-                } else {
-                    actionHtml = `
-                        <div id="reply-form-${r.id}" style="margin-top: 10px;">
-                            <textarea id="reply-text-${r.id}" class="form-control" rows="2" style="font-size: 0.8rem; padding: 8px;" placeholder="Cevabınızı buraya yazın..."></textarea>
-                            <button class="action-btn" style="font-size: 0.75rem; padding: 6px 12px; margin-top: 5px; width: auto;" onclick="submitOwnerReply(${r.id})">CEVAPLA</button>
-                        </div>
-                    `;
-                }
 
-                return `
-                    <div class="review-comment-card" style="background: rgba(21, 31, 50, 0.4); border: 1px solid rgba(16, 185, 129, 0.15);">
-                        <div class="review-comment-header">
-                            <span class="review-comment-user">${r.userName} <span class="review-star-badge">${rating} ⭐</span></span>
-                            <span class="review-comment-date">Saha ${r.pitchNumber} | ${dateStr}</span>
-                        </div>
-                        <div class="review-comment-text" style="margin-bottom: 10px;">"${r.comment || 'Puan verildi.'}"</div>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: rgba(0,0,0,0.15); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; margin-bottom: 10px;">
-                            <div style="color: var(--text-muted);">Zemin: <span style="color:#fbbf24">${r.rating_turf}⭐</span></div>
-                            <div style="color: var(--text-muted);">Işık: <span style="color:#fbbf24">${r.rating_lighting}⭐</span></div>
-                            <div style="color: var(--text-muted);">Tesis: <span style="color:#fbbf24">${r.rating_facilities}⭐</span></div>
-                            <div style="color: var(--text-muted);">Hizmet: <span style="color:#fbbf24">${r.rating_service}⭐</span></div>
-                        </div>
-                        <div id="reply-zone-${r.id}">
-                            ${actionHtml}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-    } catch (error) {
-        console.error("Yorumlar yüklenemedi:", error);
-    }
-}
-
-function showReplyForm(id, currentReply) {
-    const zone = document.getElementById(`reply-zone-${id}`);
-    if (!zone) return;
-    zone.innerHTML = `
-        <div style="margin-top: 10px;">
-            <textarea id="reply-text-${id}" class="form-control" rows="2" style="font-size: 0.8rem; padding: 8px;">${currentReply}</textarea>
-            <div style="display: flex; gap: 8px; margin-top: 5px;">
-                <button class="action-btn" style="font-size: 0.75rem; padding: 6px 12px; width: auto;" onclick="submitOwnerReply(${id})">KAYDET</button>
-                <button class="action-btn" style="background: var(--text-muted); color: #000; font-size: 0.75rem; padding: 6px 12px; width: auto;" onclick="loadBusinessComments()">İPTAL</button>
-            </div>
-        </div>
-    `;
-}
-
-async function submitOwnerReply(id) {
-    const replyText = document.getElementById(`reply-text-${id}`).value.trim();
-    if (!replyText) {
-        alert("Lütfen bir cevap yazın!");
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/reviews/${id}/reply`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_reply: replyText })
-        });
-        const result = await response.json();
-        if (result.success) {
-            alert(result.message);
-            await loadBusinessComments();
-        } else {
-            alert("Hata: " + result.message);
-        }
-    } catch (error) {
-        console.error("Owner reply submit error:", error);
-        alert("Sunucuya bağlanılamadı!");
-    }
-}
 
 // Kullanıcının kara listede olduğu sahaları yükle
 async function loadUserBlacklist() {
