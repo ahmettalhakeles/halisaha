@@ -344,10 +344,25 @@ function switchBusinessTab(tabName) {
         zone.style.display = 'none';
     });
     document.getElementById(`tab-${tabName}`).style.display = 'block';
-    document.querySelectorAll('.business-tabs .tab-btn').forEach(btn => {
-        btn.classList.remove('active');
+    
+    const tabMap = {
+        'stats': 'istatistikler',
+        'reservations': 'rezervasyonlar',
+        'debts': 'borçlar',
+        'comments': 'yorumlar',
+        'blacklist': 'kara liste',
+        'pricing': 'fiyat tarifesi',
+        'hours': 'saat & engel',
+        'subscriptions': 'abonelik',
+        'settings': 'işletme ayarları'
+    };
+    
+    document.querySelectorAll('#businessMenuTabsContainer .nav-btn').forEach(btn => {
+        const btnText = btn.textContent.trim().toLowerCase();
+        const expected = tabMap[tabName];
+        btn.classList.toggle('active', btnText.includes(expected));
     });
-    document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+
     if (tabName === 'debts') {
         loadBusinessDebts('all');
     } else if (tabName === 'comments') {
@@ -366,6 +381,8 @@ function showBusinessLoginWrapper() {
     if (panel) panel.style.display = 'none';
     const logoutSec = document.getElementById('businessLogoutSection');
     if (logoutSec) logoutSec.style.display = 'none';
+    const burger = document.getElementById('mobileHamburgerBtn');
+    if (burger) burger.style.display = 'none';
 }
 
 function showBusinessUI() {
@@ -375,6 +392,8 @@ function showBusinessUI() {
     if (panel) panel.style.display = 'block';
     const logoutSec = document.getElementById('businessLogoutSection');
     if (logoutSec) logoutSec.style.display = 'flex';
+    const burger = document.getElementById('mobileHamburgerBtn');
+    if (burger) burger.style.display = 'block';
 
     const field = fieldsData[currentBusinessFieldKey];
     if (field) {
@@ -384,44 +403,6 @@ function showBusinessUI() {
         if (titleEl) titleEl.innerText = `YÖNETİM PANELİ`;
         const hbf = document.getElementById('hamburgerFieldName');
         if (hbf) hbf.innerText = field.name.toLocaleUpperCase('tr-TR');
-    }
-
-    const headerActions = document.querySelector('.header-actions');
-    if (headerActions && field) {
-        const existingClone = document.getElementById('businessMobileMenuClone');
-        if (existingClone) existingClone.remove();
-        const menuDiv = document.createElement('div');
-        menuDiv.id = 'businessMobileMenuClone';
-        menuDiv.style.display = 'block';
-        const titleEl = document.createElement('div');
-        titleEl.className = 'mobile-menu-section-title';
-        titleEl.textContent = field.name.toLocaleUpperCase('tr-TR');
-        menuDiv.appendChild(titleEl);
-        const tabDefs = [
-            { label: 'İSTATİSTİKLER', tab: 'stats' },
-            { label: 'BORÇLAR', tab: 'debts' },
-            { label: 'FİYAT TARİFESİ', tab: 'pricing' },
-            { label: 'İŞLETME AYARLARI', tab: 'settings' },
-            { label: 'KARA LİSTE', tab: 'blacklist' },
-            { label: 'REZERVASYONLAR', tab: 'reservations' },
-            { label: 'SAAT & ENGEL', tab: 'hours' },
-            { label: 'ABONELİK', tab: 'subscriptions' },
-            { label: 'YORUMLAR', tab: 'comments' }
-        ];
-        tabDefs.sort((a, b) => a.label.localeCompare(b.label, 'tr'));
-        tabDefs.forEach(td => {
-            const btn = document.createElement('button');
-            btn.className = 'nav-btn business-mobile-nav';
-            btn.textContent = td.label;
-            btn.onclick = function() { switchBusinessTab(td.tab); closeMobileMenu(); };
-            menuDiv.appendChild(btn);
-        });
-        const logoutBtn = document.createElement('button');
-        logoutBtn.className = 'nav-btn red-btn business-mobile-nav';
-        logoutBtn.textContent = 'ÇIKIŞ YAP';
-        logoutBtn.onclick = function() { handleBusinessLogout(); closeMobileMenu(); };
-        menuDiv.appendChild(logoutBtn);
-        headerActions.insertBefore(menuDiv, headerActions.firstChild);
     }
 
     switchBusinessTab('stats');
@@ -470,10 +451,6 @@ function handleBusinessLogout() {
     currentBusinessFieldKey = "";
     localStorage.removeItem('businessFieldKey');
 
-    // İşletme menüsünü kaldır
-    const clone = document.getElementById('businessMobileMenuClone');
-    if (clone) clone.remove();
-
     // Admin modunda işletme panelinden çıkış: admin paneline dön
     if (isAdminLoggedIn && isAdminPage) {
         document.querySelector('main').classList.remove('business-mode');
@@ -487,6 +464,8 @@ function handleBusinessLogout() {
     }
 
     showBusinessLoginWrapper();
+    alert("İşletme panelinden çıkış yapıldı.");
+    if (currentSelectedFieldKey) onDateOrFieldChange();
 }
 
 // =======================================================
@@ -4073,6 +4052,9 @@ async function loadBusinessComments() {
             container.innerHTML = reviews.map(r => {
                 const rating = ((r.rating_turf + r.rating_lighting + r.rating_facilities + r.rating_service) / 4).toFixed(1);
                 const dateStr = new Date(r.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+                
+
+
 // =======================================================
 // SÜPER YÖNETİCİ PANELİ
 // =======================================================
@@ -4084,6 +4066,8 @@ function showAdminLoginWrapper() {
     if (panel) panel.style.display = 'none';
     const logoutSec = document.getElementById('adminLogoutSection');
     if (logoutSec) logoutSec.style.display = 'none';
+    const burger = document.getElementById('mobileHamburgerBtn');
+    if (burger) burger.style.display = 'none';
 }
 
 function showAdminUI() {
@@ -4093,6 +4077,8 @@ function showAdminUI() {
     if (panel) panel.style.display = 'block';
     const logoutSec = document.getElementById('adminLogoutSection');
     if (logoutSec) logoutSec.style.display = 'flex';
+    const burger = document.getElementById('mobileHamburgerBtn');
+    if (burger) burger.style.display = 'block';
 
     const welcome = document.getElementById('adminWelcomeText');
     if (welcome && adminData) welcome.textContent = `🛡️ ${adminData.display_name}`;
@@ -4183,6 +4169,13 @@ function switchAdminTab(tab) {
     };
 
     document.querySelectorAll('#adminPanel .admin-tabs .tab-btn').forEach(btn => {
+        const btnText = btn.textContent.trim().toLowerCase();
+        const expected = tabMap[tab];
+        btn.classList.toggle('active', btnText.includes(expected));
+    });
+
+    // Sidebar active tabs highlight support
+    document.querySelectorAll('#adminMenuTabsContainer .nav-btn').forEach(btn => {
         const btnText = btn.textContent.trim().toLowerCase();
         const expected = tabMap[tab];
         btn.classList.toggle('active', btnText.includes(expected));

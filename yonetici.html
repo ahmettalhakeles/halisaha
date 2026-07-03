@@ -8,14 +8,128 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=1.0.4">
+    <style>
+        /* Enable hamburger button on all screen sizes */
+        .hamburger-btn {
+            display: none; /* Hidden by default until logged in */
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            z-index: 10001;
+        }
+
+        /* Align and style header */
+        header {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            position: relative;
+            padding: 15px 25px !important;
+            min-height: 80px;
+        }
+
+        /* Center logo row on all screen sizes */
+        .logo-area {
+            margin: 0 auto !important;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            width: auto !important;
+        }
+        .logo-row {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Drawers/header-actions styled as a sidebar/drawer on all screens */
+        .header-actions {
+            position: fixed !important;
+            top: 0 !important;
+            left: -100% !important;
+            width: 280px !important;
+            height: 100vh !important;
+            background: rgba(11, 15, 25, 0.98) !important;
+            backdrop-filter: blur(10px) !important;
+            border-right: 1px solid rgba(16, 185, 129, 0.2) !important;
+            z-index: 9999 !important;
+            transition: left 0.3s ease !important;
+            padding: 80px 20px 20px 20px !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            overflow-y: auto !important;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.7) !important;
+            display: flex !important;
+        }
+
+        /* When open, show drawer */
+        .header-actions.open {
+            left: 0 !important;
+        }
+
+        /* Close button inside drawer */
+        .menu-close-btn {
+            display: block !important;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        /* Style the buttons inside drawer */
+        .header-actions .nav-btn {
+            width: 100% !important;
+            margin-bottom: 5px !important;
+            text-align: left !important;
+            padding: 12px 15px !important;
+            font-size: 0.85rem !important;
+        }
+
+        /* Style mobile-menu-overlay */
+        .mobile-menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            display: none;
+        }
+        .mobile-menu-overlay.show {
+            display: block;
+        }
+
+        /* Hide horizontal tabs */
+        .admin-tabs {
+            display: none !important;
+        }
+    </style>
 </head>
 <body class="admin-mode">
     <div id="toastContainer"></div>
+    <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
     
     <header>
+        <button class="hamburger-btn" id="mobileHamburgerBtn" onclick="toggleMobileMenu()" aria-label="Menüyü Aç/Kapat">
+            <svg viewBox="0 0 24 24" width="28" height="28" stroke="white" stroke-width="2" fill="none">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+
         <div class="logo-area">
             <div class="logo-row">
-                <svg class="football-logo" viewBox="0 0 100 100" width="52" height="52" role="img" aria-label="Futbol Logo">
+                <svg class="football-logo" viewBox="0 0 100 100" width="45" height="45" role="img" aria-label="Futbol Logo">
                     <circle cx="50" cy="50" r="46" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
                     <path d="M 50.00 64.00 Q 42.17 60.78 36.69 54.33 Q 37.33 45.88 41.77 38.67 Q 50.00 36.67 58.23 38.67 Q 62.67 45.88 63.31 54.33 Q 57.83 60.78 50.00 64.00 Z" fill="#10b981" stroke="#10b981" stroke-width="1.5" stroke-linejoin="round"/>
                     <path d="M 43.77100646790537 37.67376207875074 Q 50.5 37.17376207875074 59.22899353209462 40.173762078750734 Q 60.771892380113385 48 61.31479122813215 55.82623792124926" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
@@ -29,16 +143,32 @@
                     <path d="M 32.95 26.54 Q 50.00 25.04 67.05 26.54 L 65.73 6.77 A 46 46 0 0 0 34.27 6.77 Z" fill="#10b981" stroke="#10b981" stroke-width="1" stroke-linejoin="round"/>
                     <line x1="41.77" y1="38.67" x2="32.95" y2="26.54" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
                     <line x1="32.95" y1="26.54" x2="22.96" y2="12.79" stroke="#10b981" stroke-width="2.5"/>
-                    <path d="M 38.74 7.98 A 43.5 43.5 0 0 1 61.26 7.98" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
                 </svg>
-                <span class="logo-title" style="margin-left:10px; font-weight:800; color:#fff; font-family:'Montserrat',sans-serif;">KSK YÖNETİCİ</span>
+                <span class="logo-title" style="margin-left:10px; font-weight:800; color:#fff; font-family:'Montserrat',sans-serif; font-size: 1.4rem;">KSK YÖNETİCİ</span>
             </div>
         </div>
+        
         <div class="header-actions">
+            <button class="menu-close-btn" onclick="closeMobileMenu()" aria-label="Menüyü Kapat">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="#10b981" stroke-width="3" fill="none">
+                    <polyline points="15,18 9,12 15,6"></polyline>
+                </svg>
+            </button>
+            
+            <div id="adminMenuTabsContainer" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 15px;">
+                <button class="nav-btn" onclick="switchAdminTab('dashboard'); closeMobileMenu();">DASHBOARD</button>
+                <button class="nav-btn" onclick="switchAdminTab('fields'); closeMobileMenu();">SAHALAR</button>
+                <button class="nav-btn" onclick="switchAdminTab('users'); closeMobileMenu();">KULLANICILAR</button>
+                <button class="nav-btn" onclick="switchAdminTab('activity'); closeMobileMenu();">AKTİVİTE</button>
+                <button class="nav-btn" onclick="switchAdminTab('blacklist'); closeMobileMenu();">KARA LİSTE</button>
+                <button class="nav-btn" onclick="switchAdminTab('announcements'); closeMobileMenu();">DUYURULAR</button>
+                <button class="nav-btn" onclick="switchAdminTab('revenue'); closeMobileMenu();">GELİR</button>
+            </div>
+
             <!-- Yönetici Çıkış -->
-            <div id="adminLogoutSection" class="user-auth-zone" style="display: none;">
-                <span id="adminWelcomeText" style="font-weight: bold; color: #8b5cf6; margin-right: 10px; align-self: center;"></span>
-                <button class="nav-btn red-btn" onclick="handleAdminLogout()">ÇIKIŞ</button>
+            <div id="adminLogoutSection" class="user-auth-zone" style="display: none; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                <span id="adminWelcomeText" style="font-weight: bold; color: #8b5cf6; text-align: center; margin-bottom: 10px;"></span>
+                <button class="nav-btn red-btn" onclick="handleAdminLogout(); closeMobileMenu();" style="width: 100%;">ÇIKIŞ YAP</button>
             </div>
         </div>
     </header>
