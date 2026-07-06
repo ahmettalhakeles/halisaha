@@ -161,6 +161,29 @@ let currentPitchDailyHours = [];
 let pendingBookingData = null;
 let userBlacklistedFields = [];
 
+function getAuthHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const userToken = localStorage.getItem('userToken');
+    const businessToken = localStorage.getItem('businessToken');
+    const adminToken = localStorage.getItem('adminToken');
+    
+    if (adminToken) {
+        headers['x-admin-token'] = adminToken;
+    }
+    
+    if (isBusinessPage) {
+        if (adminToken) {
+            // Admin is impersonating a business
+            headers['x-admin-token'] = adminToken;
+        } else if (businessToken) {
+            headers['Authorization'] = `Bearer ${businessToken}`;
+        }
+    } else if (userToken) {
+        headers['Authorization'] = `Bearer ${userToken}`;
+    }
+    return headers;
+}
+
 // =======================================================
 // SAYFA YÜKLEME
 // =======================================================
@@ -168,6 +191,16 @@ window.onload = async function() {
     await loadPitchSettingsFromDatabase();
     
     if (isUserPage) {
+        const storedUserToken = localStorage.getItem('userToken');
+        const storedUserData = localStorage.getItem('userData');
+        if (storedUserToken && storedUserData) {
+            try {
+                currentUser = JSON.parse(storedUserData);
+                loggedInUser = currentUser.name.toLocaleUpperCase('tr-TR');
+            } catch (e) {
+                console.error("Stored user parse error:", e);
+            }
+        }
         await initWeatherWidget();
         initDateDropdowns();
         await initPitchSelector();
@@ -201,10 +234,28 @@ window.onload = async function() {
     if (isBusinessPage) {
         await loadDailyHoursList();
         const storedKey = localStorage.getItem('businessFieldKey');
-        if (storedKey) {
+        const storedBusinessToken = localStorage.getItem('businessToken');
+        const storedAdminToken = localStorage.getItem('adminToken');
+        if (storedKey && (storedBusinessToken || storedAdminToken)) {
             currentBusinessFieldKey = storedKey;
             isBusinessLoggedIn = true;
             showBusinessUI();
+
+            const impersonateDataStr = localStorage.getItem('adminImpersonateField');
+            if (storedAdminToken && impersonateDataStr) {
+                try {
+                    const impData = JSON.parse(impersonateDataStr);
+                    const banner = document.getElementById('adminImpersonationBanner');
+                    const fieldNameEl = document.getElementById('adminImpersonatedFieldName');
+                    if (banner && fieldNameEl) {
+                        fieldNameEl.innerText = impData.name.toLocaleUpperCase('tr-TR');
+                        banner.style.display = 'flex';
+                        document.body.classList.add('admin-impersonating');
+                    }
+                } catch (e) {
+                    console.error("Error parsing impersonate data:", e);
+                }
+            }
         } else {
             showBusinessLoginWrapper();
         }
@@ -248,6 +299,7 @@ function handleUserLogout() {
     currentUser = null;
     userBlacklistedFields = [];
     localStorage.removeItem('userToken');
+    localStorage.removeItem('userData');
     renderFieldsGrid();
     updateLoginUIVisibility();
     alert("ÇIKIŞ YAPILDI. Tekrar giriş yapmak için lütfen giriş yapın.");
@@ -260,6 +312,12 @@ async function handleUserRegister(event) {
     const phone = document.getElementById('regPhone').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const pass = document.getElementById('regPassword').value;
+
+    const kvkkChecked = document.getElementById('regKvkk').checked;
+    if (!kvkkChecked) {
+        alert("Kayıt olabilmek için KVKK Aydınlatma Metni'ni kabul etmelisiniz.");
+        return;
+    }
 
     if (!name || !phone || !email || !pass) {
         alert("Lütfen tüm alanları doldurun.");
@@ -282,6 +340,8 @@ async function handleUserRegister(event) {
         if (result.success) {
             currentUser = result.user || null;
             loggedInUser = (result.user && result.user.name) ? result.user.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
+            localStorage.setItem('userToken', result.token);
+            localStorage.setItem('userData', JSON.stringify(result.user));
             await loadUserBlacklist();
             renderFieldsGrid();
             updateLoginUIVisibility();
@@ -319,6 +379,8 @@ async function handleUserLogin() {
         if (result.success) {
             currentUser = result.user;
             loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
+            localStorage.setItem('userToken', result.token);
+            localStorage.setItem('userData', JSON.stringify(result.user));
             await loadUserBlacklist();
             renderFieldsGrid();
             updateLoginUIVisibility();
@@ -423,13 +485,14 @@ async function handleBusinessLogin() {
         return;
     }
 
+    let data;
     try {
         const resp = await fetch('/api/business-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fieldKey: key, password })
         });
-        const data = await resp.json();
+        data = await resp.json();
         if (!data.success) {
             alert(data.message || "Hatalı şifre!");
             return;
@@ -442,6 +505,7 @@ async function handleBusinessLogin() {
     currentBusinessFieldKey = key;
     isBusinessLoggedIn = true;
     localStorage.setItem('businessFieldKey', key);
+    localStorage.setItem('businessToken', data.token);
     passInput.value = "";
 
     showBusinessUI();
@@ -451,6 +515,7 @@ function handleBusinessLogout() {
     isBusinessLoggedIn = false;
     currentBusinessFieldKey = "";
     localStorage.removeItem('businessFieldKey');
+    localStorage.removeItem('businessToken');
 
     // Admin modunda işletme panelinden çıkış: admin paneline dön
     if (isAdminLoggedIn && isAdminPage) {
@@ -490,7 +555,7 @@ async function loadBusinessDashboard() {
 
 async function loadBusinessStats() {
     try {
-        const response = await fetch(`/api/stats-content/${currentBusinessFieldKey}`);
+        const response = await fetch(`/api/stats-content/${currentBusinessFieldKey}`, { headers: getAuthHeaders() });
         const result = await response.json();
         if (result.success) {
             const data = result.data;
@@ -568,7 +633,7 @@ async function saveBusinessFieldCount() {
     try {
         const response = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 isClosed: field.isClosed ? 1 : 0,
                 openingHour: field.openingHour,
@@ -627,7 +692,7 @@ async function savePricingSchedule() {
     try {
         const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 isClosed: pitch.isClosed || 0,
                 openingHour: pitch.openingHour || '09:00',
@@ -649,7 +714,7 @@ async function savePricingSchedule() {
             if (pitchNum === 1) {
                 await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         isClosed: field.isClosed ? 1 : 0, openingHour: field.openingHour, closingHour: field.closingHour,
                         disabledHours: JSON.stringify(field.disabledHours), aboneHours: JSON.stringify(field.aboneHours),
@@ -678,7 +743,7 @@ async function loadHoursForSelectedPitch() {
     if (daySelect) daySelect.value = 'all';
 
     try {
-        const dhResp = await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`);
+        const dhResp = await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`, { headers: getAuthHeaders() });
         const dhResult = await dhResp.json();
         if (dhResult.success) {
             currentPitchDailyHours = dhResult.data;
@@ -768,7 +833,7 @@ async function toggleWeekdayClosure() {
 
     try {
         const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            method: 'PUT', headers: getAuthHeaders(),
             body: JSON.stringify({ 
                 isClosed: pitch.isClosed || 0, 
                 openingHour: pitch.openingHour || '09:00', 
@@ -938,7 +1003,7 @@ async function saveOperatingHours() {
     try {
         if (dayVal === 'all') {
             const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                method: 'PUT', headers: getAuthHeaders(),
                 body: JSON.stringify({ isClosed: pitch.isClosed || 0, openingHour: openHour, closingHour: closeHour, disabledHours: JSON.stringify(pitch.disabledHours || []), aboneHours: JSON.stringify(pitch.aboneHours || []), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
             });
             const result = await response.json();
@@ -952,7 +1017,7 @@ async function saveOperatingHours() {
         } else {
             const dayInt = parseInt(dayVal);
             const response = await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                method: 'PUT', headers: getAuthHeaders(),
                 body: JSON.stringify({
                     days: [{ dayOfWeek: dayInt, openingHour: openHour, closingHour: closeHour }]
                 })
@@ -991,7 +1056,7 @@ async function toggleFieldClosure() {
     const pitch = pitchObjectsList.find(p => p.fieldKey === currentBusinessFieldKey && p.pitchNumber === pitchNum) || {};
     try {
         const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            method: 'PUT', headers: getAuthHeaders(),
             body: JSON.stringify({ isClosed, openingHour: pitch.openingHour || '09:00', closingHour: pitch.closingHour || '23:00', disabledHours: JSON.stringify(pitch.disabledHours || []), aboneHours: JSON.stringify(pitch.aboneHours || []), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
         });
         const result = await response.json();
@@ -1024,7 +1089,7 @@ async function saveHourAction() {
 
     try {
         const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            method: 'PUT', headers: getAuthHeaders(),
             body: JSON.stringify({ isClosed: pitch.isClosed || 0, openingHour: pitch.openingHour || '09:00', closingHour: pitch.closingHour || '23:00', disabledHours: JSON.stringify(pitch.disabledHours), aboneHours: JSON.stringify(pitch.aboneHours), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
         });
         const result = await response.json();
@@ -1038,7 +1103,7 @@ async function saveHourAction() {
 // =======================================================
 async function loadBusinessReservations() {
     try {
-        const response = await fetch(`/api/business-reservations/${currentBusinessFieldKey}`);
+        const response = await fetch(`/api/business-reservations/${currentBusinessFieldKey}`, { headers: getAuthHeaders() });
         const result = await response.json();
         if (result.success) {
             currentBusinessReservations = result.data;
@@ -1311,7 +1376,7 @@ async function updateReservation(id) {
     if (!confirm(`Rezervasyonu ${newDate} saat ${newHour} dilimine ertelemek istiyor musunuz?`)) return;
     try {
         const response = await fetch(`/api/reservations/${id}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            method: 'PUT', headers: getAuthHeaders(),
             body: JSON.stringify({ dateText: newDate, hourText: newHour, pitchNumber: newPitch })
         });
         const result = await response.json();
@@ -1324,7 +1389,7 @@ async function removeReservation(id) {
     const confirmed = await showConfirmModal("Bu rezervasyonu silmek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`/api/reservations/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+        const response = await fetch(`/api/reservations/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
         const result = await response.json();
         if (result.success) { alert("Rezervasyon başarıyla iptal edildi!"); await loadBusinessReservations(); await loadBusinessStats(); await loadReservationsFromServer(); renderBusinessHoursGrid(); if (currentSelectedFieldKey) onDateOrFieldChange(); }
         else { alert("Hata: " + result.message); }
@@ -1642,7 +1707,7 @@ function renderFieldsGrid() {
     const grid = document.getElementById('fieldsGrid');
     const isMobile = window.innerWidth <= 768;
 
-    grid.innerHTML = Object.keys(fieldsData).map(key => {
+    grid.innerHTML = Object.keys(fieldsData).filter(key => !fieldsData[key].isClosed).map(key => {
         const field = fieldsData[key];
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.coordinates)}`;
 
@@ -2268,7 +2333,7 @@ async function executePendingBooking() {
 
     try {
         const response = await fetch('/api/reservations', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: getAuthHeaders(),
             body: JSON.stringify(data)
         });
         const result = await response.json();
@@ -3543,7 +3608,7 @@ async function saveAllBusinessSettings() {
         const field = fieldsData[currentBusinessFieldKey];
         const resSettings = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 isClosed: field.isClosed ? 1 : 0,
                 openingHour: field.openingHour,
@@ -3564,7 +3629,7 @@ async function saveAllBusinessSettings() {
         // 2. İletişim, Servis ve Konum Ayarlarını Kaydet
         const response = await fetch(`/api/business-profile/${currentBusinessFieldKey}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ phone, hasService, coordinates, refreshments, cleats, shower, market })
         });
         const result = await response.json();
@@ -3694,7 +3759,7 @@ async function loadBusinessDebts(filter = 'all') {
     if (!container) return;
 
     try {
-        const response = await fetch(`/api/business-debts/${currentBusinessFieldKey}?filter=${filter}`);
+        const response = await fetch(`/api/business-debts/${currentBusinessFieldKey}?filter=${filter}`, { headers: getAuthHeaders() });
         const result = await response.json();
         if (result.success) {
             let debts = result.data;
@@ -3778,7 +3843,7 @@ async function togglePaymentStatus(id, newStatus, currentFilter) {
     try {
         const response = await fetch(`/api/reservations/${id}/payment`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ payment_status: newStatus })
         });
         const result = await response.json();
@@ -4381,119 +4446,128 @@ function loadAdminDashboard() {
 }
 
 // --- SAHA YÖNETİMİ ---
-function renderAdminFields() {
+async function renderAdminFields() {
     const container = document.getElementById('adminFieldList');
-    const search = (document.getElementById('adminFieldSearch').value || '').toLowerCase();
-    const fields = window.fieldsData || {};
-    const keys = Object.keys(fields).filter(k => fields[k].name.toLowerCase().includes(search));
-    if (keys.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Saha bulunamadı.</div>'; return; }
-    container.innerHTML = keys.map(key => {
-        const f = fields[key];
-        return `<div class="admin-field-card${f.isClosed ? ' passive' : ''}">
-            <div class="field-info">
-                <div class="field-name">${f.name}</div>
-                <div class="field-meta">${f.address} · ${f.phone} · ${f.pitchCount || 1} saha · ${f.isClosed ? '<span style="color:#ef4444;">PASİF</span>' : '<span style="color:#34d399;">AKTİF</span>'}</div>
-            </div>
-            <div class="field-actions">
-                <button class="btn-enter" onclick="adminEnterFieldPanel('${key}')">PANEL</button>
-                <button class="btn-visibility" onclick="adminToggleFieldVisibility('${key}')">${f.isClosed ? 'GÖSTER' : 'GİZLE'}</button>
-                <button class="btn-delete" onclick="adminDeleteField('${key}')">SİL</button>
-            </div>
-        </div>`;
-    }).join('');
-}
+    const deletedContainer = document.getElementById('adminDeletedFieldList');
+    if (!container) return;
 
-function adminEnterFieldPanel(key) {
-    if (!window.fieldsData || !window.fieldsData[key]) return;
-    const field = window.fieldsData[key];
-    currentBusinessFieldKey = key;
-    isBusinessLoggedIn = true;
-    
-    // Admin Impersonation Banner
-    document.getElementById('adminImpersonatedFieldName').innerText = field.name.toLocaleUpperCase('tr-TR');
-    document.getElementById('adminImpersonationBanner').style.display = 'flex';
-    document.body.classList.add('admin-impersonating');
-
-    document.getElementById('businessPanelTitle').innerText = `🛡️ ADMIN · ${field.name.toLocaleUpperCase('tr-TR')} YÖNETİLİYOR`;
-    document.getElementById('businessPanel').style.display = 'block';
-    document.getElementById('adminPanel').style.display = 'none';
-    document.querySelector('main').classList.remove('admin-mode');
-    document.body.classList.remove('admin-mode');
-    document.querySelector('main').classList.add('business-mode');
-    document.body.classList.add('business-mode');
-    const hbf2 = document.getElementById('hamburgerFieldName');
-    if (hbf2) hbf2.innerText = field.name.toLocaleUpperCase('tr-TR');
-    document.getElementById('adminAuthSection').style.display = 'none';
-    document.getElementById('adminLogoutSection').style.display = 'none';
-    
-    // Her zaman mobil menü kopyasını oluştur (PC'de de hamburger ile kullanılabilir)
-    const headerActions = document.querySelector('.header-actions');
-    if (headerActions) {
-        const existingClone = document.getElementById('businessMobileMenuClone');
-        if (existingClone) existingClone.remove();
-        const menuDiv = document.createElement('div');
-        menuDiv.id = 'businessMobileMenuClone';
-        menuDiv.style.display = 'block';
-        const titleEl = document.createElement('div');
-        titleEl.className = 'mobile-menu-section-title';
-        titleEl.textContent = field.name.toLocaleUpperCase('tr-TR');
-        menuDiv.appendChild(titleEl);
-        const tabDefs = [
-            { label: 'İSTATİSTİKLER', tab: 'stats' },
-            { label: 'BORÇLAR', tab: 'debts' },
-            { label: 'FİYAT TARİFESİ', tab: 'pricing' },
-            { label: 'İŞLETME AYARLARI', tab: 'settings' },
-            { label: 'KARA LİSTE', tab: 'blacklist' },
-            { label: 'REZERVASYONLAR', tab: 'reservations' },
-            { label: 'SAAT & ENGEL', tab: 'hours' },
-            { label: 'ABONELİK', tab: 'subscriptions' },
-            { label: 'YORUMLAR', tab: 'comments' }
-        ];
-        tabDefs.sort((a, b) => a.label.localeCompare(b.label, 'tr'));
-        tabDefs.forEach(td => {
-            const btn = document.createElement('button');
-            btn.className = 'nav-btn business-mobile-nav';
-            btn.textContent = td.label;
-            btn.onclick = function() { switchBusinessTab(td.tab); closeMobileMenu(); };
-            menuDiv.appendChild(btn);
+    // Populating dropdowns for opening/closing hour in "afOpening" and "afClosing" if empty
+    const afOpening = document.getElementById('afOpening');
+    const afClosing = document.getElementById('afClosing');
+    if (afOpening && afOpening.innerHTML === "") {
+        masterHoursList.forEach(h => {
+            const prefix = h.split(' - ')[0];
+            let opt1 = document.createElement('option'); opt1.value = prefix; opt1.text = prefix;
+            let opt2 = document.createElement('option'); opt2.value = prefix; opt2.text = prefix;
+            afOpening.appendChild(opt1); afClosing.appendChild(opt2);
         });
-        const logoutBtn = document.createElement('button');
-        logoutBtn.className = 'nav-btn red-btn business-mobile-nav';
-        logoutBtn.textContent = 'ÇIKIŞ YAP';
-        logoutBtn.onclick = function() { adminReturnFromFieldPanel(); closeMobileMenu(); };
-        menuDiv.appendChild(logoutBtn);
-        headerActions.insertBefore(menuDiv, headerActions.firstChild);
+        afOpening.value = '09:00';
+        afClosing.value = '23:00';
     }
-    
-    switchBusinessTab('stats');
-    loadBusinessDashboard();
-    adminLogAction('field_access', 'field', field.name, `${field.name} paneline admin erişimi`);
-}
 
-function adminReturnFromFieldPanel() {
-    closeMobileMenu();
-    document.getElementById('adminImpersonationBanner').style.display = 'none';
-    document.body.classList.remove('admin-impersonating');
-    handleBusinessLogout();
+    // Register phone mask for Add Field
+    const afPhone = document.getElementById('afPhone');
+    if (afPhone && !afPhone.dataset.masked) {
+        afPhone.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '');
+            if (v.startsWith('0')) v = v.substring(1);
+            if (v.length > 10) v = v.substring(0, 10);
+            e.target.value = v ? '0' + v : '';
+        });
+        afPhone.dataset.masked = 'true';
+    }
+
+    const search = (document.getElementById('adminFieldSearch').value || '').toLowerCase();
+
+    try {
+        // Fetch active fields
+        const res = await fetch('/api/admin/fields', { headers: getAdminHeaders() });
+        const result = await res.json();
+        if (result.success) {
+            const fields = result.data.filter(f => (f.name || f.fieldKey).toLowerCase().includes(search));
+            if (fields.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Saha bulunamadı.</div>';
+            } else {
+                container.innerHTML = fields.map(f => {
+                    const isClosed = f.isClosed === 1;
+                    return `<div class="admin-field-card${isClosed ? ' passive' : ''}">
+                        <div class="field-info">
+                            <div class="field-name">${f.name || f.fieldKey.toUpperCase()}</div>
+                            <div class="field-meta">${f.address || ''} · ${f.phone || ''} · ${f.pitch_count || 1} saha · ${isClosed ? '<span style="color:#ef4444;">PASİF (GİZLİ)</span>' : '<span style="color:#34d399;">AKTİF (GÖRÜNÜR)</span>'}</div>
+                        </div>
+                        <div class="field-actions">
+                            <button class="btn-enter" onclick="adminEnterFieldPanel('${f.fieldKey}')">PANEL</button>
+                            <button class="btn-visibility" onclick="adminToggleFieldVisibility('${f.fieldKey}')">${isClosed ? 'GÖSTER' : 'GİZLE'}</button>
+                            <button class="btn-delete" onclick="adminDeleteField('${f.fieldKey}')">SİL</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        // Fetch deleted fields
+        const delRes = await fetch('/api/admin/deleted-fields', { headers: getAdminHeaders() });
+        const delResult = await delRes.json();
+        if (delResult.success) {
+            const delFields = delResult.data.filter(f => (f.name || f.fieldKey).toLowerCase().includes(search));
+            if (delFields.length === 0) {
+                if (deletedContainer) deletedContainer.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Silinen saha geçmişi temiz.</div>';
+            } else {
+                deletedContainer.innerHTML = delFields.map(f => {
+                    return `<div class="admin-field-card passive" style="border-color: rgba(239, 68, 68, 0.3);">
+                        <div class="field-info">
+                            <div class="field-name" style="text-decoration: line-through; color: var(--text-muted);">${f.name || f.fieldKey.toUpperCase()}</div>
+                            <div class="field-meta">${f.address || ''} · ${f.phone || ''} · ${f.pitch_count || 1} saha · <span style="color:#ef4444;">SİLİNDİ</span></div>
+                        </div>
+                        <div class="field-actions">
+                            <button class="action-btn" style="background:#10b981; color:#000; border-color:#10b981; font-size: 0.8rem; padding: 6px 12px; font-weight:800;" onclick="adminRestoreField('${f.fieldKey}')">GERİ GETİR</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
+    } catch (error) {
+        console.error("Saha verileri çekilemedi:", error);
+    }
 }
 
 function adminToggleFieldVisibility(key) {
-    const f = window.fieldsData[key];
-    if (!f) return;
     fetch(`/api/admin/fields/${key}/visibility`, { method: 'PUT', headers: getAdminHeaders() })
     .then(r => r.json()).then(d => {
-        if (d.success) { f.isClosed = !f.isClosed; renderAdminFields(); showToast(d.message, 'info'); }
-        else showToast(d.message, 'error');
+        if (d.success) { 
+            renderAdminFields(); 
+            showToast(d.message, 'info'); 
+        } else {
+            showToast(d.message, 'error');
+        }
     }).catch(() => showToast('Sunucu hatası!', 'error'));
 }
 
 async function adminDeleteField(key) {
-    const confirmed = await showConfirmModal(`${window.fieldsData[key]?.name || key} sahasını ve tüm verilerini silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`);
+    const confirmed = await showConfirmModal(`Saha silmek istediğinize emin misiniz? Bu sahayı daha sonra "Silinen Sahalar" geçmişinden geri getirebilirsiniz.`);
     if (!confirmed) return;
     fetch(`/api/admin/fields/${key}`, { method: 'DELETE', headers: getAdminHeaders() })
     .then(r => r.json()).then(d => {
-        if (d.success) { delete window.fieldsData[key]; renderAdminFields(); showToast(d.message, 'info'); }
-        else showToast(d.message, 'error');
+        if (d.success) { 
+            renderAdminFields(); 
+            showToast(d.message, 'info'); 
+        } else {
+            showToast(d.message, 'error');
+        }
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+async function adminRestoreField(key) {
+    const confirmed = await showConfirmModal(`Bu sahayı geri yüklemek istediğinize emin misiniz?`);
+    if (!confirmed) return;
+    fetch(`/api/admin/fields/${key}/restore`, { method: 'POST', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) { 
+            renderAdminFields(); 
+            showToast(d.message, 'info'); 
+        } else {
+            showToast(d.message, 'error');
+        }
     }).catch(() => showToast('Sunucu hatası!', 'error'));
 }
 
@@ -4503,13 +4577,21 @@ function showAddFieldForm() {
 }
 
 function submitAddField() {
+    const afPhoneVal = document.getElementById('afPhone').value.trim();
+    const phoneClean = afPhoneVal.replace(/[^0-9]/g, '');
+
+    if (!phoneClean || !phoneClean.startsWith('05') || phoneClean.length !== 11) {
+        showToast('Telefon numarası 05 ile başlamalı ve eksiksiz 11 hane olmalıdır!', 'error');
+        return;
+    }
+
     const data = {
         fieldKey: document.getElementById('afKey').value.trim(),
         name: document.getElementById('afName').value.trim(),
         address: document.getElementById('afAddress').value.trim(),
-        phone: document.getElementById('afPhone').value.trim(),
-        openingHour: document.getElementById('afOpening').value.trim() || '09:00',
-        closingHour: document.getElementById('afClosing').value.trim() || '23:00',
+        phone: afPhoneVal,
+        openingHour: document.getElementById('afOpening').value || '09:00',
+        closingHour: document.getElementById('afClosing').value || '23:00',
         pitchCount: parseInt(document.getElementById('afPitchCount').value) || 1,
         morningPrice: parseInt(document.getElementById('afMorningPrice').value) || 2500,
         eveningPrice: parseInt(document.getElementById('afEveningPrice').value) || 3000
@@ -4565,18 +4647,103 @@ function renderAdminUsers() {
                 badgeHtml += `<span class="user-status banned" style="margin-right:5px;background:#f59e0b;border-color:#f59e0b;">⚠️ ÇOK SIK İPTAL</span>`;
             }
             
-            return `<div class="admin-user-row" onclick="showAdminUserDetail(${u.id})">
-                <div class="user-info">
-                    <div class="user-name">${u.name}</div>
-                    <div class="user-meta">${u.phone || ''} · ${u.email || ''} · ${u.age ? u.age + ' yaş' : ''} · Rezervasyon: ${u.total_reservations || 0}</div>
+            return `
+            <div class="admin-user-row-wrapper" style="border: 1px solid rgba(255,255,255,0.05); border-radius:10px; margin-bottom:10px; background: rgba(30,41,59,0.3); overflow:hidden;">
+                <div class="admin-user-row" onclick="toggleAdminUserDetailInline(${u.id})" style="display:flex; justify-content:space-between; align-items:center; padding:15px; cursor:pointer; transition:background 0.2s ease;">
+                    <div class="user-info">
+                        <div class="user-name" style="font-weight:700; color:#fff;">${u.name}</div>
+                        <div class="user-meta" style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">${u.phone || ''} · ${u.email || ''} · ${u.age ? u.age + ' yaş' : ''} · Rezervasyon: ${u.total_reservations || 0}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;">
+                        ${badgeHtml}
+                        <span class="user-status ${statusClass}">${statusLabel}</span>
+                    </div>
                 </div>
-                <div style="display:flex;align-items:center;">
-                    ${badgeHtml}
-                    <span class="user-status ${statusClass}">${statusLabel}</span>
-                </div>
+                <div class="admin-user-detail-inline" id="user-detail-${u.id}" style="display:none; background:rgba(15,23,42,0.6); border-top:1px solid rgba(255,255,255,0.05); padding:20px;"></div>
             </div>`;
         }).join('');
     }).catch(() => container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+}
+
+function toggleAdminUserDetailInline(id) {
+    const detailEl = document.getElementById(`user-detail-${id}`);
+    if (!detailEl) return;
+    
+    if (detailEl.style.display === 'block') {
+        detailEl.style.display = 'none';
+        return;
+    }
+    
+    // Close other expanded rows
+    document.querySelectorAll('.admin-user-detail-inline').forEach(el => {
+        if (el.id !== `user-detail-${id}`) el.style.display = 'none';
+    });
+    
+    detailEl.style.display = 'block';
+    
+    if (detailEl.innerHTML === "" || detailEl.innerHTML.includes('Yükleniyor')) {
+        detailEl.innerHTML = '<div style="text-align:center;padding:15px;color:var(--text-muted);">Yükleniyor...</div>';
+        fetch(`/api/admin/users/${id}`, { headers: getAdminHeaders() })
+        .then(r => r.json()).then(data => {
+            if (!data.success || !data.data.user) { 
+                detailEl.innerHTML = '<div style="color:var(--danger-red);padding:10px;">Kullanıcı bulunamadı!</div>'; 
+                return; 
+            }
+            const u = data.data.user;
+            detailEl.innerHTML = `
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:15px;">
+                    <button class="action-btn" onclick="adminToggleUserBanInline(event, ${u.id})" style="padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px; background:${u.status === 'banned' || u.status === 'globally_banned' ? 'rgba(16,185,129,0.15);border-color:#10b981;color:#34d399' : 'rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171'}; cursor:pointer;">${u.status === 'banned' || u.status === 'globally_banned' ? 'BAN KALDIR' : 'BANLA'}</button>
+                    <button class="action-btn" onclick="adminDeleteUserInline(event, ${u.id}, '${u.name}')" style="padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px; background:rgba(239,68,68,0.15); border-color:#ef4444; color:#f87171; cursor:pointer;">SİL</button>
+                </div>
+                <div class="detail-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:12px; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:12px; border-radius:8px;">
+                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Telefon</label><span style="font-size:0.85rem; color:#fff;">${u.phone || '-'}</span></div>
+                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">E-posta</label><span style="font-size:0.85rem; color:#fff; word-break:break-all;">${u.email || '-'}</span></div>
+                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Yaş</label><span style="font-size:0.85rem; color:#fff;">${u.age || '-'}</span></div>
+                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Boy</label><span style="font-size:0.85rem; color:#fff;">${u.height || '-'} cm</span></div>
+                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Kilo</label><span style="font-size:0.85rem; color:#fff;">${u.weight || '-'} kg</span></div>
+                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Mevki</label><span style="font-size:0.85rem; color:#fff;">${u.position || '-'}</span></div>
+                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Tecrübe</label><span style="font-size:0.85rem; color:#fff;">${u.experience || '-'}</span></div>
+                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Durum</label><span style="font-size:0.85rem; font-weight:bold; color:${u.status === 'globally_banned' ? '#ef4444' : (u.status === 'banned' ? '#f87171' : '#34d399')}">${u.status}</span></div>
+                </div>
+                <div style="margin-top:15px;">
+                    <h4 style="color:#8b5cf6; margin-bottom:8px; font-size:0.85rem; font-weight:700;">REZERVASYONLAR (${(data.data.reservations||[]).length})</h4>
+                    ${(data.data.reservations||[]).slice(0,10).map(r => `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04); color:rgba(255,255,255,0.8);">${r.dateText} ${r.hourText} · ${r.field_name || r.fieldKey} · ${r.reservation_price} TL · <span style="color:${r.payment_status === 'odendi' ? '#34d399' : '#f87171'}">${r.payment_status}</span></div>`).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);">Rezervasyon yok.</div>'}
+                </div>
+                <div style="margin-top:15px;">
+                    <h4 style="color:#8b5cf6; margin-bottom:8px; font-size:0.85rem; font-weight:700;">YORUMLAR (${(data.data.reviews||[]).length})</h4>
+                    ${(data.data.reviews||[]).map(r => `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04); color:rgba(255,255,255,0.8);">${r.field_name || r.fieldKey} · Puan: ${r.rating_turf || '-'}/5 · ${r.comment || ''}</div>`).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);">Yorum yok.</div>'}
+                </div>
+            `;
+        }).catch(() => detailEl.innerHTML = '<div style="color:var(--danger-red);padding:10px;">Yüklenemedi!</div>');
+    }
+}
+
+function adminToggleUserBanInline(event, id) {
+    event.stopPropagation();
+    fetch(`/api/admin/users/${id}/ban`, { method: 'PUT', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) { 
+            showToast(d.message, 'info'); 
+            renderAdminUsers(); 
+        } else {
+            showToast(d.message, 'error');
+        }
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+async function adminDeleteUserInline(event, id, name) {
+    event.stopPropagation();
+    const confirmed = await showConfirmModal(`${name} kullanıcısını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`);
+    if (!confirmed) return;
+    fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) { 
+            showToast(d.message, 'info'); 
+            renderAdminUsers(); 
+        } else {
+            showToast(d.message, 'error');
+        }
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
 }
 
 function exportAdminUsersCSV() {
@@ -4701,20 +4868,51 @@ function adminLogAction(action_type, target_type, target_name, description) {
 
 // --- GLOBAL KARA LİSTE ---
 function loadAdminGlobalBlacklist() {
+    // 1. Banlanmış Kullanıcıları Yükle
+    fetch('/api/admin/users', { headers: getAdminHeaders() })
+    .then(r => r.json()).then(result => {
+        const container = document.getElementById('adminBannedUsersList');
+        if (!container) return;
+        if (!result.success || !result.data) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Hata oluştu.</div>'; return; }
+        const bannedUsers = result.data.filter(u => u.status === 'banned' || u.status === 'globally_banned');
+        if (bannedUsers.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Yasaklı kullanıcı bulunmuyor.</div>';
+            return;
+        }
+        container.innerHTML = bannedUsers.map(user => `
+            <div class="admin-bl-item" style="border-color: rgba(239, 68, 68, 0.3); display:flex; justify-content:space-between; align-items:center; background:rgba(30,41,59,0.4); padding:12px 18px; border-radius:8px; margin-bottom:8px;">
+                <div class="bl-info">
+                    <div class="bl-name" style="color: #fca5a5; font-weight:700;">${user.name || 'Bilinmeyen'} (${user.status.toUpperCase('tr-TR')})</div>
+                    <div class="bl-meta" style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">📞 ${user.phone} · 📧 ${user.email || '-'} · 🏆 Toplam Rezervasyon: ${user.total_reservations || 0}</div>
+                </div>
+                <button class="action-btn" onclick="adminUnbanUser(${user.id}, '${user.phone}', '${user.status}')" style="padding:6px 14px; font-size:0.75rem; background:rgba(16,185,129,0.15); border-color:#10b981; color:#34d399; font-weight:700; border-radius:6px; cursor:pointer;">BAN KALDIR</button>
+            </div>
+        `).join('');
+    }).catch(e => {
+        console.error(e);
+        const container = document.getElementById('adminBannedUsersList');
+        if (container) container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>';
+    });
+
+    // 2. Sahalardan Engellenen Şüpheli Numaraları Yükle
     fetch('/api/admin/global-blacklist', { headers: getAdminHeaders() })
     .then(r => r.json()).then(data => {
         const container = document.getElementById('adminGlobalBlacklist');
-        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Kara liste boş.</div>'; return; }
+        if (!container) return;
+        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Şüpheli numara bulunmuyor.</div>'; return; }
         container.innerHTML = data.data.map(item => `
-            <div class="admin-bl-item">
+            <div class="admin-bl-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(30,41,59,0.4); padding:12px 18px; border-radius:8px; margin-bottom:8px;">
                 <div class="bl-info">
-                    <div class="bl-name">${item.name || 'Bilinmeyen'}</div>
-                    <div class="bl-meta">📞 ${item.phone_number} · 🚫 ${item.block_count} saha tarafından engellenmiş · Sahalar: ${item.fields || '-'} · Durum: ${item.status}</div>
+                    <div class="bl-name" style="font-weight:700;">${item.name || 'Bilinmeyen'}</div>
+                    <div class="bl-meta" style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">📞 ${item.phone_number} · 🚫 ${item.block_count} saha tarafından engellenmiş · Sahalar: ${item.fields || '-'}</div>
                 </div>
-                <button class="action-btn" onclick="adminRemoveGlobalBan('${item.phone_number}')" style="padding:5px 12px;font-size:0.7rem;background:rgba(16,185,129,0.2);border-color:#10b981;color:#34d399;">BAN KALDIR</button>
+                <button class="action-btn" onclick="adminRemoveGlobalBan('${item.phone_number}')" style="padding:6px 14px; font-size:0.75rem; background:rgba(16,185,129,0.15); border-color:#10b981; color:#34d399; font-weight:700; border-radius:6px; cursor:pointer;">LİSTEDEN ÇIKAR</button>
             </div>
         `).join('');
-    }).catch(() => document.getElementById('adminGlobalBlacklist').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+    }).catch(() => {
+        const container = document.getElementById('adminGlobalBlacklist');
+        if (container) container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>';
+    });
 }
 
 function adminManualGlobalBan() {
@@ -4734,6 +4932,29 @@ async function adminRemoveGlobalBan(phone) {
     .then(r => r.json()).then(d => {
         if (d.success) { showToast(d.message, 'info'); loadAdminGlobalBlacklist(); }
         else showToast(d.message, 'error');
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+async function adminUnbanUser(id, phone, status) {
+    const confirmed = await showConfirmModal(`${phone} numarasının yasağını kaldırmak istediğinize emin misiniz?`);
+    if (!confirmed) return;
+    
+    let url = `/api/admin/users/${id}/ban`;
+    let method = 'PUT';
+    if (status === 'globally_banned') {
+        url = `/api/admin/global-blacklist/${encodeURIComponent(phone)}`;
+        method = 'DELETE';
+    }
+    
+    fetch(url, { method: method, headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) {
+            showToast(d.message, 'info');
+            loadAdminGlobalBlacklist();
+            if (typeof renderAdminUsers === 'function') renderAdminUsers();
+        } else {
+            showToast(d.message, 'error');
+        }
     }).catch(() => showToast('Sunucu hatası!', 'error'));
 }
 

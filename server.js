@@ -1,10 +1,83 @@
 require('dotenv').config();
+process.env.TZ = 'Europe/Istanbul';
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'ksk_jwt_secret_key_123!';
+
+// JWT Authentication Middlewares
+function verifyUser(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'Oturum açmanız gerekmektedir!' });
+    
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(403).json({ success: false, message: 'Geçersiz veya süresi geçmiş oturum!' });
+        if (decoded.role !== 'user') return res.status(403).json({ success: false, message: 'Bu işlem için yetkiniz bulunmamaktadır!' });
+        req.user = decoded;
+        next();
+    });
+}
+
+function verifyBusiness(req, res, next) {
+    const adminToken = req.headers['x-admin-token'];
+    if (adminToken) {
+        db.query("SELECT * FROM super_admins WHERE username = ?", [adminToken], (err, admins) => {
+            if (!err && admins.length > 0) {
+                req.adminUser = admins[0];
+                return next(); // Admin is allowed to bypass business authorization
+            }
+            return res.status(403).json({ success: false, message: 'Geçersiz yönetici yetkisi!' });
+        });
+        return;
+    }
+
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'İşletme oturumu açmanız gerekmektedir!' });
+    
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(403).json({ success: false, message: 'Geçersiz veya süresi geçmiş işletme oturumu!' });
+        if (decoded.role !== 'business') return res.status(403).json({ success: false, message: 'Bu işlem için işletme yetkisi gerekmektedir!' });
+        
+        const reqFieldKey = req.params.fieldKey || req.body.fieldKey;
+        if (reqFieldKey && reqFieldKey !== decoded.fieldKey) {
+            return res.status(403).json({ success: false, message: 'Farklı bir işletmeye ait ayarları değiştiremezsiniz!' });
+        }
+        
+        req.business = decoded;
+        next();
+    });
+}
+
+function verifyReservationPermission(req, res, next) {
+    const adminToken = req.headers['x-admin-token'];
+    if (adminToken) {
+        db.query("SELECT * FROM super_admins WHERE username = ?", [adminToken], (err, admins) => {
+            if (!err && admins.length > 0) {
+                req.isAdmin = true;
+                return next();
+            }
+            return res.status(403).json({ success: false, message: 'Geçersiz yetki!' });
+        });
+        return;
+    }
+
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'Yetkilendirme gerekli!' });
+
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(403).json({ success: false, message: 'Geçersiz oturum!' });
+        req.auth = decoded;
+        next();
+    });
+}
 
 // fetch polyfill for Node < 18
 if (!globalThis.fetch) {
@@ -38,8 +111,24 @@ app.get('/isletme', (req, res) => {
     res.sendFile(__dirname + '/isletme.html');
 });
 
+app.get('/isletme.html', (req, res) => {
+    res.redirect('/isletme');
+});
+
+app.get('/işletme', (req, res) => {
+    res.redirect('/isletme');
+});
+
 app.get('/yonetici', (req, res) => {
     res.sendFile(__dirname + '/yonetici.html');
+});
+
+app.get('/yonetici.html', (req, res) => {
+    res.redirect('/yonetici');
+});
+
+app.get('/yönetici', (req, res) => {
+    res.redirect('/yonetici');
 });
 
 // Body parsing error handler - always return JSON
@@ -217,7 +306,24 @@ db.getConnection((err, connection) => {
         if (!errCheck && results.length === 0) {
             connection.query("ALTER TABLE pitch_objects ADD COLUMN market VARCHAR(50) DEFAULT 'Market Yok'", (errAlter) => {
                 if (errAlter) console.error("❌ pitch_objects.market kolonu eklenemedi:", errAlter);
-                
+            });
+        }
+    });
+
+    // Check and add isDeleted column in pitch_objects
+    connection.query("SHOW COLUMNS FROM pitch_objects LIKE 'isDeleted'", (errCheck, results) => {
+        if (!errCheck && results.length === 0) {
+            connection.query("ALTER TABLE pitch_objects ADD COLUMN isDeleted TINYINT DEFAULT 0", (errAlter) => {
+                if (errAlter) console.error("❌ pitch_objects.isDeleted kolonu eklenemedi:", errAlter);
+            });
+        }
+    });
+
+    // Check and add isDeleted column in pitch_settings
+    connection.query("SHOW COLUMNS FROM pitch_settings LIKE 'isDeleted'", (errCheck, results) => {
+        if (!errCheck && results.length === 0) {
+            connection.query("ALTER TABLE pitch_settings ADD COLUMN isDeleted TINYINT DEFAULT 0", (errAlter) => {
+                if (errAlter) console.error("❌ pitch_settings.isDeleted kolonu eklenemedi:", errAlter);
             });
         }
     });
@@ -669,6 +775,14 @@ const fieldsData = {
     }
 };
 
+// Validation helpers
+function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+function validatePhone(phone) {
+    return /^05[0-9]{9}$/.test(phone);
+}
+
 // KULLANICI KAYIT VE GİRİŞ
 app.post('/api/register', (req, res) => {
     console.log("Gelen veri:", req.body);
@@ -676,6 +790,13 @@ app.post('/api/register', (req, res) => {
 
     if (!name || !phone || !email || !password) {
         return res.status(400).json({ success: false, message: 'Tüm alanları doldurunuz!' });
+    }
+
+    if (!validateEmail(email)) {
+        return res.status(400).json({ success: false, message: 'Geçersiz e-posta formatı! Lütfen geçerli bir e-posta girin.' });
+    }
+    if (!validatePhone(phone)) {
+        return res.status(400).json({ success: false, message: 'Geçersiz telefon formatı! Telefon 05 ile başlamalı ve 11 haneli olmalıdır.' });
     }
 
     // Telefon no karaliste kontrolü
@@ -704,9 +825,11 @@ app.post('/api/register', (req, res) => {
                 return res.status(500).json({ success: false, message: 'Kayıt olurken veritabanı hatası oluştu!' });
             }
 
+            const token = jwt.sign({ id: result.insertId, email: email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
             res.json({ 
                 success: true, 
                 message: 'Kayıt başarılı! Giriş yapıldı.',
+                token,
                 user: {
                     id: result.insertId,
                     name: name,
@@ -737,7 +860,8 @@ app.post('/api/login', (req, res) => {
         }
         
         const { password: _, ...safeUser } = user;
-        res.json({ success: true, user: safeUser });
+        const token = jwt.sign({ id: user.id, email: user.email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ success: true, token, user: safeUser });
     });
 });
 
@@ -746,6 +870,10 @@ app.put('/api/users/profile', (req, res) => {
     const { id, name, phone, age, height, weight, position, experience } = req.body;
     if (!id) {
         return res.status(400).json({ success: false, message: 'Kullanıcı ID gereklidir!' });
+    }
+
+    if (phone && !validatePhone(phone)) {
+        return res.status(400).json({ success: false, message: 'Geçersiz telefon formatı! Telefon 05 ile başlamalı ve 11 haneli olmalıdır.' });
     }
 
     const sqlQuery = 'UPDATE users SET name = ?, phone = ?, age = ?, height = ?, weight = ?, position = ?, experience = ? WHERE id = ?';
@@ -763,7 +891,7 @@ app.put('/api/users/profile', (req, res) => {
 });
 
 // Güncelle: İşletme Telefon, Servis ve Konum Ayarları
-app.put('/api/business-profile/:fieldKey', (req, res) => {
+app.put('/api/business-profile/:fieldKey', verifyBusiness, (req, res) => {
     const { fieldKey } = req.params;
     const { phone, hasService, coordinates, refreshments, cleats, shower, market } = req.body;
     
@@ -805,7 +933,7 @@ app.get('/api/all-daily-hours', (req, res) => {
 });
 
 // Günlük saha saatlerini kaydet
-app.put('/api/field-daily-hours/:fieldKey', (req, res) => {
+app.put('/api/field-daily-hours/:fieldKey', verifyBusiness, (req, res) => {
     const { fieldKey } = req.params;
     const { days } = req.body; // Array of { dayOfWeek, openingHour, closingHour }
     
@@ -843,7 +971,7 @@ app.put('/api/field-daily-hours/:fieldKey', (req, res) => {
 
 // Tüm pitch ayarlarını getir
 app.get('/api/pitch-settings', (req, res) => {
-    const sqlQuery = 'SELECT * FROM pitch_settings';
+    const sqlQuery = 'SELECT * FROM pitch_settings WHERE isDeleted = 0';
     db.query(sqlQuery, (err, results) => {
         if (err) {
             console.error("SQL Hatası:", err);
@@ -870,7 +998,7 @@ app.get('/api/pitch-settings/:fieldKey', (req, res) => {
 });
 
 // İşletme ayarlarını güncelle
-app.put('/api/pitch-settings/:fieldKey', (req, res) => {
+app.put('/api/pitch-settings/:fieldKey', verifyBusiness, (req, res) => {
     const { fieldKey } = req.params;
     const { isClosed, openingHour, closingHour, disabledHours, aboneHours, pricing, field_count } = req.body;
 
@@ -930,7 +1058,7 @@ app.put('/api/pitch-settings/:fieldKey', (req, res) => {
 });
 
 // Belirli bir pitch nesnesinin (sub-pitch) ayarlarını güncelle
-app.put('/api/pitch-objects/:fieldKey/:pitchNumber', (req, res) => {
+app.put('/api/pitch-objects/:fieldKey/:pitchNumber', verifyBusiness, (req, res) => {
     const { fieldKey, pitchNumber } = req.params;
     const { isClosed, openingHour, closingHour, disabledHours, aboneHours, morningPrice, eveningPrice, closedDays } = req.body;
     const closedDaysStr = typeof closedDays === 'string' ? closedDays : JSON.stringify(closedDays || []);
@@ -985,7 +1113,7 @@ app.put('/api/pitch-objects/:fieldKey/:pitchNumber', (req, res) => {
 
 // Tüm pitch nesnelerini getir
 app.get('/api/pitch-list', (req, res) => {
-    const sqlQuery = 'SELECT * FROM pitch_objects';
+    const sqlQuery = 'SELECT * FROM pitch_objects WHERE isDeleted = 0';
     db.query(sqlQuery, (err, results) => {
         if (err) {
             console.error("SQL Hatası:", err);
@@ -1044,11 +1172,15 @@ function getTurkishDayName(date) {
 }
 
 // YENİ REZERVASYON EKLEME (GÜVENLİK, LİMİT VE BAN KONTROLLERİ DAHİL)
-app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
+app.post('/api/reservations', verifyUser, resLimitPerMin, resLimitPerSec, (req, res) => {
     const { fieldKey, pitchNumber, dateText, hourText, user_name, user_id, user_phone, reservation_price, turnstileToken } = req.body;
 
     if (!fieldKey || !pitchNumber || !dateText || !hourText || !user_name) {
         return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
+    }
+
+    if (req.user.id !== parseInt(user_id)) {
+        return res.status(403).json({ success: false, message: 'Bu işlem için yetkiniz bulunmamaktadır!' });
     }
 
     // 1. Cloudflare Turnstile Doğrulaması
@@ -1072,141 +1204,165 @@ app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
             return res.status(400).json({ success: false, message: 'Güvenlik doğrulaması (Turnstile) başarısız!' });
         }
 
-        // 2. Kullanıcı Durum ve Aktivasyon Kontrolleri
-        if (!user_id) {
-            return res.status(401).json({ success: false, message: 'Rezervasyon yapabilmek için lütfen giriş yapın!' });
-        }
-
-        db.query('SELECT is_email_verified, status FROM users WHERE id = ?', [user_id], (errUser, userResults) => {
-            if (errUser) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            if (userResults.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
-
-            const user = userResults[0];
-            if (user.status === 'globally_banned') {
-                return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
+        db.getConnection((connErr, conn) => {
+            if (connErr) {
+                console.error("DB connection error:", connErr);
+                return res.status(500).json({ success: false, message: 'Veritabanı bağlantı hatası!' });
             }
 
-
-            // 3. Yerel Kara Liste (Blacklist) Kontrolü
-            db.query('SELECT id FROM field_blacklists WHERE fieldKey = ? AND phone_number = ?', [fieldKey, user_phone], (errBlack, blackResults) => {
-                if (errBlack) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-                if (blackResults.length > 0) {
-                    return res.status(403).json({ success: false, message: 'Bu halı saha tarafından engellendiğiniz için rezervasyon yapamazsınız!' });
+            conn.beginTransaction((txErr) => {
+                if (txErr) {
+                    conn.release();
+                    return res.status(500).json({ success: false, message: 'İşlem başlatılamadı!' });
                 }
 
-                // 4. Rezervasyon Sayı Limit Kontrolleri
-                // A. Aynı Gün İçin Limit (Maks 3) - İptal edilenler DAHİL sayılır (suistimali önlemek için)
-                db.query("SELECT dateText, hourText FROM reservations WHERE user_id = ?", [user_id], (errResAll, allUserResList) => {
-                    if (errResAll) return res.status(500).json({ success: false, message: 'Limit kontrol hatası!' });
+                const rollbackAndRelease = (status, msg) => {
+                    conn.rollback(() => {
+                        conn.release();
+                        res.status(status).json({ success: false, message: msg });
+                    });
+                };
 
-                    const newPlayDate = getActualPlayDate(dateText, hourText);
-                    if (!newPlayDate) return res.status(400).json({ success: false, message: 'Geçersiz rezervasyon tarihi veya saati!' });
-
-                    const sameDayCount = allUserResList.filter(r => {
-                        const playDate = getActualPlayDate(r.dateText, r.hourText);
-                        return playDate && playDate.toDateString() === newPlayDate.toDateString();
-                    }).length;
-
-                    if (sameDayCount >= 3) {
-                        return res.status(400).json({ success: false, message: 'Günlük rezervasyon hakkınız dolmuştur! Bir gün için en fazla 3 rezervasyon yapabilirsiniz (iptal edilenler dahil).' });
+                // 2. Kullanıcı Durum ve Aktivasyon Kontrolleri
+                conn.query('SELECT is_email_verified, status FROM users WHERE id = ?', [user_id], (errUser, userResults) => {
+                    if (errUser || userResults.length === 0) {
+                        return rollbackAndRelease(500, 'Kullanıcı doğrulama hatası veya kullanıcı bulunamadı!');
                     }
 
-                    // B. İleriye Dönük Aktif Rezervasyon Limiti (Maks 2) - Sadece aktif (iptal edilmemiş) rezervasyonlar
-                    db.query("SELECT dateText, hourText FROM reservations WHERE user_id = ? AND status != 'cancelled'", [user_id], (errResActive, activeUserResList) => {
-                        if (errResActive) return res.status(500).json({ success: false, message: 'Limit kontrol hatası!' });
+                    const user = userResults[0];
+                    if (user.status === 'globally_banned') {
+                        return rollbackAndRelease(403, 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!');
+                    }
 
-                        const now = new Date();
-                        const activeFutureCount = activeUserResList.filter(r => {
-                            const playDate = getActualPlayDate(r.dateText, r.hourText);
-                            if (!playDate) return false;
-                            const hourPart = r.hourText.split(' - ')[1] || '23:59';
-                            const [h, m] = hourPart.split(':').map(Number);
-                            playDate.setHours(h, m, 0, 0);
-                            return playDate.getTime() >= now.getTime();
-                        }).length;
-
-                        if (activeFutureCount >= 2) {
-                            return res.status(400).json({ success: false, message: 'Aktif rezervasyon limitinize ulaştınız! Aynı anda en fazla 2 aktif rezervasyonunuz olabilir.' });
+                    // 3. Yerel Kara Liste (Blacklist) Kontrolü
+                    conn.query('SELECT id FROM field_blacklists WHERE fieldKey = ? AND phone_number = ?', [fieldKey, user_phone], (errBlack, blackResults) => {
+                        if (errBlack) return rollbackAndRelease(500, 'Veritabanı hatası!');
+                        if (blackResults.length > 0) {
+                            return rollbackAndRelease(403, 'Bu halı saha tarafından engellendiğiniz için rezervasyon yapamazsınız!');
                         }
 
-                    // 5. Tarih ve Saat Çakışma Kontrolleri
-                    const resDate = parseTurkishDateString(dateText);
-                    if (resDate) {
-                        const hourPart = hourText.split(' - ')[0];
-                        const [h, m] = hourPart.split(':').map(Number);
-                        resDate.setHours(h, m, 0, 0);
-                        if (resDate.getTime() + 60 * 60 * 1000 < now.getTime()) {
-                            return res.status(400).json({ success: false, message: 'Geçmiş bir tarihe rezervasyon yapılamaz!' });
-                        }
-                    }
+                        // 4. Rezervasyon Sayı Limit Kontrolleri
+                        conn.query("SELECT dateText, hourText FROM reservations WHERE user_id = ?", [user_id], (errResAll, allUserResList) => {
+                            if (errResAll) return rollbackAndRelease(500, 'Limit kontrol hatası!');
 
-                    let dayOfWeekVal = 'PAZARTESİ';
-                    if (newPlayDate) {
-                        dayOfWeekVal = getTurkishDayName(newPlayDate);
-                    }
+                            const newPlayDate = getActualPlayDate(dateText, hourText);
+                            if (!newPlayDate) return rollbackAndRelease(400, 'Geçersiz rezervasyon tarihi veya saati!');
 
-                        db.query('SELECT isClosed, closedDays FROM pitch_objects WHERE fieldKey = ? AND pitchNumber = ?', [fieldKey, pitchNumber], (errClosed, closedResults) => {
-                            if (!errClosed && closedResults.length > 0) {
-                                const pitchInfo = closedResults[0];
-                                if (pitchInfo.isClosed === 1) {
-                                    return res.status(400).json({ success: false, message: 'Bu saha bakım/kapalı modundadır, rezervasyon yapılamaz!' });
-                                }
-                                let closedDaysArr = [];
-                                try {
-                                    closedDaysArr = typeof pitchInfo.closedDays === 'string' ? JSON.parse(pitchInfo.closedDays || '[]') : (pitchInfo.closedDays || []);
-                                } catch (e) {}
-                                if (Array.isArray(closedDaysArr) && closedDaysArr.includes(dayOfWeekVal)) {
-                                    return res.status(400).json({ success: false, message: 'Bu saha seçilen günde bakım/kapalı modundadır, rezervasyon yapılamaz!' });
-                                }
+                            const sameDayCount = allUserResList.filter(r => {
+                                const playDate = getActualPlayDate(r.dateText, r.hourText);
+                                return playDate && playDate.toDateString() === newPlayDate.toDateString();
+                            }).length;
+
+                            if (sameDayCount >= 3) {
+                                return rollbackAndRelease(400, 'Günlük rezervasyon hakkınız dolmuştur! Bir gün için en fazla 3 rezervasyon yapabilirsiniz (iptal edilenler dahil).');
                             }
 
-                            const resConflictSql = "SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND dateText = ? AND hourText = ? AND status != 'cancelled'";
-                            db.query(resConflictSql, [fieldKey, pitchNumber, dateText, hourText], (errCheck, existingRes) => {
-                                if (errCheck) return res.status(500).json({ success: false, message: 'Çakışma kontrolü hatası!' });
-                                if (existingRes.length > 0) {
-                                    return res.status(409).json({ success: false, message: 'Bu saat aralığı zaten dolu!' });
+                            conn.query("SELECT dateText, hourText FROM reservations WHERE user_id = ? AND status != 'cancelled'", [user_id], (errResActive, activeUserResList) => {
+                                if (errResActive) return rollbackAndRelease(500, 'Limit kontrol hatası!');
+
+                                const now = new Date();
+                                const activeFutureCount = activeUserResList.filter(r => {
+                                    const playDate = getActualPlayDate(r.dateText, r.hourText);
+                                    if (!playDate) return false;
+                                    const hourPart = r.hourText.split(' - ')[1] || '23:59';
+                                    const [h, m] = hourPart.split(':').map(Number);
+                                    playDate.setHours(h, m, 0, 0);
+                                    return playDate.getTime() >= now.getTime();
+                                }).length;
+
+                                if (activeFutureCount >= 2) {
+                                    return rollbackAndRelease(400, 'Aktif rezervasyon limitinize ulaştınız! Aynı anda en fazla 2 aktif rezervasyonunuz olabilir.');
                                 }
 
-                                const subConflictSql = 'SELECT id FROM subscriptions WHERE fieldKey = ? AND pitchNumber = ? AND dayOfWeek = ? AND hourText = ?';
-                                db.query(subConflictSql, [fieldKey, pitchNumber, dayOfWeekVal, hourText], (errSub, existingSub) => {
-                                    if (errSub) return res.status(500).json({ success: false, message: 'Abonelik kontrolü hatası!' });
-                                    if (existingSub.length > 0) {
-                                        return res.status(409).json({ success: false, message: 'Bu saat dilimi haftalık aboneliğe aittir!' });
+                                // 5. Tarih ve Saat Çakışma Kontrolleri
+                                const resDate = parseTurkishDateString(dateText);
+                                if (resDate) {
+                                    const hourPart = hourText.split(' - ')[0];
+                                    const [h, m] = hourPart.split(':').map(Number);
+                                    resDate.setHours(h, m, 0, 0);
+                                    if (resDate.getTime() + 60 * 60 * 1000 < now.getTime()) {
+                                        return rollbackAndRelease(400, 'Geçmiş bir tarihe rezervasyon yapılamaz!');
+                                    }
+                                }
+
+                                let dayOfWeekVal = 'PAZARTESİ';
+                                if (newPlayDate) {
+                                    dayOfWeekVal = getTurkishDayName(newPlayDate);
+                                }
+
+                                conn.query('SELECT isClosed, closedDays, isDeleted FROM pitch_objects WHERE fieldKey = ? AND pitchNumber = ?', [fieldKey, pitchNumber], (errClosed, closedResults) => {
+                                    if (errClosed) return rollbackAndRelease(500, 'Saha durum sorgu hatası!');
+                                    if (closedResults.length > 0) {
+                                        const pitchInfo = closedResults[0];
+                                        if (pitchInfo.isClosed === 1 || pitchInfo.isDeleted === 1) {
+                                            return rollbackAndRelease(400, 'Bu saha bakım/kapalı modundadır veya silinmiştir, rezervasyon yapılamaz!');
+                                        }
+                                        let closedDaysArr = [];
+                                        try {
+                                            closedDaysArr = typeof pitchInfo.closedDays === 'string' ? JSON.parse(pitchInfo.closedDays || '[]') : (pitchInfo.closedDays || []);
+                                        } catch (e) {}
+                                        if (Array.isArray(closedDaysArr) && closedDaysArr.includes(dayOfWeekVal)) {
+                                            return rollbackAndRelease(400, 'Bu saha seçilen günde bakım/kapalı modundadır, rezervasyon yapılamaz!');
+                                        }
                                     }
 
-                                    // 6. Fiyat Belirleme
-                                    db.query('SELECT morningPrice, eveningPrice FROM pitch_objects WHERE fieldKey = ? AND pitchNumber = ?', [fieldKey, pitchNumber], (errPrice, pitchResults) => {
-                                        let finalPrice = reservation_price;
-                                        if (!finalPrice && !errPrice && pitchResults.length > 0) {
-                                            const slotStartHour = parseInt(hourText.split(':')[0]);
-                                            const isEvening = slotStartHour >= 17 || slotStartHour < 6;
-                                            finalPrice = isEvening ? pitchResults[0].eveningPrice : pitchResults[0].morningPrice;
+                                    // SELECT ... FOR UPDATE to avoid race conditions
+                                    const resConflictSql = "SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND dateText = ? AND hourText = ? AND status != 'cancelled' FOR UPDATE";
+                                    conn.query(resConflictSql, [fieldKey, pitchNumber, dateText, hourText], (errCheck, existingRes) => {
+                                        if (errCheck) return rollbackAndRelease(500, 'Çakışma kontrolü hatası!');
+                                        if (existingRes.length > 0) {
+                                            return rollbackAndRelease(409, 'Bu saat aralığı zaten dolu!');
                                         }
-                                        if (!finalPrice) finalPrice = 2500;
 
-                                        // 7. Rezervasyonu Kaydet
-                                        const sqlQuery = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, user_phone, reservation_price, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
-                                        db.query(sqlQuery, [fieldKey, pitchNumber, dateText, hourText, user_name, user_id, user_phone || null, finalPrice, 'odenmedi'], (errInsert, result) => {
-                                            if (errInsert) {
-                                                console.error("SQL Ekleme Hatası:", errInsert);
-                                                return res.status(500).json({ success: false, message: 'Rezervasyon kaydedilemedi!' });
+                                        const subConflictSql = 'SELECT id FROM subscriptions WHERE fieldKey = ? AND pitchNumber = ? AND dayOfWeek = ? AND hourText = ?';
+                                        conn.query(subConflictSql, [fieldKey, pitchNumber, dayOfWeekVal, hourText], (errSub, existingSub) => {
+                                            if (errSub) return rollbackAndRelease(500, 'Abonelik kontrolü hatası!');
+                                            if (existingSub.length > 0) {
+                                                return rollbackAndRelease(409, 'Bu saat dilimi haftalık aboneliğe aittir!');
                                             }
-                                            res.json({ success: true, message: 'Rezervasyon başarıyla kaydedildi!', id: result.insertId });
+
+                                            // 6. Fiyat Belirleme
+                                            conn.query('SELECT morningPrice, eveningPrice FROM pitch_objects WHERE fieldKey = ? AND pitchNumber = ?', [fieldKey, pitchNumber], (errPrice, pitchResults) => {
+                                                let finalPrice = reservation_price;
+                                                if (!finalPrice && !errPrice && pitchResults.length > 0) {
+                                                    const slotStartHour = parseInt(hourText.split(':')[0]);
+                                                    const isEvening = slotStartHour >= 17 || slotStartHour < 6;
+                                                    finalPrice = isEvening ? pitchResults[0].eveningPrice : pitchResults[0].morningPrice;
+                                                }
+                                                if (!finalPrice) finalPrice = 2500;
+
+                                                // 7. Rezervasyonu Kaydet
+                                                const sqlQuery = 'INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, user_phone, reservation_price, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                                                conn.query(sqlQuery, [fieldKey, pitchNumber, dateText, hourText, user_name, user_id, user_phone || null, finalPrice, 'odenmedi'], (errInsert, result) => {
+                                                    if (errInsert) {
+                                                        console.error("SQL Ekleme Hatası:", errInsert);
+                                                        return rollbackAndRelease(500, 'Rezervasyon kaydedilemedi!');
+                                                    }
+
+                                                    conn.commit((commitErr) => {
+                                                        if (commitErr) {
+                                                            return rollbackAndRelease(500, 'İşlem onaylanamadı!');
+                                                        }
+                                                        conn.release();
+                                                        res.json({ success: true, message: 'Rezervasyon başarıyla kaydedildi!', id: result.insertId });
+                                                    });
+                                                });
+                                            });
                                         });
                                     });
                                 });
                             });
                         });
                     });
-                    });
                 });
             });
-        })
-        .catch(err => {
-            console.error("Turnstile Siteverify Error:", err);
-            return res.status(500).json({ success: false, message: 'Güvenlik doğrulama servis hatası!' });
         });
+    })
+    .catch(err => {
+        console.error("Turnstile Siteverify Error:", err);
+        return res.status(500).json({ success: false, message: 'Güvenlik doğrulama servis hatası!' });
     });
+});
 
 // KULLANICININ KENDİ REZERVASYONLARINI ÇEKME
 app.get('/api/reservations/user/:userId', (req, res) => {
@@ -1219,7 +1375,7 @@ app.get('/api/reservations/user/:userId', (req, res) => {
 });
 
 // ÖDEME DURUMUNU GÜNCELLE (İŞLETME PANELİ)
-app.put('/api/reservations/:id/payment', (req, res) => {
+app.put('/api/reservations/:id/payment', verifyBusiness, (req, res) => {
     const { id } = req.params;
     const { payment_status } = req.body;
     if (!['odenmedi', 'odendi'].includes(payment_status)) {
@@ -1248,7 +1404,7 @@ app.get('/api/reservations', (req, res) => {
 // =======================================================
 
 // REZERVASYON ERTELEME (POSTPONE)
-app.put('/api/reservations/:id', (req, res) => {
+app.put('/api/reservations/:id', verifyReservationPermission, (req, res) => {
     const { id } = req.params;
     const { dateText, hourText, pitchNumber } = req.body;
 
@@ -1257,18 +1413,27 @@ app.put('/api/reservations/:id', (req, res) => {
     }
 
     // ÖNCESİ KONFİRMASYON: Aynı saha ve pitchNumber için çakışma kontrolü
-    const checkSql = 'SELECT id, user_name, fieldKey, pitchNumber FROM reservations WHERE id = ?';
+    const checkSql = 'SELECT id, user_name, user_id, fieldKey, pitchNumber FROM reservations WHERE id = ?';
     db.query(checkSql, [id], (err, existingRes) => {
         if (err || existingRes.length === 0) {
             return res.status(404).json({ success: false, message: 'Rezervasyon bulunamadı!' });
         }
 
-        const oldPitchNumber = existingRes[0].pitchNumber;
+        const resObj = existingRes[0];
+        const isOwner = req.auth && req.auth.role === 'user' && resObj.user_id === req.auth.id;
+        const isBusiness = req.auth && req.auth.role === 'business' && resObj.fieldKey === req.auth.fieldKey;
+        const isAdmin = req.isAdmin;
+
+        if (!isOwner && !isBusiness && !isAdmin) {
+            return res.status(403).json({ success: false, message: 'Bu işlemi yapmaya yetkiniz bulunmamaktadır!' });
+        }
+
+        const oldPitchNumber = resObj.pitchNumber;
 
         // Eğer saha numarası değişiyorsa, yeni pitchNumber için çakışma kontrolü yap
         if (pitchNumber && pitchNumber !== oldPitchNumber) {
             const conflictSql = "SELECT id, user_name FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND dateText = ? AND hourText = ? AND id != ? AND status != 'cancelled'";
-            db.query(conflictSql, [existingRes[0].fieldKey, pitchNumber, dateText, hourText, id], (err, conflicts) => {
+            db.query(conflictSql, [resObj.fieldKey, pitchNumber, dateText, hourText, id], (err, conflicts) => {
                 if (err) {
                     console.error("Çakışma kontrolü hatası:", err);
                     return res.status(500).json({ success: false, message: 'Çakışma kontrolü hatası!' });
@@ -1286,7 +1451,7 @@ app.put('/api/reservations/:id', (req, res) => {
         } else {
             // Aynı saha numarası - sadece tarih/saat kontrolü
             const conflictSql = "SELECT id, user_name FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND dateText = ? AND hourText = ? AND id != ? AND status != 'cancelled'";
-            db.query(conflictSql, [existingRes[0].fieldKey, oldPitchNumber, dateText, hourText, id], (err, conflicts) => {
+            db.query(conflictSql, [resObj.fieldKey, oldPitchNumber, dateText, hourText, id], (err, conflicts) => {
                 if (err) {
                     console.error("Çakışma kontrolü hatası:", err);
                     return res.status(500).json({ success: false, message: 'Çakışma kontrolü hatası!' });
@@ -1337,18 +1502,31 @@ function updateReservation(id, dateText, hourText, pitchNumber, res) {
 }
 
 // REZERVASYON İPTAL (iptal edilenler de limit hakkından düşsün diye soft-delete)
-app.delete('/api/reservations/:id', (req, res) => {
+app.delete('/api/reservations/:id', verifyReservationPermission, (req, res) => {
     const { id } = req.params;
-    const sqlQuery = "UPDATE reservations SET status='cancelled' WHERE id = ?";
-    db.query(sqlQuery, [id], (err, result) => {
-        if (err) {
-            console.error("SQL Hatası:", err);
-            return res.status(500).json({ success: false, message: 'Rezervasyon silinemedi!' });
-        }
-        if (result.affectedRows === 0) {
+
+    db.query('SELECT user_id, fieldKey FROM reservations WHERE id = ?', [id], (errRes, existingRes) => {
+        if (errRes || existingRes.length === 0) {
             return res.status(404).json({ success: false, message: 'Rezervasyon bulunamadı!' });
         }
-        res.json({ success: true, message: 'Rezervasyon başarıyla iptal edildi!' });
+
+        const resObj = existingRes[0];
+        const isOwner = req.auth && req.auth.role === 'user' && resObj.user_id === req.auth.id;
+        const isBusiness = req.auth && req.auth.role === 'business' && resObj.fieldKey === req.auth.fieldKey;
+        const isAdmin = req.isAdmin;
+
+        if (!isOwner && !isBusiness && !isAdmin) {
+            return res.status(403).json({ success: false, message: 'Bu işlemi yapmaya yetkiniz bulunmamaktadır!' });
+        }
+
+        const sqlQuery = "UPDATE reservations SET status='cancelled' WHERE id = ?";
+        db.query(sqlQuery, [id], (err, result) => {
+            if (err) {
+                console.error("SQL Hatası:", err);
+                return res.status(500).json({ success: false, message: 'Rezervasyon silinemedi!' });
+            }
+            res.json({ success: true, message: 'Rezervasyon başarıyla iptal edildi!' });
+        });
     });
 });
 
@@ -1949,9 +2127,11 @@ app.post('/api/business-login', (req, res) => {
             if (err) console.error("Son giriş güncelleme hatası:", err);
         });
 
+        const token = jwt.sign({ fieldKey: fieldKey, role: 'business' }, JWT_SECRET, { expiresIn: '7d' });
         res.json({
             success: true,
             message: 'Giriş başarılı!',
+            token,
             business: {
                 fieldKey: fieldKey,
                 name: field.name,
@@ -1971,7 +2151,7 @@ app.post('/api/business-login', (req, res) => {
 });
 
 // İstatistikleri getir
-app.get('/api/business-stats/:fieldKey', (req, res) => {
+app.get('/api/business-stats/:fieldKey', verifyBusiness, (req, res) => {
     const { fieldKey } = req.params;
 
     // Toplam rezervasyon sayısı
@@ -2021,7 +2201,7 @@ app.get('/api/business-stats/:fieldKey', (req, res) => {
 });
 
 // Rezervasyon detaylarını getir
-app.get('/api/business-reservations/:fieldKey', (req, res) => {
+app.get('/api/business-reservations/:fieldKey', verifyBusiness, (req, res) => {
     const { fieldKey } = req.params;
     const sqlQuery = 'SELECT * FROM reservations WHERE fieldKey = ? ORDER BY dateText ASC, hourText ASC';
     db.query(sqlQuery, [fieldKey], (err, results) => {
@@ -2034,7 +2214,7 @@ app.get('/api/business-reservations/:fieldKey', (req, res) => {
 });
 
 // İşletme borç listesi (oynanış tarihine göre filtrelenmiş)
-app.get('/api/business-debts/:fieldKey', (req, res) => {
+app.get('/api/business-debts/:fieldKey', verifyBusiness, (req, res) => {
     const { fieldKey } = req.params;
     const { filter } = req.query; // 'daily', 'weekly', 'monthly', 'all'
     
@@ -2184,7 +2364,7 @@ app.get('/api/daily-stats/:fieldKey', (req, res) => {
 // =======================================================
 // İSTATİSTİKLER - İÇERİK TABLOSU VERİSİ (ÖDENEN/ÖDENMEYEN AYRILMIŞ)
 // =======================================================
-app.get('/api/stats-content/:fieldKey', (req, res) => {
+app.get('/api/stats-content/:fieldKey', verifyBusiness, (req, res) => {
     const { fieldKey } = req.params;
 
     const sqlQuery = `
@@ -2588,7 +2768,15 @@ app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
 
 // Tüm sahaları listele
 app.get('/api/admin/fields', requireAdmin, (req, res) => {
-    db.query("SELECT p.*, ps.total_reservations, ps.average_rating, (SELECT COUNT(*) FROM pitch_objects WHERE fieldKey = p.fieldKey) AS pitch_count FROM pitch_settings p ORDER BY p.fieldKey", (err, fields) => {
+    db.query("SELECT p.*, (SELECT COUNT(*) FROM pitch_objects WHERE fieldKey = p.fieldKey AND isDeleted = 0) AS pitch_count FROM pitch_settings p WHERE p.isDeleted = 0 ORDER BY p.fieldKey", (err, fields) => {
+        if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        res.json({ success: true, data: fields });
+    });
+});
+
+// Silinen sahaları listele
+app.get('/api/admin/deleted-fields', requireAdmin, (req, res) => {
+    db.query("SELECT p.*, (SELECT COUNT(*) FROM pitch_objects WHERE fieldKey = p.fieldKey) AS pitch_count FROM pitch_settings p WHERE p.isDeleted = 1 ORDER BY p.fieldKey", (err, fields) => {
         if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
         res.json({ success: true, data: fields });
     });
@@ -2612,19 +2800,27 @@ app.post('/api/admin/fields', requireAdmin, (req, res) => {
     });
 });
 
-// Saha sil
+// Saha sil (soft delete)
 app.delete('/api/admin/fields/:key', requireAdmin, (req, res) => {
     const { key } = req.params;
-    db.query("DELETE FROM pitch_settings WHERE fieldKey = ?", [key], (err) => {
+    db.query("UPDATE pitch_settings SET isDeleted = 1 WHERE fieldKey = ?", [key], (err) => {
         if (err) return res.status(500).json({ success: false, message: 'Saha silinemedi!' });
-        db.query("DELETE FROM pitch_objects WHERE fieldKey = ?", [key]);
-        db.query("DELETE FROM reservations WHERE fieldKey = ?", [key]);
-        db.query("DELETE FROM field_blacklists WHERE fieldKey = ?", [key]);
-        db.query("DELETE FROM field_comments WHERE fieldKey = ?", [key]);
-        db.query("DELETE FROM field_daily_hours WHERE fieldKey = ?", [key]);
+        db.query("UPDATE pitch_objects SET isDeleted = 1 WHERE fieldKey = ?", [key]);
         db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_delete', 'field', ?, ?)", 
-            [req.adminUser.username, key, `${key} sahası silindi`]);
-        res.json({ success: true, message: 'Saha ve tüm verileri silindi!' });
+            [req.adminUser.username, key, `${key} sahası silindi (soft delete)`]);
+        res.json({ success: true, message: 'Saha başarıyla silindi ve geçmişe taşındı!' });
+    });
+});
+
+// Saha geri getir (restore)
+app.post('/api/admin/fields/:key/restore', requireAdmin, (req, res) => {
+    const { key } = req.params;
+    db.query("UPDATE pitch_settings SET isDeleted = 0 WHERE fieldKey = ?", [key], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Saha geri yüklenemedi!' });
+        db.query("UPDATE pitch_objects SET isDeleted = 0 WHERE fieldKey = ?", [key]);
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_restore', 'field', ?, ?)", 
+            [req.adminUser.username, key, `${key} sahası geri yüklendi`]);
+        res.json({ success: true, message: 'Saha başarıyla geri yüklendi!' });
     });
 });
 

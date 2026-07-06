@@ -250,31 +250,15 @@
             <!-- Sahalar -->
             <div class="admin-tab-content" id="adminFields" style="display:none;">
                 <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                    <button class="action-btn" onclick="showAddFieldForm()">+ SAHA EKLE</button>
+                    <button class="action-btn" onclick="openModal('addFieldModal')">+ SAHA EKLE</button>
                     <input type="text" id="adminFieldSearch" placeholder="Saha ara..." oninput="renderAdminFields()" style="flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
                 </div>
                 <div id="adminFieldList"></div>
-                <!-- Saha ekleme formu -->
-                <div id="adminAddFieldForm" style="display:none;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:20px;margin-top:15px;">
-                    <h3 style="color:#8b5cf6;margin-bottom:15px;">YENİ SAHA EKLE</h3>
-                    <div class="inline-inputs">
-                        <input type="text" id="afKey" placeholder="Saha anahtarı (final)" style="flex:1;">
-                        <input type="text" id="afName" placeholder="Saha adı" style="flex:2;">
-                    </div>
-                    <div class="inline-inputs">
-                        <input type="text" id="afAddress" placeholder="Adres" style="flex:2;">
-                        <input type="text" id="afPhone" placeholder="Telefon" style="flex:1;">
-                    </div>
-                    <div class="inline-inputs">
-                        <input type="text" id="afOpening" placeholder="Açılış (09:00)" style="flex:1;">
-                        <input type="text" id="afClosing" placeholder="Kapanış (23:00)" style="flex:1;">
-                        <input type="number" id="afPitchCount" placeholder="Saha sayısı" value="1" style="flex:1;">
-                    </div>
-                    <div class="inline-inputs">
-                        <input type="number" id="afMorningPrice" placeholder="Gündüz ücreti" value="2500" style="flex:1;">
-                        <input type="number" id="afEveningPrice" placeholder="Akşam ücreti" value="3000" style="flex:1;">
-                    </div>
-                    <button class="action-btn" onclick="submitAddField()" style="background:#8b5cf6;border-color:#8b5cf6;margin-top:10px;">SAHA EKLE</button>
+
+                <!-- Silinen Sahalar Geçmişi -->
+                <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
+                    <h3 style="color:#ef4444; margin-bottom:15px; font-weight:bold; font-size:1.1rem; display:flex; align-items:center; gap:8px;">🗑️ SİLİNEN SAHALAR (GEÇMİŞ)</h3>
+                    <div id="adminDeletedFieldList"></div>
                 </div>
             </div>
 
@@ -321,11 +305,23 @@
 
             <!-- Global Kara Liste -->
             <div class="admin-tab-content" id="adminBlacklist" style="display:none;">
-                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                    <input type="text" id="adminGlobalBanPhone" placeholder="Telefon numarası (manuel global ban)" style="flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
-                    <button class="action-btn" onclick="adminManualGlobalBan()" style="background:#ef4444;border-color:#ef4444;">GLOBAL BANLA</button>
+                <div style="background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); padding: 18px; border-radius: 12px; margin-bottom: 25px;">
+                    <h4 style="color:#fff; margin-bottom:15px; font-weight:700; font-size:0.95rem;">🚫 MANUEL GLOBAL BANLA</h4>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <input type="text" id="adminGlobalBanPhone" placeholder="Telefon numarası (manuel global ban)" style="flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
+                        <button class="action-btn" onclick="adminManualGlobalBan()" style="background:#ef4444;border-color:#ef4444;">GLOBAL BANLA</button>
+                    </div>
                 </div>
-                <div id="adminGlobalBlacklist"></div>
+
+                <div style="margin-top: 20px; margin-bottom: 30px;">
+                    <h3 style="color:#ef4444; margin-bottom:15px; font-weight:bold; font-size:1.1rem; display:flex; align-items:center; gap:8px;">❌ BANLANMIŞ KULLANICILAR</h3>
+                    <div id="adminBannedUsersList"></div>
+                </div>
+
+                <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                    <h3 style="color:#fbbf24; margin-bottom:15px; font-weight:bold; font-size:1.1rem; display:flex; align-items:center; gap:8px;">⚠️ ŞÜPHELİ TELEFON NUMARALARI (SAHALARDAN ENGELLENENLER)</h3>
+                    <div id="adminGlobalBlacklist"></div>
+                </div>
             </div>
 
             <!-- Duyurular -->
@@ -360,6 +356,51 @@
             </div>
         </section>
     </main>
+
+    <!-- SAHA EKLE MODALI -->
+    <div class="modal-overlay" id="addFieldModal" style="display:none;">
+        <div class="modal-card" style="max-width:550px; background:#0f172a; border:1px solid rgba(139,92,246,0.3); border-radius:16px;">
+            <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px;">
+                <h2 style="color:#8b5cf6; font-size:1.3rem; font-weight:800; margin:0;">YENİ SAHA EKLE</h2>
+                <button type="button" class="close-modal" onclick="closeModal('addFieldModal')" style="background:none; border:none; color:rgba(255,255,255,0.6); font-size:1.2rem; cursor:pointer;">X</button>
+            </div>
+            <div style="padding:20px; display:flex; flex-direction:column; gap:15px;">
+                <div class="inline-inputs" style="display:flex; gap:10px;">
+                    <input type="text" id="afKey" placeholder="Saha anahtarı (örn: final)" style="flex:1; padding:10px 14px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);">
+                    <input type="text" id="afName" placeholder="Saha adı (örn: Final Halısaha)" style="flex:2; padding:10px 14px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="inline-inputs" style="display:flex; gap:10px;">
+                    <input type="text" id="afAddress" placeholder="Adres" style="flex:2; padding:10px 14px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);">
+                    <input type="text" id="afPhone" placeholder="Telefon (örn: 05XXXXXXXXX)" style="flex:1; padding:10px 14px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="inline-inputs" style="display:flex; gap:10px; align-items:center;">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                        <label style="color:#a78bfa; font-size:0.75rem; font-weight:bold;">AÇILIŞ SAATİ</label>
+                        <select id="afOpening" style="width:100%; padding:10px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);"></select>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                        <label style="color:#a78bfa; font-size:0.75rem; font-weight:bold;">KAPANIŞ SAATİ</label>
+                        <select id="afClosing" style="width:100%; padding:10px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);"></select>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                        <label style="color:#a78bfa; font-size:0.75rem; font-weight:bold;">SAHA SAYISI</label>
+                        <input type="number" id="afPitchCount" placeholder="Saha sayısı" value="1" style="width:100%; padding:10px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);">
+                    </div>
+                </div>
+                <div class="inline-inputs" style="display:flex; gap:10px;">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                        <label style="color:#a78bfa; font-size:0.75rem; font-weight:bold;">GÜNDÜZ ÜCRETİ</label>
+                        <input type="number" id="afMorningPrice" placeholder="Gündüz ücreti" value="2500" style="width:100%; padding:10px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);">
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                        <label style="color:#a78bfa; font-size:0.75rem; font-weight:bold;">AKŞAM ÜCRETİ</label>
+                        <input type="number" id="afEveningPrice" placeholder="Akşam ücreti" value="3000" style="width:100%; padding:10px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.1);">
+                    </div>
+                </div>
+                <button class="action-btn" onclick="submitAddField()" style="background:#8b5cf6; border-color:#8b5cf6; margin-top:10px; width:100%; padding:12px; font-weight:700;">SAHA EKLE</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ONAY MODALI -->
     <div class="modal-overlay" id="confirmModal">

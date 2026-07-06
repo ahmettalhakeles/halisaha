@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 CREATE TABLE IF NOT EXISTS pitch_settings (
   fieldKey VARCHAR(50) NOT NULL,
   isClosed TINYINT NOT NULL DEFAULT 0,
+  isDeleted TINYINT NOT NULL DEFAULT 0,
   openingHour VARCHAR(5) NOT NULL DEFAULT '09:00',
   closingHour VARCHAR(5) NOT NULL DEFAULT '23:00',
   disabledHours TEXT DEFAULT NULL,
@@ -180,6 +181,7 @@ CREATE TABLE IF NOT EXISTS pitch_objects (
   coordinates VARCHAR(50) NOT NULL,
   phone VARCHAR(20) NOT NULL,
   isClosed TINYINT NOT NULL DEFAULT 0,
+  isDeleted TINYINT NOT NULL DEFAULT 0,
   hasService VARCHAR(50) NOT NULL,
   openingHour VARCHAR(5) NOT NULL DEFAULT '09:00',
   closingHour VARCHAR(5) NOT NULL DEFAULT '23:00',
@@ -301,10 +303,7 @@ VALUES
 ('final', 1, 'Final Halısaha - SAHA 1', 'Hacilar Meydani, Merkez, Amasya', '40.66015930710386, 35.79187401098129', '03582120001', 0, 'Servis: Var', '12:00', '23:00', '[]', '[]', '[]', 'sınırsız semaver çay', 'Krampon Kiralanmaz', 'Duş Yok', 'Market Yok', 2500, 2800, 0.00),
 ('final', 2, 'Final Halısaha - SAHA 2', 'Hacilar Meydani, Merkez, Amasya', '40.66015930710386, 35.79187401098129', '03582120001', 0, 'Servis: Var', '12:00', '23:00', '[]', '[]', '[]', 'sınırsız semaver çay', 'Krampon Kiralanmaz', 'Duş Yok', 'Market Yok', 2500, 2800, 0.00),
 ('arena', 1, 'Arena Halısaha - SAHA 1', 'Akbilek, Merkez, Amasya', '40.69411694565239, 35.8179294637939', '05051234562', 0, 'Servis: Yok', '10:00', '22:00', '[]', '[]', '[]', '', 'Krampon Kiralanmaz', 'Duş Yok', 'Market Yok', 2500, 2800, 0.00),
-('arena', 2, 'Arena Halısaha - SAHA 2', 'Akbilek, Merkez, Amasya', '40.69411694565239, 35.8179294637939', '05051234562', 0, 'Servis: Yok', '10:00', '22:00', '[]', '[]', '[]', '', 'Krampon Kiralanmaz', 'Duş Yok', 'Market Yok', 2500, 2800, 0.00),
 ('ciragan', 1, 'Çırağan Halısaha - SAHA 1', 'Seyhcui, Merkez, Amasya', '40.6528721257016, 35.79966936221245', '05051234563', 0, 'Servis: Var', '12:00', '23:00', '[]', '[]', '[]', 'sınırsız semaver çay', 'Krampon Kiralanır', 'Duş Var', 'Market Var', 2500, 2800, 0.00),
-('ciragan', 2, 'Çırağan Halısaha - SAHA 2', 'Seyhcui, Merkez, Amasya', '40.6528721257016, 35.79966936221245', '05051234563', 0, 'Servis: Var', '12:00', '23:00', '[]', '[]', '[]', 'sınırsız semaver çay', 'Krampon Kiralanır', 'Duş Var', 'Market Var', 2500, 2800, 0.00),
 ('olimpiyat', 1, 'Olimpiyat Halısaha - SAHA 1', 'Fatih, Merkez, Amasya', '40.68148422172459, 35.82695848316526', '05051234564', 0, 'Servis: Yok', '08:00', '23:00', '[]', '[]', '[]', '', 'Krampon Kiralanmaz', 'Duş Yok', 'Market Yok', 2500, 2800, 0.00),
-('olimpiyat', 2, 'Olimpiyat Halısaha - SAHA 2', 'Fatih, Merkez, Amasya', '40.68148422172459, 35.82695848316526', '05051234564', 0, 'Servis: Yok', '08:00', '23:00', '[]', '[]', '[]', '', 'Krampon Kiralanmaz', 'Duş Yok', 'Market Yok', 2500, 2800, 0.00),
 ('sporium05', 1, 'Sporium 05 Halısaha - SAHA 1', 'Kursunlu, Merkez, Amasya', '40.61455229320892, 35.825450789697356', '05051234565', 0, 'Servis: Var', '14:00', '23:00', '[]', '[]', '[]', '', 'Krampon Kiralanmaz', 'Duş Yok', 'Market Yok', 2500, 2800, 0.00),
 ('ziyaret', 1, 'Ziyaret Halısaha - SAHA 1', 'Ziyaret Beldesi, Amasya', '40.688429882215665, 35.86403902395539', '05051234566', 0, 'Servis: Var', '15:00', '00:00', '[]', '[]', '[]', '', 'Krampon Kiralanmaz', 'Duş Yok', 'Market Yok', 2500, 2800, 0.00);

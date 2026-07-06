@@ -446,6 +446,12 @@
                     <input type="password" id="regPassword" class="form-control" required>
                     <small class="help-text">EN AZ 6 HANELI, BUYUK HARF, RAKAM VE SEMBOL ICERMELIDIR.</small>
                 </div>
+                <div class="form-group" style="display:flex; align-items:flex-start; gap:8px; margin-top:15px; margin-bottom:15px;">
+                    <input type="checkbox" id="regKvkk" style="margin-top:4px;" required>
+                    <label for="regKvkk" style="font-size:0.75rem; color:var(--text-muted); cursor:pointer; user-select:none;">
+                        <span style="color:var(--primary-green); font-weight:bold; text-decoration:underline;" onclick="openModal('kvkkModal'); event.stopPropagation();">KVKK Aydınlatma Metni</span>'ni okudum, anladım ve kabul ediyorum.
+                    </label>
+                </div>
                 <button type="submit" class="action-btn">KAYIT OL</button>
             </form>
         </div>
@@ -727,8 +733,32 @@
     <footer style="text-align: center; padding: 25px 0; border-top: 1px solid rgba(255, 255, 255, 0.05); background: rgba(15, 23, 42, 0.6); margin-top: 50px;">
         <div style="font-size: 0.9rem; color: var(--text-muted); font-family: 'Montserrat', sans-serif;">
             Destek ve İletişim: <a href="mailto:kskdestek@gmail.com" style="color: var(--primary-green); font-weight: bold; text-decoration: none;">kskdestek@gmail.com</a>
+            | <a href="#" onclick="openModal('kvkkModal'); return false;" style="color: var(--text-muted); text-decoration: underline; margin-left: 8px;">KVKK Metni</a>
         </div>
     </footer>
+
+    <!-- KVKK MODALI -->
+    <div class="modal-overlay" id="kvkkModal" style="z-index: 10005;">
+        <div class="modal-card" style="max-width: 600px; background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(16, 185, 129, 0.2); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="color:var(--primary-green); font-size:1.2rem; font-weight:800; margin:0;">KVKK AYDINLATMA METNİ</h2>
+                <button type="button" class="close-modal" onclick="closeModal('kvkkModal')" style="background:none; border:none; color:rgba(255,255,255,0.6); font-size:1.2rem; cursor:pointer;">X</button>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto; padding: 20px; font-size: 0.85rem; line-height: 1.6; color: rgba(255,255,255,0.8); font-family: 'Montserrat', sans-serif; text-align: left;">
+                <h3 style="color:#fff; font-size:1rem; margin-top:0;">1. Veri Sorumlusu</h3>
+                <p>Kolay Saha Kiralama (KSK) olarak kişisel verilerinizin güvenliği hususuna azami hassasiyet göstermekteyiz. Kişisel verileriniz, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca aşağıda açıklanan kapsamda işlenecektir.</p>
+                
+                <h3 style="color:#fff; font-size:1rem; margin-top:15px;">2. İşlenen Kişisel Verileriniz ve İşleme Amaçları</h3>
+                <p>Kayıt formunda paylaştığınız isim, telefon numarası ve mail adresiniz; üyeliğinizin oluşturulması, rezervasyon işlemlerinin takibi, üyelik doğrulaması ve gerektiğinde sizinle iletişime geçilmesi amacıyla işlenmektedir.</p>
+                
+                <h3 style="color:#fff; font-size:1rem; margin-top:15px;">3. İşlenen Kişisel Verilerin Aktarılması</h3>
+                <p>Kişisel verileriniz üçüncü kişilerle paylaşılmamakta ve yalnızca KSK bünyesinde güvenli sunucularda barındırılmaktadır. Rezervasyon yaptığınız saha işletmeleri sadece rezervasyon sahibinin ismini ve irtibat numarasını görebilmektedir.</p>
+                
+                <h3 style="color:#fff; font-size:1rem; margin-top:15px;">4. Kişisel Veri Sahibinin Hakları</h3>
+                <p>KVKK'nın 11. maddesi uyarınca veri sorumlusuna başvurarak kişisel verilerinizin işlenip işlenmediğini öğrenme, silinmesini veya düzeltilmesini talep etme hakkına sahipsiniz. Taleplerinizi kskdestek@gmail.com adresine iletebilirsiniz.</p>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js?v=1.0.5"></script>
 </body>

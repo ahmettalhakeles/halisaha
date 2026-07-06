@@ -115,6 +115,15 @@
     </style>
 </head>
 <body class="business-mode">
+    <!-- Admin Impersonation Banner -->
+    <div id="adminImpersonationBanner" style="display: none; background: #8b5cf6; color: #fff; text-align: center; padding: 10px 20px; font-weight: bold; position: fixed; top: 0; left: 0; right: 0; z-index: 10000; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-family: 'Montserrat', sans-serif;">
+        <span style="display:flex; align-items:center; gap:8px;">
+            <span style="animation: pulse 1.5s infinite; background: #ef4444; width: 10px; height: 10px; border-radius: 50%; display: inline-block;"></span>
+            🛡️ ADMİN MODU — <span id="adminImpersonatedFieldName" style="color: var(--neon-green);">Saha</span> Yönetiliyor
+        </span>
+        <button onclick="adminReturnFromFieldPanel()" style="background: #fff; color: #8b5cf6; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 800; cursor: pointer; font-size: 0.75rem; font-family: 'Montserrat', sans-serif; transition: all 0.2s ease;">ADMİN PANELİNE DÖN</button>
+    </div>
+
     <div id="toastContainer"></div>
     <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
     
