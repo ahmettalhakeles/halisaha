@@ -234,29 +234,29 @@ window.onload = async function() {
     if (isBusinessPage) {
         await loadDailyHoursList();
         const storedKey = localStorage.getItem('businessFieldKey');
-        const storedBusinessToken = localStorage.getItem('businessToken');
         const storedAdminToken = localStorage.getItem('adminToken');
-        if (storedKey && (storedBusinessToken || storedAdminToken)) {
+        const impersonateDataStr = localStorage.getItem('adminImpersonateField');
+
+        if (storedKey && storedAdminToken && impersonateDataStr) {
             currentBusinessFieldKey = storedKey;
             isBusinessLoggedIn = true;
             showBusinessUI();
 
-            const impersonateDataStr = localStorage.getItem('adminImpersonateField');
-            if (storedAdminToken && impersonateDataStr) {
-                try {
-                    const impData = JSON.parse(impersonateDataStr);
-                    const banner = document.getElementById('adminImpersonationBanner');
-                    const fieldNameEl = document.getElementById('adminImpersonatedFieldName');
-                    if (banner && fieldNameEl) {
-                        fieldNameEl.innerText = impData.name.toLocaleUpperCase('tr-TR');
-                        banner.style.display = 'flex';
-                        document.body.classList.add('admin-impersonating');
-                    }
-                } catch (e) {
-                    console.error("Error parsing impersonate data:", e);
+            try {
+                const impData = JSON.parse(impersonateDataStr);
+                const banner = document.getElementById('adminImpersonationBanner');
+                const fieldNameEl = document.getElementById('adminImpersonatedFieldName');
+                if (banner && fieldNameEl) {
+                    fieldNameEl.innerText = impData.name.toLocaleUpperCase('tr-TR');
+                    banner.style.display = 'flex';
+                    document.body.classList.add('admin-impersonating');
                 }
+            } catch (e) {
+                console.error("Error parsing impersonate data:", e);
             }
         } else {
+            localStorage.removeItem('businessFieldKey');
+            localStorage.removeItem('businessToken');
             showBusinessLoginWrapper();
         }
         
