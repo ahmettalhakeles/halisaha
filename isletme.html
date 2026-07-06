@@ -236,6 +236,10 @@
                     <input type="password" id="businessPassword" class="form-control" placeholder="İşletme şifresi" style="padding: 12px;" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
                 </div>
                 <button class="action-btn" onclick="handleBusinessLogin()" style="width: 100%; padding: 14px; background: var(--warning-orange); color: #000; font-weight: bold; font-size: 1rem; border-radius: 8px;">GİRİŞ YAP</button>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:15px;">
+                    <input type="checkbox" id="businessRememberMe" style="width:16px; height:16px; cursor:pointer;">
+                    <label for="businessRememberMe" style="font-size:0.82rem; color:var(--text-muted); cursor:pointer; user-select:none;">Beni Hatırla</label>
+                </div>
             </div>
         </div>
 
@@ -665,6 +669,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.7"></script>
+    <script src="script.js?v=1.0.8"></script>
 </body>
 </html>

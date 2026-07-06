@@ -163,11 +163,14 @@ let userBlacklistedFields = [];
 
 function getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json' };
-    const userToken = localStorage.getItem('userToken');
-    const businessToken = localStorage.getItem('businessToken');
+    // Kullanıcı token'ı: "Beni Hatırla" ise localStorage, değilse sessionStorage
+    const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+    // İşletme token'ı: "Beni Hatırla" ise localStorage, değilse sessionStorage
+    const businessToken = localStorage.getItem('businessToken') || sessionStorage.getItem('businessToken');
     const adminToken = localStorage.getItem('adminToken');
     
-    if (adminToken) {
+    // Admin token sadece admin ve işletme sayfalarında ekle
+    if (isAdminPage && adminToken) {
         headers['x-admin-token'] = adminToken;
     }
     
@@ -178,7 +181,8 @@ function getAuthHeaders() {
         } else if (businessToken) {
             headers['Authorization'] = `Bearer ${businessToken}`;
         }
-    } else if (userToken) {
+    } else if (!isAdminPage && userToken) {
+        // Normal kullanıcı sayfasında sadece kullanıcı token'ı ekle
         headers['Authorization'] = `Bearer ${userToken}`;
     }
     return headers;
@@ -191,12 +195,23 @@ window.onload = async function() {
     await loadPitchSettingsFromDatabase();
     
     if (isUserPage) {
-        const storedUserToken = localStorage.getItem('userToken');
-        const storedUserData = localStorage.getItem('userData');
+        // "Beni Hatırla" seçildiyse localStorage, yoksa sessionStorage'dan oku
+        const userRemember = localStorage.getItem('userRemember');
+        const storedUserToken = userRemember === 'true'
+            ? localStorage.getItem('userToken')
+            : sessionStorage.getItem('userToken');
+        const storedUserData = userRemember === 'true'
+            ? localStorage.getItem('userData')
+            : sessionStorage.getItem('userData');
         if (storedUserToken && storedUserData) {
             try {
                 currentUser = JSON.parse(storedUserData);
                 loggedInUser = currentUser.name.toLocaleUpperCase('tr-TR');
+                // getAuthHeaders için de doğru yere koy
+                if (userRemember !== 'true') {
+                    localStorage.removeItem('userToken');
+                    localStorage.removeItem('userData');
+                }
             } catch (e) {
                 console.error("Stored user parse error:", e);
             }
@@ -233,7 +248,8 @@ window.onload = async function() {
     
     if (isBusinessPage) {
         await loadDailyHoursList();
-        const storedKey = localStorage.getItem('businessFieldKey');
+        // "Beni Hatırla" veya admin impersonation için localStorage, yoksa sessionStorage
+        const storedKey = localStorage.getItem('businessFieldKey') || sessionStorage.getItem('businessFieldKey');
         const storedAdminToken = localStorage.getItem('adminToken');
         const impersonateDataStr = localStorage.getItem('adminImpersonateField');
 
@@ -254,9 +270,16 @@ window.onload = async function() {
             } catch (e) {
                 console.error("Error parsing impersonate data:", e);
             }
+        } else if (storedKey) {
+            // Normal business login
+            currentBusinessFieldKey = storedKey;
+            isBusinessLoggedIn = true;
+            showBusinessUI();
         } else {
             localStorage.removeItem('businessFieldKey');
             localStorage.removeItem('businessToken');
+            sessionStorage.removeItem('businessFieldKey');
+            sessionStorage.removeItem('businessToken');
             showBusinessLoginWrapper();
         }
         
@@ -328,6 +351,13 @@ async function handleUserRegister(event) {
         return;
     }
 
+    // Telefon format kontrolü: 05 ile başlamalı, tam 11 hane
+    const phoneClean = phone.replace(/\s/g, '');
+    if (!phoneClean.startsWith('05') || phoneClean.length !== 11 || !/^\d+$/.test(phoneClean)) {
+        alert("Telefon numarası 05 ile başlamalı ve tam 11 rakam olmalıdır! (Örn: 05XXXXXXXXX)");
+        return;
+    }
+
     try {
         const response = await fetch('/api/register', {
             method: 'POST',
@@ -366,9 +396,11 @@ async function handleUserRegister(event) {
 async function handleUserLogin() {
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPassword').value;
+    const rememberMe = document.getElementById('userRememberMe');
+    const remember = rememberMe && rememberMe.checked;
 
     if (!email || !pass) {
-        alert("LÜTFEN ALANLARI DOLDURUNUZ.");
+        alert("LÜTFEN ALANLARI DOLDURŠNÜZ.");
         return;
     }
 
@@ -383,8 +415,17 @@ async function handleUserLogin() {
         if (result.success) {
             currentUser = result.user;
             loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
-            localStorage.setItem('userToken', result.token);
-            localStorage.setItem('userData', JSON.stringify(result.user));
+            if (remember) {
+                localStorage.setItem('userToken', result.token);
+                localStorage.setItem('userData', JSON.stringify(result.user));
+                localStorage.setItem('userRemember', 'true');
+            } else {
+                sessionStorage.setItem('userToken', result.token);
+                sessionStorage.setItem('userData', JSON.stringify(result.user));
+                localStorage.removeItem('userToken');
+                localStorage.removeItem('userData');
+                localStorage.removeItem('userRemember');
+            }
             await loadUserBlacklist();
             renderFieldsGrid();
             updateLoginUIVisibility();
@@ -395,7 +436,7 @@ async function handleUserLogin() {
             alert("HATA: " + result.message);
         }
     } catch (error) {
-        alert("SUNUCUYA BAĞLANILAMADI! node server.js çalışıyor mu?");
+        alert("SUNUCUYA BAĞlANİLAMADi! node server.js çalışıyor mu?");
     }
 }
 
@@ -510,9 +551,20 @@ async function handleBusinessLogin() {
 
     currentBusinessFieldKey = key;
     isBusinessLoggedIn = true;
-    localStorage.setItem('businessFieldKey', key);
-    localStorage.setItem('businessToken', data.token);
-    passInput.value = "";
+    const bizRememberEl = document.getElementById('businessRememberMe');
+    const bizRemember = bizRememberEl && bizRememberEl.checked;
+    if (bizRemember) {
+        localStorage.setItem('businessFieldKey', key);
+        localStorage.setItem('businessToken', data.token);
+        localStorage.setItem('businessRemember', 'true');
+    } else {
+        sessionStorage.setItem('businessFieldKey', key);
+        sessionStorage.setItem('businessToken', data.token);
+        localStorage.removeItem('businessFieldKey');
+        localStorage.removeItem('businessToken');
+        localStorage.removeItem('businessRemember');
+    }
+    passInput.value = '';
 
     showBusinessUI();
 }
@@ -2864,12 +2916,16 @@ function updateLoginUIVisibility() {
     const playersLock = document.getElementById('playersFormLock');
     const matchesLock = document.getElementById('matchesFormLock');
     const teamsLock = document.getElementById('teamsFormLock');
+    const userAuthSection = document.getElementById('userAuthSection');
+    const businessAuthSection = document.getElementById('businessAuthSection');
+    const userLogoutSection = document.getElementById('userLogoutSection');
+    const welcomeText = document.getElementById('welcomeText');
 
     if (loggedInUser) {
-        document.getElementById('userAuthSection').style.display = 'none';
-        document.getElementById('businessAuthSection').style.display = 'none';
-        document.getElementById('userLogoutSection').style.display = 'flex';
-        document.getElementById('welcomeText').innerText = `HOŞ GELDİN: ${loggedInUser}`;
+        if (userAuthSection) userAuthSection.style.display = 'none';
+        if (businessAuthSection) businessAuthSection.style.display = 'none';
+        if (userLogoutSection) userLogoutSection.style.display = 'flex';
+        if (welcomeText) welcomeText.innerText = `HOŞ GELDİN: ${loggedInUser}`;
         
         if (playersLock) playersLock.style.display = 'none';
         if (matchesLock) matchesLock.style.display = 'none';
@@ -2880,10 +2936,10 @@ function updateLoginUIVisibility() {
         if (addRev) addRev.style.display = 'block';
         if (authAlert) authAlert.style.display = 'none';
     } else {
-        document.getElementById('userAuthSection').style.display = 'flex';
-        document.getElementById('businessAuthSection').style.display = 'flex';
-        document.getElementById('userLogoutSection').style.display = 'none';
-        document.getElementById('welcomeText').innerText = "";
+        if (userAuthSection) userAuthSection.style.display = 'flex';
+        if (businessAuthSection) businessAuthSection.style.display = 'flex';
+        if (userLogoutSection) userLogoutSection.style.display = 'none';
+        if (welcomeText) welcomeText.innerText = '';
         
         if (playersLock) playersLock.style.display = 'flex';
         if (matchesLock) matchesLock.style.display = 'flex';
@@ -4331,7 +4387,7 @@ function getAdminHeaders() {
 }
 
 function switchAdminTab(tab) {
-    const tabs = ['dashboard', 'fields', 'users', 'activity', 'blacklist', 'announcements', 'revenue', 'ads'];
+    const tabs = ['dashboard', 'fields', 'users', 'activity', 'blacklist', 'announcements', 'revenue', 'ads', 'addfield'];
     tabs.forEach(t => {
         const el = document.getElementById('admin' + t.charAt(0).toUpperCase() + t.slice(1));
         if (el) el.style.display = t === tab ? 'block' : 'none';
@@ -4345,20 +4401,21 @@ function switchAdminTab(tab) {
         'blacklist': 'kara liste',
         'announcements': 'duyurular',
         'revenue': 'gelir',
-        'ads': 'ilan yönetimi'
+        'ads': 'ilan yönetimi',
+        'addfield': 'saha ekle'
     };
 
     document.querySelectorAll('#adminPanel .admin-tabs .tab-btn').forEach(btn => {
         const btnText = btn.textContent.trim().toLowerCase();
         const expected = tabMap[tab];
-        btn.classList.toggle('active', btnText.includes(expected));
+        btn.classList.toggle('active', expected && btnText.includes(expected));
     });
 
     // Sidebar active tabs highlight support
     document.querySelectorAll('#adminMenuTabsContainer .nav-btn').forEach(btn => {
         const btnText = btn.textContent.trim().toLowerCase();
         const expected = tabMap[tab];
-        btn.classList.toggle('active', btnText.includes(expected));
+        btn.classList.toggle('active', expected && btnText.includes(expected));
     });
 
     if (tab === 'dashboard') loadAdminDashboard();
@@ -4369,6 +4426,7 @@ function switchAdminTab(tab) {
     if (tab === 'announcements') loadAdminAnnouncements();
     if (tab === 'revenue') renderAdminRevenue();
     if (tab === 'ads') renderAdminAds();
+    if (tab === 'addfield') initAddFieldPanel();
 }
 
 function loadAdminDashboard() {
@@ -4588,41 +4646,83 @@ async function adminRestoreField(key) {
     }).catch(() => showToast('Sunucu hatası!', 'error'));
 }
 
-function showAddFieldForm() {
-    const form = document.getElementById('adminAddFieldForm');
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+function initAddFieldPanel() {
+    // Populate hour dropdowns if empty
+    ['afOpening', 'afClosing'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (sel && sel.innerHTML === '') {
+            masterHoursList.forEach(h => {
+                const prefix = h.split(' - ')[0];
+                const opt = document.createElement('option');
+                opt.value = prefix; opt.text = prefix;
+                sel.appendChild(opt);
+            });
+            if (id === 'afOpening') sel.value = '09:00';
+            if (id === 'afClosing') sel.value = '23:00';
+        }
+    });
+    // Auto-sync afKey to afBusinessUsername
+    const afKeyEl = document.getElementById('afKey');
+    const afUserEl = document.getElementById('afBusinessUsername');
+    if (afKeyEl && afUserEl && !afKeyEl.dataset.syncBound) {
+        afKeyEl.addEventListener('input', () => {
+            afUserEl.value = afKeyEl.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        });
+        afKeyEl.dataset.syncBound = 'true';
+    }
+    // Phone mask for new panel
+    const afPhone = document.getElementById('afPhone');
+    if (afPhone && !afPhone.dataset.masked) {
+        afPhone.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '');
+            if (!v.startsWith('05')) v = '05' + v.replace(/^0*/,'');
+            if (v.length > 11) v = v.substring(0, 11);
+            e.target.value = v;
+        });
+        afPhone.dataset.masked = 'true';
+    }
 }
 
 function submitAddField() {
-    const afPhoneVal = document.getElementById('afPhone').value.trim();
+    const afKeyVal = (document.getElementById('afKey').value || '').trim();
+    const afNameVal = (document.getElementById('afName').value || '').trim();
+    const afPhoneVal = (document.getElementById('afPhone').value || '').trim();
+    const afPassVal = (document.getElementById('afBusinessPassword') ? document.getElementById('afBusinessPassword').value : '');
     const phoneClean = afPhoneVal.replace(/[^0-9]/g, '');
 
+    if (!afKeyVal || !afNameVal) { showToast('Saha anahtarı ve adı zorunludur!', 'error'); return; }
     if (!phoneClean || !phoneClean.startsWith('05') || phoneClean.length !== 11) {
-        showToast('Telefon numarası 05 ile başlamalı ve eksiksiz 11 hane olmalıdır!', 'error');
+        showToast('Telefon numarası 05 ile başlamalı ve tam 11 hane olmalıdır!', 'error');
+        return;
+    }
+    if (!afPassVal || afPassVal.length < 6) {
+        showToast('İşletme şifresi en az 6 karakter olmalıdır!', 'error');
         return;
     }
 
     const data = {
-        fieldKey: document.getElementById('afKey').value.trim(),
-        name: document.getElementById('afName').value.trim(),
-        address: document.getElementById('afAddress').value.trim(),
-        phone: afPhoneVal,
+        fieldKey: afKeyVal,
+        name: afNameVal,
+        address: (document.getElementById('afAddress').value || '').trim(),
+        phone: phoneClean,
         openingHour: document.getElementById('afOpening').value || '09:00',
         closingHour: document.getElementById('afClosing').value || '23:00',
         pitchCount: parseInt(document.getElementById('afPitchCount').value) || 1,
         morningPrice: parseInt(document.getElementById('afMorningPrice').value) || 2500,
-        eveningPrice: parseInt(document.getElementById('afEveningPrice').value) || 3000
+        eveningPrice: parseInt(document.getElementById('afEveningPrice').value) || 3000,
+        businessPassword: afPassVal
     };
-    if (!data.fieldKey || !data.name) { showToast('Saha anahtarı ve adı zorunludur!', 'error'); return; }
     fetch('/api/admin/fields', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify(data) })
     .then(r => r.json()).then(d => {
         if (d.success) {
             showToast(d.message, 'info');
-            document.getElementById('adminAddFieldForm').style.display = 'none';
-            document.getElementById('afKey').value = '';
-            document.getElementById('afName').value = '';
-            renderAdminFields();
-            location.reload();
+            // Reset form
+            ['afKey','afName','afAddress','afPhone','afPitchCount'].forEach(id => { const el = document.getElementById(id); if(el) el.value = id === 'afPitchCount' ? '1' : ''; });
+            if (document.getElementById('afBusinessPassword')) document.getElementById('afBusinessPassword').value = '';
+            if (document.getElementById('afBusinessUsername')) document.getElementById('afBusinessUsername').value = '';
+            if (document.getElementById('afMorningPrice')) document.getElementById('afMorningPrice').value = '2500';
+            if (document.getElementById('afEveningPrice')) document.getElementById('afEveningPrice').value = '3000';
+            switchAdminTab('fields');
         } else showToast(d.message, 'error');
     }).catch(() => showToast('Sunucu hatası!', 'error'));
 }
@@ -5120,7 +5220,8 @@ function exportAdminRevenueCSV() {
 
 // Close admin login modal on Enter
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && document.getElementById('adminLoginModal').classList.contains('show')) {
+    const adminModal = document.getElementById('adminLoginModal');
+    if (e.key === 'Enter' && adminModal && adminModal.classList.contains('show')) {
         handleAdminLogin();
     }
 });
@@ -5436,7 +5537,22 @@ function loadAdminAdSubList(sub) {
     const listContainerId = `adminAds${sub.charAt(0).toUpperCase() + sub.slice(1)}List`;
     const listEl = document.getElementById(listContainerId);
     if (!listEl) return;
-    
+
+    // Bulk delete button container — insert before the table if not exists
+    const tableWrapper = listEl.closest('.table-responsive');
+    const contentDiv = listEl.closest('.ad-sub-content');
+    if (contentDiv && !contentDiv.querySelector('.bulk-delete-bar')) {
+        const bar = document.createElement('div');
+        bar.className = 'bulk-delete-bar';
+        bar.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:10px;';
+        bar.innerHTML = `
+            <input type="checkbox" id="selectAll_${sub}" style="width:16px;height:16px;cursor:pointer;" onchange="toggleSelectAllAds('${sub}', this.checked)">
+            <label for="selectAll_${sub}" style="font-size:0.82rem;color:var(--text-muted);cursor:pointer;">Tümünü Seç</label>
+            <button class="action-btn" onclick="adminBulkDeleteAds('${sub}')" style="padding:6px 14px;font-size:0.8rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171;">SEÇİLENLERİ SİL</button>
+        `;
+        if (tableWrapper) tableWrapper.parentNode.insertBefore(bar, tableWrapper);
+    }
+
     listEl.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);">Yükleniyor...</td></tr>';
     
     fetch(`/api/admin/ads/${sub}`, { headers: getAdminHeaders() })
@@ -5449,6 +5565,7 @@ function loadAdminAdSubList(sub) {
         if (sub === 'forum') {
             listEl.innerHTML = data.data.map(p => `
                 <tr>
+                    <td style="width:36px;text-align:center;"><input type="checkbox" class="ad-check-${sub}" value="${p.id}" style="width:15px;height:15px;cursor:pointer;"></td>
                     <td style="font-weight:700;color:#fff;">${p.title}</td>
                     <td>${p.message}</td>
                     <td>${p.user_name || p.created_by}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.user_phone || ''}</span></td>
@@ -5462,6 +5579,7 @@ function loadAdminAdSubList(sub) {
         } else if (sub === 'matches') {
             listEl.innerHTML = data.data.map(p => `
                 <tr>
+                    <td style="width:36px;text-align:center;"><input type="checkbox" class="ad-check-${sub}" value="${p.id}" style="width:15px;height:15px;cursor:pointer;"></td>
                     <td style="font-weight:700;color:#fff;">${p.name}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.phone || ''}</span></td>
                     <td>${p.dateText} ${p.hourText}</td>
                     <td>${p.details || '-'}</td>
@@ -5475,6 +5593,7 @@ function loadAdminAdSubList(sub) {
         } else if (sub === 'teams') {
             listEl.innerHTML = data.data.map(p => `
                 <tr>
+                    <td style="width:36px;text-align:center;"><input type="checkbox" class="ad-check-${sub}" value="${p.id}" style="width:15px;height:15px;cursor:pointer;"></td>
                     <td style="font-weight:700;color:#fff;">${p.teamName}<br><span style="font-size:0.75rem;color:var(--text-muted);">Kaptan: ${p.captainName}</span></td>
                     <td>${p.ageGroup || '-'}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.matchSize || ''}</span></td>
                     <td>${p.skillLevel || '-'}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.availableDays || ''} ${p.timeRange || ''}</span></td>
@@ -5488,6 +5607,30 @@ function loadAdminAdSubList(sub) {
         }
     }).catch(() => {
         listEl.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--danger-red);">Yüklenemedi!</td></tr>';
+    });
+}
+
+function toggleSelectAllAds(sub, checked) {
+    document.querySelectorAll(`.ad-check-${sub}`).forEach(cb => cb.checked = checked);
+}
+
+async function adminBulkDeleteAds(sub) {
+    const checked = [...document.querySelectorAll(`.ad-check-${sub}:checked`)];
+    if (checked.length === 0) { showToast('Lütfen silinecek ilanları seçin!', 'error'); return; }
+    const confirmed = await showConfirmModal(`${checked.length} ilan silinecek. Emin misiniz?`);
+    if (!confirmed) return;
+    let done = 0;
+    checked.forEach(cb => {
+        fetch(`/api/admin/ads/${sub}/${cb.value}`, { method: 'DELETE', headers: getAdminHeaders() })
+        .then(r => r.json()).then(d => {
+            done++;
+            if (done === checked.length) {
+                showToast(`${done} ilan silindi.`, 'info');
+                loadAdminAdSubList(sub);
+                const allCheckbox = document.getElementById(`selectAll_${sub}`);
+                if (allCheckbox) allCheckbox.checked = false;
+            }
+        }).catch(() => { done++; });
     });
 }
 

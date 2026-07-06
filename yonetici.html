@@ -200,6 +200,7 @@
                 <button class="nav-btn" onclick="switchAdminTab('announcements'); closeMobileMenu();">DUYURULAR</button>
                 <button class="nav-btn" onclick="switchAdminTab('revenue'); closeMobileMenu();">GELİR</button>
                 <button class="nav-btn" onclick="switchAdminTab('ads'); closeMobileMenu();">İLAN YÖNETİMİ</button>
+                <button class="nav-btn" onclick="switchAdminTab('addfield'); closeMobileMenu();" style="background:rgba(139,92,246,0.15); border-color:rgba(139,92,246,0.4);">+ SAHA EKLE</button>
             </div>
 
             <!-- Yönetici Çıkış -->
@@ -248,6 +249,7 @@
                 <button class="tab-btn" onclick="switchAdminTab('announcements')">DUYURULAR</button>
                 <button class="tab-btn" onclick="switchAdminTab('revenue')">GELİR</button>
                 <button class="tab-btn" onclick="switchAdminTab('ads')">İLAN YÖNETİMİ</button>
+                <button class="tab-btn" onclick="switchAdminTab('addfield')" style="color:#a78bfa;">+ SAHA EKLE</button>
             </div>
 
             <!-- Dashboard -->
@@ -292,7 +294,6 @@
             <!-- Sahalar -->
             <div class="admin-tab-content" id="adminFields" style="display:none;">
                 <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                    <button class="action-btn" onclick="openModal('addFieldModal')">+ SAHA EKLE</button>
                     <input type="text" id="adminFieldSearch" placeholder="Saha ara..." oninput="renderAdminFields()" style="flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;">
                 </div>
                 <div id="adminFieldList"></div>
@@ -467,6 +468,85 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Saha Ekle Ayrı Panel -->
+            <div class="admin-tab-content" id="adminAddfield" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:10px;">
+                    <h3 style="color:#8b5cf6; margin:0; font-size:1.3rem; font-weight:800; font-family:'Montserrat',sans-serif;">🏟️ YENİ SAHA EKLE</h3>
+                </div>
+                <div style="background:rgba(30,41,59,0.5); border:1px solid rgba(139,92,246,0.2); border-radius:16px; padding:30px; max-width:700px;">
+                    <!-- Saha Temel Bilgileri -->
+                    <h4 style="color:#a78bfa; margin:0 0 20px 0; font-size:0.9rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">📋 Saha Bilgileri</h4>
+                    <div style="display:grid; grid-template-columns:1fr 2fr; gap:12px; margin-bottom:12px;">
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">SAHA ANAHTARI <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="afKey" placeholder="final, arena01..." style="padding:10px 14px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);">
+                            <small style="color:var(--text-muted);font-size:0.7rem;">Sadece İngilizce harf ve rakam (boşluksuz)</small>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">SAHA ADI <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="afName" placeholder="Final Halısaha" style="padding:10px 14px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px;">
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">ADRES</label>
+                            <input type="text" id="afAddress" placeholder="Mahalle, İlçe, Şehir" style="padding:10px 14px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">TELEFON</label>
+                            <input type="text" id="afPhone" placeholder="05XXXXXXXXX" maxlength="11" style="padding:10px 14px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">AÇILIŞ SAATİ</label>
+                            <select id="afOpening" style="padding:10px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);"></select>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">KAPANIŞ SAATİ</label>
+                            <select id="afClosing" style="padding:10px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);"></select>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">SAHA SAYISI</label>
+                            <input type="number" id="afPitchCount" value="1" min="1" max="10" style="padding:10px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:25px;">
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">GÜNDÜZ ÜCRETİ (TL)</label>
+                            <input type="number" id="afMorningPrice" value="2500" style="padding:10px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">AKŞAM ÜCRETİ (TL)</label>
+                            <input type="number" id="afEveningPrice" value="3000" style="padding:10px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);">
+                        </div>
+                    </div>
+
+                    <!-- İşletme Giriş Bilgileri -->
+                    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:25px;margin-bottom:25px;">
+                        <h4 style="color:#fbbf24;margin:0 0 15px 0;font-size:0.9rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">🔑 İşletme Giriş Bilgileri</h4>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div style="display:flex;flex-direction:column;gap:4px;">
+                                <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">KULLANICI ADI (Giriş Key)</label>
+                                <input type="text" id="afBusinessUsername" placeholder="Saha anahtarıyla aynı olur" style="padding:10px 14px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);" disabled>
+                                <small style="color:var(--text-muted);font-size:0.7rem;">Saha anahtarı giriş kullanıcı adı olarak kullanılır</small>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:4px;">
+                                <label style="color:#a78bfa;font-size:0.75rem;font-weight:bold;">İŞLETME ŞİFRESİ <span style="color:#ef4444;">*</span></label>
+                                <input type="password" id="afBusinessPassword" placeholder="En az 6 karakter" style="padding:10px 14px;border-radius:8px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,0.1);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" onclick="submitAddField()" style="background:#8b5cf6;border-color:#8b5cf6;width:100%;padding:14px;font-weight:700;font-size:1rem;">🏟️ SAHA EKLE</button>
+
+                    <!-- Çıkış Butonu -->
+                    <div style="margin-top:30px;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px;">
+                        <button class="nav-btn red-btn" onclick="handleAdminLogout()" style="width:100%;font-weight:bold;text-align:center;background:rgba(239,68,68,0.15)!important;border:1px solid #ef4444!important;color:#f87171!important;border-radius:8px;cursor:pointer;">ÇIKIŞ YAP</button>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -530,6 +610,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.7"></script>
+    <script src="script.js?v=1.0.8"></script>
 </body>
 </html>

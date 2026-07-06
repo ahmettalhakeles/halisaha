@@ -2768,7 +2768,7 @@ app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
 
 // Tüm sahaları listele
 app.get('/api/admin/fields', requireAdmin, (req, res) => {
-    db.query("SELECT p.*, (SELECT COUNT(*) FROM pitch_objects WHERE fieldKey = p.fieldKey AND isDeleted = 0) AS pitch_count FROM pitch_settings p WHERE p.isDeleted = 0 ORDER BY p.fieldKey", (err, fields) => {
+    db.query("SELECT p.*, IFNULL((SELECT COUNT(*) FROM pitch_objects po WHERE po.fieldKey = p.fieldKey AND IFNULL(po.isDeleted,0) = 0), 0) AS pitch_count FROM pitch_settings p WHERE IFNULL(p.isDeleted,0) = 0 ORDER BY p.fieldKey", (err, fields) => {
         if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
         res.json({ success: true, data: fields });
     });
@@ -2784,7 +2784,7 @@ app.get('/api/admin/deleted-fields', requireAdmin, (req, res) => {
 
 // Saha ekle
 app.post('/api/admin/fields', requireAdmin, (req, res) => {
-    const { fieldKey, name, address, coordinates, phone, openingHour, closingHour, pitchCount, morningPrice, eveningPrice } = req.body;
+    const { fieldKey, name, address, coordinates, phone, openingHour, closingHour, pitchCount, morningPrice, eveningPrice, businessPassword } = req.body;
     if (!fieldKey || !name) return res.status(400).json({ success: false, message: 'Saha anahtarı ve adı zorunludur!' });
     const key = fieldKey.toLowerCase().replace(/[^a-z0-9]/g, '');
     db.query("INSERT IGNORE INTO pitch_settings (fieldKey, isClosed, openingHour, closingHour, disabledHours, aboneHours, pricing, field_count) VALUES (?, 0, ?, ?, '[]', '[]', ?, ?)", 
@@ -2793,6 +2793,14 @@ app.post('/api/admin/fields', requireAdmin, (req, res) => {
         for (let i = 1; i <= (pitchCount || 1); i++) {
             db.query("INSERT IGNORE INTO pitch_objects (fieldKey, pitchNumber, name, address, coordinates, phone, isClosed, hasService, openingHour, closingHour) VALUES (?, ?, ?, ?, ?, ?, 0, 'Servis: Yok', ?, ?)",
                 [key, i, `${name} - SAHA ${i}`, address || '', coordinates || '', phone || '', openingHour || '09:00', closingHour || '23:00']);
+        }
+        // İşletme şifresi varsa business_passwords tablosuna kaydet
+        if (businessPassword && businessPassword.length >= 6) {
+            const hashedPass = bcrypt.hashSync(businessPassword, 10);
+            db.query("INSERT INTO business_passwords (fieldKey, password) VALUES (?, ?) ON DUPLICATE KEY UPDATE password = ?",
+                [key, hashedPass, hashedPass], (passErr) => {
+                if (passErr) console.warn('⚠️ İşletme şifresi kaydedilemedi:', passErr.message);
+            });
         }
         db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_add', 'field', ?, ?)", 
             [req.adminUser.username, name, `${name} sahası eklendi`]);
