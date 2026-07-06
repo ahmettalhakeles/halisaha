@@ -2836,6 +2836,64 @@ app.put('/api/admin/fields/:key/visibility', requireAdmin, (req, res) => {
     });
 });
 
+// --- İLAN YÖNETİMİ ---
+// Maç ve Oyuncu Bul (forum_posts) listele
+app.get('/api/admin/ads/forum', requireAdmin, (req, res) => {
+    db.query("SELECT * FROM forum_posts ORDER BY created_at DESC", (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'İlanlar getirilemedi!' });
+        res.json({ success: true, data: results });
+    });
+});
+
+// Maç Bul (match_seekers) listele
+app.get('/api/admin/ads/matches', requireAdmin, (req, res) => {
+    db.query("SELECT * FROM match_seekers ORDER BY created_at DESC", (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'İlanlar getirilemedi!' });
+        res.json({ success: true, data: results });
+    });
+});
+
+// Takım Bul (team_seekers) listele
+app.get('/api/admin/ads/teams', requireAdmin, (req, res) => {
+    db.query("SELECT * FROM team_seekers ORDER BY created_at DESC", (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'İlanlar getirilemedi!' });
+        res.json({ success: true, data: results });
+    });
+});
+
+// Maç ve Oyuncu Bul (forum_posts) sil
+app.delete('/api/admin/ads/forum/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    db.query("DELETE FROM forum_posts WHERE id = ?", [id], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'İlan silinemedi!' });
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'ad_delete_forum', 'ad', ?, ?)", 
+            [req.adminUser.username, id, `Forum ilanı silindi (ID: ${id})`]);
+        res.json({ success: true, message: 'İlan başarıyla silindi!' });
+    });
+});
+
+// Oyuncu/Maç Arayan (match_seekers) sil
+app.delete('/api/admin/ads/matches/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    db.query("DELETE FROM match_seekers WHERE id = ?", [id], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'İlan silinemedi!' });
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'ad_delete_match', 'ad', ?, ?)", 
+            [req.adminUser.username, id, `Maç/Oyuncu ilanı silindi (ID: ${id})`]);
+        res.json({ success: true, message: 'İlan başarıyla silindi!' });
+    });
+});
+
+// Takım Arayan (team_seekers) sil
+app.delete('/api/admin/ads/teams/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    db.query("DELETE FROM team_seekers WHERE id = ?", [id], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'İlan silinemedi!' });
+        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'ad_delete_team', 'ad', ?, ?)", 
+            [req.adminUser.username, id, `Takım ilanı silindi (ID: ${id})`]);
+        res.json({ success: true, message: 'İlan başarıyla silindi!' });
+    });
+});
+
 // Tüm kullanıcıları listele (arama ve gelişmiş filtreler ile)
 app.get('/api/admin/users', requireAdmin, (req, res) => {
     const { search, status, startDate, endDate, sortBy, suspicious } = req.query;

@@ -269,12 +269,16 @@ window.onload = async function() {
     if (isAdminPage) {
         const storedToken = localStorage.getItem('adminToken');
         const storedData = localStorage.getItem('adminData');
-        if (storedToken && storedData) {
+        const storedRemember = localStorage.getItem('adminRemember');
+        if (storedToken && storedData && storedRemember === 'true') {
             isAdminLoggedIn = true;
             adminToken = storedToken;
             adminData = JSON.parse(storedData);
             showAdminUI();
         } else {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminData');
+            localStorage.removeItem('adminRemember');
             showAdminLoginWrapper();
         }
         
@@ -438,6 +442,7 @@ function switchBusinessTab(tabName) {
 }
 
 function showBusinessLoginWrapper() {
+    document.body.classList.remove('logged-in');
     const loginWrapper = document.getElementById('businessLoginWrapper');
     if (loginWrapper) loginWrapper.style.display = 'flex';
     const panel = document.getElementById('businessPanel');
@@ -449,6 +454,7 @@ function showBusinessLoginWrapper() {
 }
 
 function showBusinessUI() {
+    document.body.classList.add('logged-in');
     const loginWrapper = document.getElementById('businessLoginWrapper');
     if (loginWrapper) loginWrapper.style.display = 'none';
     const panel = document.getElementById('businessPanel');
@@ -4224,6 +4230,7 @@ async function loadUserBlacklist() {
 // =======================================================
 
 function showAdminLoginWrapper() {
+    document.body.classList.remove('logged-in');
     const loginWrapper = document.getElementById('adminLoginWrapper');
     if (loginWrapper) loginWrapper.style.display = 'flex';
     const panel = document.getElementById('adminPanel');
@@ -4235,6 +4242,7 @@ function showAdminLoginWrapper() {
 }
 
 function showAdminUI() {
+    document.body.classList.add('logged-in');
     const loginWrapper = document.getElementById('adminLoginWrapper');
     if (loginWrapper) loginWrapper.style.display = 'none';
     const panel = document.getElementById('adminPanel');
@@ -4283,6 +4291,12 @@ function handleAdminLogin() {
         adminData = data.admin;
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('adminData', JSON.stringify(data.admin));
+        const rememberChecked = document.getElementById('adminRememberMe')?.checked || false;
+        if (rememberChecked) {
+            localStorage.setItem('adminRemember', 'true');
+        } else {
+            localStorage.removeItem('adminRemember');
+        }
         passwordEl.value = "";
         showAdminUI();
     })
@@ -4300,6 +4314,7 @@ function handleAdminLogout() {
     adminData = null;
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminData');
+    localStorage.removeItem('adminRemember');
     showAdminLoginWrapper();
 }
 
@@ -4316,7 +4331,7 @@ function getAdminHeaders() {
 }
 
 function switchAdminTab(tab) {
-    const tabs = ['dashboard', 'fields', 'users', 'activity', 'blacklist', 'announcements', 'revenue'];
+    const tabs = ['dashboard', 'fields', 'users', 'activity', 'blacklist', 'announcements', 'revenue', 'ads'];
     tabs.forEach(t => {
         const el = document.getElementById('admin' + t.charAt(0).toUpperCase() + t.slice(1));
         if (el) el.style.display = t === tab ? 'block' : 'none';
@@ -4329,7 +4344,8 @@ function switchAdminTab(tab) {
         'activity': 'aktivite',
         'blacklist': 'kara liste',
         'announcements': 'duyurular',
-        'revenue': 'gelir'
+        'revenue': 'gelir',
+        'ads': 'ilan yönetimi'
     };
 
     document.querySelectorAll('#adminPanel .admin-tabs .tab-btn').forEach(btn => {
@@ -4352,6 +4368,7 @@ function switchAdminTab(tab) {
     if (tab === 'blacklist') loadAdminGlobalBlacklist();
     if (tab === 'announcements') loadAdminAnnouncements();
     if (tab === 'revenue') renderAdminRevenue();
+    if (tab === 'ads') renderAdminAds();
 }
 
 function loadAdminDashboard() {
@@ -4496,7 +4513,7 @@ async function renderAdminFields() {
                             <div class="field-meta">${f.address || ''} · ${f.phone || ''} · ${f.pitch_count || 1} saha · ${isClosed ? '<span style="color:#ef4444;">PASİF (GİZLİ)</span>' : '<span style="color:#34d399;">AKTİF (GÖRÜNÜR)</span>'}</div>
                         </div>
                         <div class="field-actions">
-                            <button class="btn-enter" onclick="adminEnterFieldPanel('${f.fieldKey}')">PANEL</button>
+                            <button class="btn-enter" onclick="adminEnterFieldPanel('${f.fieldKey}', '${(f.name || f.fieldKey).replace(/'/g, "\\'")}')">PANEL</button>
                             <button class="btn-visibility" onclick="adminToggleFieldVisibility('${f.fieldKey}')">${isClosed ? 'GÖSTER' : 'GİZLE'}</button>
                             <button class="btn-delete" onclick="adminDeleteField('${f.fieldKey}')">SİL</button>
                         </div>
@@ -4608,6 +4625,20 @@ function submitAddField() {
             location.reload();
         } else showToast(d.message, 'error');
     }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+function adminEnterFieldPanel(key, name) {
+    localStorage.setItem('businessFieldKey', key);
+    localStorage.setItem('adminImpersonateField', JSON.stringify({ key, name: name || key }));
+    adminLogAction('field_access', 'field', name || key, `${name || key} paneline admin erişimi`);
+    window.location.href = '/isletme';
+}
+
+function adminReturnFromFieldPanel() {
+    localStorage.removeItem('businessFieldKey');
+    localStorage.removeItem('businessToken');
+    localStorage.removeItem('adminImpersonateField');
+    window.location.href = '/yonetici';
 }
 
 // --- KULLANICI YÖNETİMİ ---
@@ -5378,6 +5409,101 @@ function bypassAdminLogin() {
     if (typeof loadAdminRevenue === 'function') loadAdminRevenue();
     
     showToast('Yönetici Paneline Şifresiz Başarıyla Giriş Yapıldı!', 'success');
+}
+
+let currentAdSubTab = 'forum';
+function switchAdSubTab(sub) {
+    currentAdSubTab = sub;
+    document.querySelectorAll('.ad-sub-btn').forEach(btn => {
+        const isTarget = btn.id === `adSubBtn${sub.charAt(0).toUpperCase() + sub.slice(1)}`;
+        btn.style.background = isTarget ? '#8b5cf6' : '#0f172a';
+        btn.style.borderColor = isTarget ? '#8b5cf6' : 'rgba(255,255,255,0.05)';
+        btn.style.color = isTarget ? '#fff' : 'rgba(255,255,255,0.6)';
+    });
+    
+    document.querySelectorAll('.ad-sub-content').forEach(el => {
+        el.style.display = el.id === `adSubContent${sub.charAt(0).toUpperCase() + sub.slice(1)}` ? 'block' : 'none';
+    });
+    
+    loadAdminAdSubList(sub);
+}
+
+function renderAdminAds() {
+    switchAdSubTab(currentAdSubTab);
+}
+
+function loadAdminAdSubList(sub) {
+    const listContainerId = `adminAds${sub.charAt(0).toUpperCase() + sub.slice(1)}List`;
+    const listEl = document.getElementById(listContainerId);
+    if (!listEl) return;
+    
+    listEl.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);">Yükleniyor...</td></tr>';
+    
+    fetch(`/api/admin/ads/${sub}`, { headers: getAdminHeaders() })
+    .then(r => r.json()).then(data => {
+        if (!data.success || !data.data || data.data.length === 0) {
+            listEl.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);">İlan bulunamadı.</td></tr>';
+            return;
+        }
+        
+        if (sub === 'forum') {
+            listEl.innerHTML = data.data.map(p => `
+                <tr>
+                    <td style="font-weight:700;color:#fff;">${p.title}</td>
+                    <td>${p.message}</td>
+                    <td>${p.user_name || p.created_by}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.user_phone || ''}</span></td>
+                    <td>${new Date(p.created_at).toLocaleString('tr-TR')}</td>
+                    <td><span class="user-status ${p.status === 'aktif' ? 'active' : 'banned'}" style="font-size:0.7rem;padding:4px 8px;border-radius:4px;">${p.status.toUpperCase()}</span></td>
+                    <td>
+                        <button class="action-btn" onclick="adminDeleteAd('${sub}', ${p.id})" style="padding:4px 8px;font-size:0.7rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171;cursor:pointer;">SİL</button>
+                    </td>
+                </tr>
+            `).join('');
+        } else if (sub === 'matches') {
+            listEl.innerHTML = data.data.map(p => `
+                <tr>
+                    <td style="font-weight:700;color:#fff;">${p.name}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.phone || ''}</span></td>
+                    <td>${p.dateText} ${p.hourText}</td>
+                    <td>${p.details || '-'}</td>
+                    <td>${new Date(p.created_at).toLocaleString('tr-TR')}</td>
+                    <td><span class="user-status ${p.status === 'aktif' ? 'active' : 'banned'}" style="font-size:0.7rem;padding:4px 8px;border-radius:4px;">${p.status.toUpperCase()}</span></td>
+                    <td>
+                        <button class="action-btn" onclick="adminDeleteAd('${sub}', ${p.id})" style="padding:4px 8px;font-size:0.7rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171;cursor:pointer;">SİL</button>
+                    </td>
+                </tr>
+            `).join('');
+        } else if (sub === 'teams') {
+            listEl.innerHTML = data.data.map(p => `
+                <tr>
+                    <td style="font-weight:700;color:#fff;">${p.teamName}<br><span style="font-size:0.75rem;color:var(--text-muted);">Kaptan: ${p.captainName}</span></td>
+                    <td>${p.ageGroup || '-'}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.matchSize || ''}</span></td>
+                    <td>${p.skillLevel || '-'}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.availableDays || ''} ${p.timeRange || ''}</span></td>
+                    <td>${p.message || ''}</td>
+                    <td><span class="user-status ${p.status === 'aktif' ? 'active' : 'banned'}" style="font-size:0.7rem;padding:4px 8px;border-radius:4px;">${p.status.toUpperCase()}</span></td>
+                    <td>
+                        <button class="action-btn" onclick="adminDeleteAd('${sub}', ${p.id})" style="padding:4px 8px;font-size:0.7rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171;cursor:pointer;">SİL</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+    }).catch(() => {
+        listEl.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--danger-red);">Yüklenemedi!</td></tr>';
+    });
+}
+
+async function adminDeleteAd(sub, id) {
+    const confirmed = await showConfirmModal("Bu ilanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.");
+    if (!confirmed) return;
+    
+    fetch(`/api/admin/ads/${sub}/${id}`, { method: 'DELETE', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) {
+            showToast(d.message, 'info');
+            loadAdminAdSubList(sub);
+        } else {
+            showToast(d.message, 'error');
+        }
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
 }
 
 

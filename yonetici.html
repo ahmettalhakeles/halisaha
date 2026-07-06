@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.0.4">
+    <link rel="stylesheet" href="style.css?v=1.0.5">
     <style>
         /* Enable hamburger button on all screen sizes */
         .hamburger-btn {
@@ -112,6 +112,42 @@
         .admin-tabs {
             display: none !important;
         }
+
+        /* Desktop PC persistent sidebar styling */
+        @media (min-width: 769px) {
+            .hamburger-btn {
+                display: none !important;
+            }
+            .menu-close-btn {
+                display: none !important;
+            }
+            .mobile-menu-overlay {
+                display: none !important;
+            }
+            .header-actions {
+                display: none !important;
+            }
+            body.logged-in .header-actions {
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 280px !important;
+                height: 100vh !important;
+                background: rgba(11, 15, 25, 0.98) !important;
+                border-right: 1px solid rgba(16, 185, 129, 0.2) !important;
+                z-index: 9999 !important;
+                padding: 40px 20px 20px 20px !important;
+                box-shadow: none !important;
+            }
+            body.logged-in main {
+                margin-left: 290px !important;
+                max-width: calc(100% - 310px) !important;
+            }
+            body.logged-in header {
+                margin-left: 290px !important;
+            }
+        }
     </style>
 </head>
 <body class="admin-mode">
@@ -163,12 +199,13 @@
                 <button class="nav-btn" onclick="switchAdminTab('blacklist'); closeMobileMenu();">KARA LİSTE</button>
                 <button class="nav-btn" onclick="switchAdminTab('announcements'); closeMobileMenu();">DUYURULAR</button>
                 <button class="nav-btn" onclick="switchAdminTab('revenue'); closeMobileMenu();">GELİR</button>
+                <button class="nav-btn" onclick="switchAdminTab('ads'); closeMobileMenu();">İLAN YÖNETİMİ</button>
             </div>
 
             <!-- Yönetici Çıkış -->
             <div id="adminLogoutSection" class="user-auth-zone" style="display: none; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                <span id="adminWelcomeText" style="font-weight: bold; color: #8b5cf6; text-align: center; margin-bottom: 10px;"></span>
-                <button class="nav-btn red-btn" onclick="handleAdminLogout(); closeMobileMenu();" style="width: 100%;">ÇIKIŞ YAP</button>
+                <span id="adminWelcomeText" style="font-weight: 700; color: var(--neon-green); text-align: center; margin-bottom: 5px; font-size: 0.8rem;"></span>
+                <button class="nav-btn red-btn" onclick="handleAdminLogout(); closeMobileMenu();" style="width: 100%; font-weight: bold; text-align: center; background: rgba(239, 68, 68, 0.15) !important; border: 1px solid #ef4444 !important; color: #f87171 !important; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">ÇIKIŞ YAP</button>
             </div>
         </div>
     </header>
@@ -188,6 +225,10 @@
                     <label style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">ŞİFRE</label>
                     <input type="password" id="adminPassword" placeholder="••••••••" class="form-control" style="padding: 12px;" onkeypress="if(event.key === 'Enter') handleAdminLogin()">
                 </div>
+                <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
+                    <input type="checkbox" id="adminRememberMe" style="width:16px; height:16px; cursor:pointer;">
+                    <label for="adminRememberMe" style="font-family: 'Montserrat', sans-serif; font-size: 0.85rem; color: var(--text-muted); cursor:pointer; user-select:none;">Beni Hatırla</label>
+                </div>
                 <div id="adminLoginError" style="color: var(--danger-red); font-size: 0.85rem; margin-bottom: 15px; display: none;"></div>
                 <button class="modal-btn" onclick="handleAdminLogin()" id="adminLoginBtn" style="width: 100%; padding: 14px; background: #8b5cf6; color: #fff; border: none; font-weight: bold; font-size: 1rem; border-radius: 8px; cursor: pointer;">GİRİŞ YAP</button>
             </div>
@@ -206,6 +247,7 @@
                 <button class="tab-btn" onclick="switchAdminTab('blacklist')">KARA LİSTE</button>
                 <button class="tab-btn" onclick="switchAdminTab('announcements')">DUYURULAR</button>
                 <button class="tab-btn" onclick="switchAdminTab('revenue')">GELİR</button>
+                <button class="tab-btn" onclick="switchAdminTab('ads')">İLAN YÖNETİMİ</button>
             </div>
 
             <!-- Dashboard -->
@@ -354,6 +396,77 @@
                 </div>
                 <div id="adminRevenueList"></div>
             </div>
+
+            <!-- İlan Yönetimi Tab -->
+            <div class="admin-tab-content" id="adminAds" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="color:#8b5cf6; margin:0; font-size:1.3rem; font-weight:800; font-family:'Montserrat',sans-serif;">📢 İLAN YÖNETİMİ</h3>
+                </div>
+                
+                <!-- Tab Sub-selectors (Forum, Matches, Teams) -->
+                <div class="ad-sub-tabs" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+                    <button class="ad-sub-btn active" id="adSubBtnForum" onclick="switchAdSubTab('forum')" style="padding:10px 20px; background:#8b5cf6; border:1px solid #8b5cf6; color:#fff; font-weight:bold; border-radius:8px; cursor:pointer;">Maç & Oyuncu Bul (Forum)</button>
+                    <button class="ad-sub-btn" id="adSubBtnMatches" onclick="switchAdSubTab('matches')" style="padding:10px 20px; background:#0f172a; border:1px solid rgba(255,255,255,0.05); color:rgba(255,255,255,0.6); font-weight:bold; border-radius:8px; cursor:pointer;">Maç Arayanlar</button>
+                    <button class="ad-sub-btn" id="adSubBtnTeams" onclick="switchAdSubTab('teams')" style="padding:10px 20px; background:#0f172a; border:1px solid rgba(255,255,255,0.05); color:rgba(255,255,255,0.6); font-weight:bold; border-radius:8px; cursor:pointer;">Takım Arayanlar</button>
+                </div>
+
+                <!-- Forum List Container -->
+                <div id="adSubContentForum" class="ad-sub-content">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Başlık</th>
+                                    <th>Açıklama</th>
+                                    <th>Yayınlayan</th>
+                                    <th>Tarih</th>
+                                    <th>Durum</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminAdsForumList"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Matches List Container -->
+                <div id="adSubContentMatches" class="ad-sub-content" style="display:none;">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>İsim / Telefon</th>
+                                    <th>Tarih / Saat</th>
+                                    <th>Detaylar</th>
+                                    <th>Oluşturma</th>
+                                    <th>Durum</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminAdsMatchesList"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Teams List Container -->
+                <div id="adSubContentTeams" class="ad-sub-content" style="display:none;">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Takım Adı / Kaptan</th>
+                                    <th>Yaş / Maç Tipi</th>
+                                    <th>Yetenek / Günler</th>
+                                    <th>Mesaj</th>
+                                    <th>Durum</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminAdsTeamsList"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -417,6 +530,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.6"></script>
+    <script src="script.js?v=1.0.7"></script>
 </body>
 </html>

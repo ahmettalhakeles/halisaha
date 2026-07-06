@@ -3424,6 +3424,10 @@ main.business-mode {
         font-size: 1.5rem;
         cursor: pointer;
         padding: 5px;
+        display: none !important;
+    }
+
+    body.logged-in .hamburger-btn {
         display: block !important;
     }
 
