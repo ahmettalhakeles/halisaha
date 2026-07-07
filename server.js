@@ -45,8 +45,10 @@ function verifyBusiness(req, res, next) {
         if (err) return res.status(403).json({ success: false, message: 'Geçersiz veya süresi geçmiş işletme oturumu!' });
         if (decoded.role !== 'business') return res.status(403).json({ success: false, message: 'Bu işlem için işletme yetkisi gerekmektedir!' });
         
-        const reqFieldKey = req.params.fieldKey || req.body.fieldKey;
-        if (reqFieldKey && reqFieldKey !== decoded.fieldKey) {
+        let reqFieldKey = req.params.fieldKey || req.body.fieldKey;
+        if (reqFieldKey) reqFieldKey = reqFieldKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const decFieldKey = decoded.fieldKey ? decoded.fieldKey.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+        if (reqFieldKey && reqFieldKey !== decFieldKey) {
             return res.status(403).json({ success: false, message: 'Farklı bir işletmeye ait ayarları değiştiremezsiniz!' });
         }
         
@@ -2458,8 +2460,9 @@ app.get('/api/stats-content/:fieldKey', verifyBusiness, (req, res) => {
             last7DaysEarningsPaid: 0, last7DaysEarningsUnpaid: 0
         };
 
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const now = getNowTR();
+        // TR saati ile gün başlangıcı (00:00:00.000)
+        const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
         const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
         const endOfTodayTime = startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1;
 
@@ -2477,20 +2480,24 @@ app.get('/api/stats-content/:fieldKey', verifyBusiness, (req, res) => {
             const isPaid = resRow.payment_status === 'odendi';
 
             const resDate = getActualPlayDate(resRow.dateText, resRow.hourText) || new Date(resRow.created_at);
+            const resDateTime = resDate.getTime();
 
             stats.total++;
             if (isPaid) stats.totalEarningsPaid += price;
             else stats.totalEarningsUnpaid += price;
 
-            // Bugün kontrolü (Oynanış tarihi bugün olanlar)
-            if (resDate.toDateString() === now.toDateString()) {
+            // Bugün kontrolü (Maç tarihi bugün olanlar - TR saat diliminde gün)
+            if (
+                resDate.getUTCDate() === now.getUTCDate() &&
+                resDate.getUTCMonth() === now.getUTCMonth() &&
+                resDate.getUTCFullYear() === now.getUTCFullYear()
+            ) {
                 stats.today++;
                 if (isPaid) stats.todayEarningsPaid += price;
                 else stats.todayEarningsUnpaid += price;
             }
 
             // Son 7 gün kontrolü (Geçmiş 7 gün içindeki maçlar, bugün dahil)
-            const resDateTime = resDate.getTime();
             if (resDateTime >= startOfWeek.getTime() && resDateTime <= endOfTodayTime) {
                 stats.last7Days++;
                 if (isPaid) stats.last7DaysEarningsPaid += price;
@@ -2498,7 +2505,10 @@ app.get('/api/stats-content/:fieldKey', verifyBusiness, (req, res) => {
             }
 
             // Bu ay kontrolü (Maç tarihi bu ay olanlar)
-            if (resDate.getMonth() === now.getMonth() && resDate.getFullYear() === now.getFullYear()) {
+            if (
+                resDate.getUTCMonth() === now.getUTCMonth() &&
+                resDate.getUTCFullYear() === now.getUTCFullYear()
+            ) {
                 stats.thisMonth++;
                 if (isPaid) stats.thisMonthEarningsPaid += price;
                 else stats.thisMonthEarningsUnpaid += price;
