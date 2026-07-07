@@ -2360,7 +2360,14 @@ async function completeBooking() {
         alert("Lütfen giriş yapın ve saha seçin."); return;
     }
     const hour = currentSelectedHourBtn.dataset.hour;
-    const dateText = document.getElementById('datePicker').value;
+    let dateText = document.getElementById('datePicker').value;
+
+    // Gece saatleri (00:00-05:59) aslında bir sonraki güne ait
+    const slotStartH = parseInt(hour.split(':')[0]);
+    if (slotStartH < 6) {
+        const nextDay = getNextCalendarDayText(dateText);
+        if (nextDay) dateText = nextDay;
+    }
 
     // Aynı gün en fazla 3 (iptal dahil sunucu tarafında kontrol edilir), toplamda en fazla 2 aktif rezervasyon
     // NOT: Günlük limit kontrolü sunucu tarafında iptal edilenler dahil yapılır.
