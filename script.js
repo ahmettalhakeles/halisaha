@@ -4214,12 +4214,17 @@ let turnstileScriptLoaded = false;
 function loadTurnstileScript() {
     return new Promise((resolve) => {
         if (window.turnstile) { turnstileScriptLoaded = true; resolve(); return; }
-        const script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-        script.async = true;
-        script.defer = true;
-        script.onload = () => { turnstileScriptLoaded = true; resolve(); };
-        document.head.appendChild(script);
+        const interval = setInterval(() => {
+            if (window.turnstile) {
+                clearInterval(interval);
+                turnstileScriptLoaded = true;
+                resolve();
+            }
+        }, 50);
+        setTimeout(() => {
+            clearInterval(interval);
+            resolve();
+        }, 3000);
     });
 }
 function onTurnstileSuccess(token) {
