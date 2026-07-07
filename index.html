@@ -83,7 +83,7 @@
             </button>
             <!-- Kullanıcı Giriş -->
             <div id="userAuthSection" class="user-auth-zone">
-                <button class="nav-btn" onclick="openModal('loginModal')">GİRİS YAP</button>
+                <button class="nav-btn" onclick="openModal('loginModal')">GİRİŞ YAP</button>
                 <button class="nav-btn green-btn" onclick="openModal('registerModal')">KAYIT OL</button>
             </div>
 
@@ -272,7 +272,7 @@
                             <div class="form-group">
                                 <label>İSTEDİĞİNİZ ÜCRET (TL)</label>
                                 <select id="matchFee" class="form-control">
-                                    <option value="ÜCRETSIZ">ÜCRETSIZ (BEKLENTIM YOK)</option>
+                                    <option value="ÜCRETSİZ">ÜCRETSİZ (BEKLENTİM YOK)</option>
                                     <option value="50">50</option>
                                     <option value="100">100</option>
                                     <option value="150">150</option>
@@ -313,7 +313,7 @@
                                     </select>
                                     <select id="filterFee" class="filter-control" onchange="loadMatchSeekers()">
                                         <option value="">TÜM ÜCRETLER</option>
-                                        <option value="0">ÜCRETSIZ</option>
+                                        <option value="0">ÜCRETSİZ</option>
                                         <option value="50">0-50 TL</option>
                                         <option value="100">0-100 TL</option>
                                         <option value="200">0-200 TL</option>
@@ -416,7 +416,10 @@
             </div>
             <div class="form-group">
                 <label>SIFRE</label>
-                <input type="password" id="loginPassword" class="form-control" onkeypress="if(event.key === 'Enter') handleUserLogin()">
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="password" id="loginPassword" class="form-control" style="padding-right: 70px;" onkeypress="if(event.key === 'Enter') handleUserLogin()">
+                    <button type="button" onclick="togglePasswordVisibility('loginPassword', this)" style="position: absolute; right: 10px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-weight: bold; outline: none; padding: 5px;">GÖSTER</button>
+                </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:15px;">
                 <input type="checkbox" id="userRememberMe" style="width:16px; height:16px; cursor:pointer;">
@@ -439,7 +442,7 @@
                 </div>
                 <div class="form-group">
                     <label>TELEFON NUMARASI</label>
-                    <input type="text" id="regPhone" class="form-control" placeholder="05XXXXXXXXX" maxlength="11" required>
+                    <input type="text" id="regPhone" class="form-control" placeholder="05XXXXXXXXX" maxlength="13" required>
                     <small class="help-text" style="color:var(--text-muted);">05 ile başlayan 11 haneli numara giriniz</small>
                 </div>
                 <div class="form-group">
@@ -448,7 +451,10 @@
                 </div>
                 <div class="form-group">
                     <label>SIFRE</label>
-                    <input type="password" id="regPassword" class="form-control" required>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="regPassword" class="form-control" style="padding-right: 70px;" required>
+                        <button type="button" onclick="togglePasswordVisibility('regPassword', this)" style="position: absolute; right: 10px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-weight: bold; outline: none; padding: 5px;">GÖSTER</button>
+                    </div>
                     <small class="help-text">EN AZ 6 HANELI, BUYUK HARF, RAKAM VE SEMBOL ICERMELIDIR.</small>
                 </div>
                 <div class="form-group" style="display:flex; align-items:flex-start; gap:8px; margin-top:15px; margin-bottom:15px;">
@@ -765,7 +771,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.8"></script>
+    <script src="script.js?v=1.0.9"></script>
 </body>
 </html>
 

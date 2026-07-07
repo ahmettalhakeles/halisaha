@@ -1,6 +1,8 @@
 let isAdminLoggedIn = false;
 let adminToken = null;
 let adminData = null;
+let inMemoryBusinessToken = null;
+let inMemoryBusinessFieldKey = null;
 
 const isBusinessPage = window.location.pathname.includes('isletme');
 const isAdminPage = window.location.pathname.includes('yonetici');
@@ -165,8 +167,8 @@ function getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json' };
     // Kullanıcı token'ı: "Beni Hatırla" ise localStorage, değilse sessionStorage
     const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
-    // İşletme token'ı: "Beni Hatırla" ise localStorage, değilse sessionStorage
-    const businessToken = localStorage.getItem('businessToken') || sessionStorage.getItem('businessToken');
+    // İşletme token'ı: "Beni Hatırla" ise localStorage, değilse inMemoryBusinessToken
+    const businessToken = localStorage.getItem('businessToken') || inMemoryBusinessToken;
     const adminToken = localStorage.getItem('adminToken');
     
     // Admin token sadece admin ve işletme sayfalarında ekle
@@ -248,8 +250,8 @@ window.onload = async function() {
     
     if (isBusinessPage) {
         await loadDailyHoursList();
-        // "Beni Hatırla" veya admin impersonation için localStorage, yoksa sessionStorage
-        const storedKey = localStorage.getItem('businessFieldKey') || sessionStorage.getItem('businessFieldKey');
+        // "Beni Hatırla" veya admin impersonation için localStorage, değilse inMemoryBusinessFieldKey
+        const storedKey = localStorage.getItem('businessFieldKey') || inMemoryBusinessFieldKey || (localStorage.getItem('adminToken') && localStorage.getItem('adminImpersonateField') ? JSON.parse(localStorage.getItem('adminImpersonateField')).key : null);
         const storedAdminToken = localStorage.getItem('adminToken');
         const impersonateDataStr = localStorage.getItem('adminImpersonateField');
 
@@ -271,15 +273,15 @@ window.onload = async function() {
                 console.error("Error parsing impersonate data:", e);
             }
         } else if (storedKey) {
-            // Normal business login
+            // Normal business login (from localStorage remember me)
             currentBusinessFieldKey = storedKey;
             isBusinessLoggedIn = true;
             showBusinessUI();
         } else {
             localStorage.removeItem('businessFieldKey');
             localStorage.removeItem('businessToken');
-            sessionStorage.removeItem('businessFieldKey');
-            sessionStorage.removeItem('businessToken');
+            inMemoryBusinessFieldKey = null;
+            inMemoryBusinessToken = null;
             showBusinessLoginWrapper();
         }
         
@@ -352,8 +354,8 @@ async function handleUserRegister(event) {
     }
 
     // Telefon format kontrolü: 05 ile başlamalı, tam 11 hane
-    const phoneClean = phone.replace(/\s/g, '');
-    if (!phoneClean.startsWith('05') || phoneClean.length !== 11 || !/^\d+$/.test(phoneClean)) {
+    const phoneClean = phone.replace(/\D/g, '');
+    if (!phoneClean.startsWith('05') || phoneClean.length !== 11) {
         alert("Telefon numarası 05 ile başlamalı ve tam 11 rakam olmalıdır! (Örn: 05XXXXXXXXX)");
         return;
     }
@@ -362,7 +364,7 @@ async function handleUserRegister(event) {
         const response = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, phone, email, password: pass })
+            body: JSON.stringify({ name, phone: phoneClean, email, password: pass })
         });
         let result;
         try { result = await response.json(); } catch (jsonError) {
@@ -400,7 +402,7 @@ async function handleUserLogin() {
     const remember = rememberMe && rememberMe.checked;
 
     if (!email || !pass) {
-        alert("LÜTFEN ALANLARI DOLDURŠNÜZ.");
+        alert("LÜTFEN ALANLARI DOLDURUNUZ.");
         return;
     }
 
@@ -436,7 +438,7 @@ async function handleUserLogin() {
             alert("HATA: " + result.message);
         }
     } catch (error) {
-        alert("SUNUCUYA BAĞlANİLAMADi! node server.js çalışıyor mu?");
+        alert("SUNUCUYA BAĞLANILAMADI! node server.js çalışıyor mu?");
     }
 }
 
@@ -509,6 +511,8 @@ function showBusinessUI() {
     if (field) {
         const welcome = document.getElementById('businessWelcomeText');
         if (welcome) welcome.innerText = `İŞLETME: ${field.name}`;
+        const badge = document.getElementById('businessActiveNameBadge');
+        if (badge) badge.innerText = field.name.toLocaleUpperCase('tr-TR');
         const titleEl = document.getElementById('businessPanelTitle');
         if (titleEl) titleEl.innerText = `YÖNETİM PANELİ`;
         const hbf = document.getElementById('hamburgerFieldName');
@@ -558,8 +562,8 @@ async function handleBusinessLogin() {
         localStorage.setItem('businessToken', data.token);
         localStorage.setItem('businessRemember', 'true');
     } else {
-        sessionStorage.setItem('businessFieldKey', key);
-        sessionStorage.setItem('businessToken', data.token);
+        inMemoryBusinessFieldKey = key;
+        inMemoryBusinessToken = data.token;
         localStorage.removeItem('businessFieldKey');
         localStorage.removeItem('businessToken');
         localStorage.removeItem('businessRemember');
@@ -572,8 +576,11 @@ async function handleBusinessLogin() {
 function handleBusinessLogout() {
     isBusinessLoggedIn = false;
     currentBusinessFieldKey = "";
+    inMemoryBusinessFieldKey = null;
+    inMemoryBusinessToken = null;
     localStorage.removeItem('businessFieldKey');
     localStorage.removeItem('businessToken');
+    localStorage.removeItem('businessRemember');
 
     // Admin modunda işletme panelinden çıkış: admin paneline dön
     if (isAdminLoggedIn && isAdminPage) {
@@ -1674,16 +1681,37 @@ async function initPitchSelector() {
             
             // Override static fieldsData with database values dynamically
             pitchObjectsList.forEach(pitch => {
-                if (fieldsData[pitch.fieldKey] && pitch.pitchNumber === 1) {
-                    fieldsData[pitch.fieldKey].phone = pitch.phone;
-                    fieldsData[pitch.fieldKey].hasService = pitch.hasService;
-                    if (pitch.coordinates) {
-                        fieldsData[pitch.fieldKey].coordinates = pitch.coordinates;
+                if (pitch.pitchNumber === 1) {
+                    if (!fieldsData[pitch.fieldKey]) {
+                        fieldsData[pitch.fieldKey] = {
+                            name: pitch.name || pitch.fieldKey.toUpperCase(),
+                            address: pitch.address || '',
+                            coordinates: pitch.coordinates || '',
+                            phone: pitch.phone || '',
+                            isClosed: false,
+                            hasService: pitch.hasService || 'Servis: Yok',
+                            openingHour: pitch.openingHour || '09:00',
+                            closingHour: pitch.closingHour || '23:00',
+                            aboneHours: [],
+                            disabledHours: [],
+                            pitchCount: 1,
+                            pricing: '2500/3000',
+                            refreshments: pitch.refreshments || '',
+                            cleats: pitch.cleats || 'Krampon Kiralanmaz',
+                            shower: pitch.shower || 'Duş Yok',
+                            market: pitch.market || 'Market Yok'
+                        };
+                    } else {
+                        fieldsData[pitch.fieldKey].phone = pitch.phone;
+                        fieldsData[pitch.fieldKey].hasService = pitch.hasService;
+                        if (pitch.coordinates) {
+                            fieldsData[pitch.fieldKey].coordinates = pitch.coordinates;
+                        }
+                        fieldsData[pitch.fieldKey].refreshments = pitch.refreshments || "";
+                        fieldsData[pitch.fieldKey].cleats = pitch.cleats || "Krampon Kiralanmaz";
+                        fieldsData[pitch.fieldKey].shower = pitch.shower || "Duş Yok";
+                        fieldsData[pitch.fieldKey].market = pitch.market || "Market Yok";
                     }
-                    fieldsData[pitch.fieldKey].refreshments = pitch.refreshments || "";
-                    fieldsData[pitch.fieldKey].cleats = pitch.cleats || "Krampon Kiralanmaz";
-                    fieldsData[pitch.fieldKey].shower = pitch.shower || "Duş Yok";
-                    fieldsData[pitch.fieldKey].market = pitch.market || "Market Yok";
                 }
             });
         }
@@ -1696,7 +1724,26 @@ async function loadPitchSettingsFromDatabase() {
         const result = await response.json();
         if (result.success) {
             result.data.forEach(setting => {
-                if (fieldsData[setting.fieldKey]) {
+                if (!fieldsData[setting.fieldKey]) {
+                    fieldsData[setting.fieldKey] = {
+                        name: setting.fieldKey.toUpperCase(),
+                        address: '',
+                        coordinates: '',
+                        phone: '',
+                        isClosed: setting.isClosed === 1,
+                        hasService: 'Servis: Yok',
+                        openingHour: setting.openingHour,
+                        closingHour: setting.closingHour,
+                        aboneHours: JSON.parse(setting.aboneHours || '[]'),
+                        disabledHours: JSON.parse(setting.disabledHours || '[]'),
+                        pitchCount: setting.field_count || 1,
+                        pricing: setting.pricing || '2500/3000',
+                        refreshments: '',
+                        cleats: 'Krampon Kiralanmaz',
+                        shower: 'Duş Yok',
+                        market: 'Market Yok'
+                    };
+                } else {
                     fieldsData[setting.fieldKey].isClosed = setting.isClosed === 1;
                     fieldsData[setting.fieldKey].openingHour = setting.openingHour;
                     fieldsData[setting.fieldKey].closingHour = setting.closingHour;
@@ -2514,7 +2561,7 @@ function renderForumWall() {
 
         container.innerHTML = activePosts.map(post => {
     const isOwner = currentUser && post.user_id && post.user_id === currentUser.id;
-    const foundBadge = post.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLA?MA SA?LANDI</div>' : '';
+    const foundBadge = post.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLAŞMA SAĞLANDI</div>' : '';
     return `
     <div class="post-card" id="forum-post-${post.id}" style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; padding: 12px;">
         <!-- Tarih (Sol ?st) -->
@@ -2542,13 +2589,13 @@ function renderForumWall() {
         <!-- Yorumlar -->
         <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
             <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('forum', ${post.id})">
-                ?LET???M / YORUMLAR
+                İLETİŞİM / YORUMLAR
             </div>
             <div id="forum-comments-forum-${post.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                 <div id="forum-comments-list-forum-${post.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                 <div style="display:flex;gap:5px;align-items:center;">
-                    <input type="text" id="forum-comment-text-${post.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz?l?r...' : 'Giri? yap?n...'}" ${loggedInUser ? '' : 'disabled'}>
-                    <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('forum', ${post.id})" ${loggedInUser ? '' : 'disabled'}>G?NDER</button>
+                    <input type="text" id="forum-comment-text-${post.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
+                    <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('forum', ${post.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
                 </div>
             </div>
         </div>
@@ -2753,7 +2800,29 @@ async function loadMatchSeekers() {
 
         if (result.success) {
             let seekers = result.data;
-            seekers = seekers.filter(s => s.status !== 'suresi_gecti' && s.status !== 'bulundu');
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            seekers = seekers.filter(s => {
+                if (s.status === 'suresi_gecti' || s.status === 'bulundu') return false;
+                
+                // availableDates kontrolü
+                try {
+                    const dates = JSON.parse(s.availableDates || '[]');
+                    if (dates.length > 0) {
+                        const allPast = dates.every(d => {
+                            const pDate = parseTurkishDateString(d);
+                            if (!pDate) return false;
+                            pDate.setHours(23, 59, 59, 999); // günün sonu
+                            return pDate < todayStart;
+                        });
+                        if (allPast) return false;
+                    }
+                } catch(e) {
+                    console.error("Match seeker date filter error:", e);
+                }
+                return true;
+            });
             if (seekers.length === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Filtrelere uygun ilan bulunamadı.</p>';
                 return;
@@ -2769,7 +2838,7 @@ async function loadMatchSeekers() {
         const reviewCount = parseInt(s.reviewCount) || 0;
         const ratingHtml = reviewCount > 0 ? `<span style="color:#fbbf24; font-weight:700; font-size:0.75rem;">? ${avgRating.toFixed(1)} (${reviewCount} Oy)</span>` : `<span style="color:var(--text-muted); font-size:0.7rem;">? Yeni Oyuncu</span>`;
         const isOwner = currentUser && s.user_id && s.user_id === currentUser.id;
-        const foundBadge = s.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLA?MA SA?LANDI</div>' : '';
+        const foundBadge = s.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLAŞMA SAĞLANDI</div>' : '';
         const posClass = s.position.replace(/\s+/g, '-');
         
         return `
@@ -2787,9 +2856,9 @@ async function loadMatchSeekers() {
             
             <!-- Bottom Left: Details -->
             <div style="grid-column: 1; grid-row: 2; font-size: 0.8rem; display: flex; flex-direction: column; gap: 4px;">
-                <div style="font-weight:bold;">${s.playerName} <span style="color:var(--text-muted); font-weight:normal; font-size:0.75rem;">(${s.age} Ya?${s.height ? `, ${s.height}cm` : ''}${s.weight ? `, ${s.weight}kg` : ''})</span></div>
+                <div style="font-weight:bold;">${s.playerName} <span style="color:var(--text-muted); font-weight:normal; font-size:0.75rem;">(${s.age} Yaş${s.height ? `, ${s.height}cm` : ''}${s.weight ? `, ${s.weight}kg` : ''})</span></div>
                 ${ratingHtml}
-                <div style="color:var(--neon-green); font-size:0.75rem;">${feeText ? '?CRET: ' + feeText : '?CRETS?Z'}</div>
+                <div style="color:var(--neon-green); font-size:0.75rem;">${feeText ? 'ÜCRET: ' + feeText : 'ÜCRETSİZ'}</div>
                 ${s.msg ? `<div style="font-style:italic; font-size:0.75rem;">"${s.msg.toLocaleUpperCase('tr-TR')}"</div>` : ''}
             </div>
             
@@ -2797,17 +2866,17 @@ async function loadMatchSeekers() {
             <div style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 5px;">
                 ${foundBadge}
                 ${isOwner && s.status !== 'bulundu' ? '<button class="action-btn" style="padding:4px 12px;font-size:0.75rem;background:#f59e0b;color:#000;white-space:nowrap;border-radius:4px;border:none;cursor:pointer;" onclick="markMatchFound(' + s.id + ')">BULUNDU</button>' : ''}
-                <button class="profile-btn" style="padding:4px 12px;font-size:0.75rem;border-radius:4px;" onclick="openPlayerProfile('${s.phone || ''}', '${s.playerName.replace(/'/g, "\\'")}', ${s.age}, '${s.position}')">PROF?L</button>
+                <button class="profile-btn" style="padding:4px 12px;font-size:0.75rem;border-radius:4px;" onclick="openPlayerProfile('${s.phone || ''}', '${s.playerName.replace(/'/g, "\\'")}', ${s.age}, '${s.position}')">PROFİL</button>
             </div>
             
             <!-- Comments -->
             <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
-                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('match_seeker', ${s.id})">?LET???M / YORUMLAR</div>
+                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('match_seeker', ${s.id})">İLETİŞİM / YORUMLAR</div>
                 <div id="forum-comments-match_seeker-${s.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                     <div id="forum-comments-list-match_seeker-${s.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                     <div style="display:flex;gap:5px;align-items:center;">
-                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz?l?r...' : 'Giri? yap?n...'}" ${loggedInUser ? '' : 'disabled'}>
-                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('match_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>G?NDER</button>
+                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
+                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('match_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
                     </div>
                 </div>
             </div>
@@ -2831,7 +2900,14 @@ async function loadTeamSeekers() {
 
         if (result.success) {
             let seekers = result.data;
-            seekers = seekers.filter(s => s.status !== 'suresi_gecti' && s.status !== 'bulundu');
+            const limitDate = new Date();
+            limitDate.setDate(limitDate.getDate() - 30); // 30 günden eski olmasın
+
+            seekers = seekers.filter(s => {
+                if (s.status === 'suresi_gecti' || s.status === 'bulundu') return false;
+                const created = new Date(s.created_at);
+                return created >= limitDate;
+            });
             container.innerHTML = seekers.map(s => {
         const isOwner = loggedInUser && currentUser && parseInt(s.user_id) === parseInt(currentUser.id);
         let days = []; try { days = JSON.parse(s.availableDays || '[]'); } catch(e) { days = []; }
@@ -2870,12 +2946,12 @@ async function loadTeamSeekers() {
             
             <!-- Comments -->
             <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
-                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('team_seeker', ${s.id})">?LET???M / YORUMLAR</div>
+                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('team_seeker', ${s.id})">İLETİŞİM / YORUMLAR</div>
                 <div id="forum-comments-team_seeker-${s.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                     <div id="forum-comments-list-team_seeker-${s.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                     <div style="display:flex;gap:5px;align-items:center;">
-                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz?l?r...' : 'Giri? yap?n...'}" ${loggedInUser ? '' : 'disabled'}>
-                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('team_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>G?NDER</button>
+                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
+                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('team_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
                     </div>
                 </div>
             </div>
@@ -3435,18 +3511,24 @@ async function saveUserProfile() {
     const age = document.getElementById('profileAgeInput').value.trim();
     const height = document.getElementById('profileHeightInput').value.trim();
     const weight = document.getElementById('profileWeightInput').value.trim();
-    const position = document.getElementById('profilePositionInput').value;
-    const experience = document.getElementById('profileExperienceInput').value;
+    const position = document.getElementById('profilePositionInput') ? document.getElementById('profilePositionInput').value : '';
+    const experience = document.getElementById('profileExperienceInput') ? document.getElementById('profileExperienceInput').value : '';
     
     if (!name || !phone) {
         alert("Ad Soyad ve Telefon alanları zorunludur!");
         return;
     }
     
+    const phoneClean = phone.replace(/\D/g, '');
+    if (!phoneClean.startsWith('05') || phoneClean.length !== 11) {
+        alert("Telefon numarası 05 ile başlamalı ve tam 11 rakam olmalıdır! (Örn: 05XXXXXXXXX)");
+        return;
+    }
+    
     const updateData = {
         id: currentUser.id,
         name,
-        phone,
+        phone: phoneClean,
         age: age ? parseInt(age) : null,
         height: height ? parseInt(height) : null,
         weight: weight ? parseInt(weight) : null,
@@ -4722,6 +4804,14 @@ function submitAddField() {
             if (document.getElementById('afBusinessUsername')) document.getElementById('afBusinessUsername').value = '';
             if (document.getElementById('afMorningPrice')) document.getElementById('afMorningPrice').value = '2500';
             if (document.getElementById('afEveningPrice')) document.getElementById('afEveningPrice').value = '3000';
+            
+            // Reload pitch data dynamically
+            initPitchSelector().then(() => {
+                loadPitchSettingsFromDatabase().then(() => {
+                    renderFieldsGrid();
+                });
+            });
+
             switchAdminTab('fields');
         } else showToast(d.message, 'error');
     }).catch(() => showToast('Sunucu hatası!', 'error'));
@@ -5647,6 +5737,18 @@ async function adminDeleteAd(sub, id) {
             showToast(d.message, 'error');
         }
     }).catch(() => showToast('Sunucu hatası!', 'error'));
+}
+
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerText = 'GİZLE';
+    } else {
+        input.type = 'password';
+        btn.innerText = 'GÖSTER';
+    }
 }
 
 

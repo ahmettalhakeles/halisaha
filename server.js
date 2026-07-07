@@ -456,7 +456,6 @@ db.getConnection((err, connection) => {
 
     // Add columns to users table
     const userCols = [
-        { col: 'is_email_verified', def: 'ALTER TABLE users ADD COLUMN is_email_verified TINYINT(1) DEFAULT 0' },
         { col: 'status', def: "ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'" },
         { col: 'created_at', def: "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" }
     ];
@@ -465,7 +464,19 @@ db.getConnection((err, connection) => {
             if (!ec && r.length === 0) {
                 connection.query(def, (ea) => {
                     if (ea) console.error(`❌ users.${col} eklenemedi:`, ea);
-                    
+                });
+            }
+        });
+    });
+
+    // Drop unused columns if they exist (clean up database)
+    const unusedCols = ['is_email_verified', 'otp_code', 'otp_expiry', 'google_id', 'apple_id'];
+    unusedCols.forEach(col => {
+        connection.query(`SHOW COLUMNS FROM users LIKE '${col}'`, (ec, r) => {
+            if (!ec && r.length > 0) {
+                connection.query(`ALTER TABLE users DROP COLUMN ${col}`, (ea) => {
+                    if (ea) console.error(`❌ users.${col} silinemedi:`, ea);
+                    else console.log(`ℹ️ users.${col} tablodan kaldırıldı.`);
                 });
             }
         });
@@ -809,7 +820,7 @@ app.post('/api/register', (req, res) => {
         }
 
         const hashedPassword = bcrypt.hashSync(password, 10);
-        const sqlQuery = 'INSERT INTO users (name, phone, email, password, is_email_verified) VALUES (?, ?, ?, ?, 1)';
+        const sqlQuery = 'INSERT INTO users (name, phone, email, password) VALUES (?, ?, ?, ?)';
         db.query(sqlQuery, [name, phone, email, hashedPassword], (err, result) => {
             if (err) {
                 console.error("SQL Hatası:", err);
@@ -846,7 +857,7 @@ app.post('/api/register', (req, res) => {
 
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
-    const sqlQuery = 'SELECT id, name, phone, email, age, position, experience, is_email_verified, status, password FROM users WHERE email = ?';
+    const sqlQuery = 'SELECT id, name, phone, email, age, position, experience, status, password FROM users WHERE email = ?';
     db.query(sqlQuery, [email], (err, results) => {
         if (err || results.length === 0) return res.status(401).json({ success: false, message: 'Hatalı giriş!' });
         
@@ -1224,7 +1235,7 @@ app.post('/api/reservations', verifyUser, resLimitPerMin, resLimitPerSec, (req, 
                 };
 
                 // 2. Kullanıcı Durum ve Aktivasyon Kontrolleri
-                conn.query('SELECT is_email_verified, status FROM users WHERE id = ?', [user_id], (errUser, userResults) => {
+                conn.query('SELECT status FROM users WHERE id = ?', [user_id], (errUser, userResults) => {
                     if (errUser || userResults.length === 0) {
                         return rollbackAndRelease(500, 'Kullanıcı doğrulama hatası veya kullanıcı bulunamadı!');
                     }

@@ -192,15 +192,14 @@
                 <span class="logo-title" style="margin-left:10px; font-weight:800; color:#fff; font-family:'Montserrat',sans-serif; font-size: 1.4rem;">KSK İŞLETME</span>
             </div>
         </div>
-        
         <div class="header-actions">
             <button class="menu-close-btn" onclick="closeMobileMenu()" aria-label="Menüyü Kapat">
                 <svg viewBox="0 0 24 24" width="24" height="24" stroke="#10b981" stroke-width="3" fill="none">
                     <polyline points="15,18 9,12 15,6"></polyline>
                 </svg>
             </button>
-            
             <div id="businessMenuTabsContainer" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 15px;">
+                <div id="businessActiveNameBadge" style="padding: 8px 12px; text-align: center; color: var(--neon-green); font-weight: bold; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 10px; word-break: break-all;"></div>
                 <button class="nav-btn" onclick="switchBusinessTab('stats'); closeMobileMenu();">İSTATİSTİKLER</button>
                 <button class="nav-btn" onclick="switchBusinessTab('reservations'); closeMobileMenu();">REZERVASYONLAR</button>
                 <button class="nav-btn" onclick="switchBusinessTab('debts'); closeMobileMenu();">BORÇLAR</button>
@@ -210,12 +209,7 @@
                 <button class="nav-btn" onclick="switchBusinessTab('hours'); closeMobileMenu();">SAAT & ENGEL AYARLARI</button>
                 <button class="nav-btn" onclick="switchBusinessTab('subscriptions'); closeMobileMenu();">ABONELİK YÖNETİMİ</button>
                 <button class="nav-btn" onclick="switchBusinessTab('settings'); closeMobileMenu();">İŞLETME AYARLARI</button>
-            </div>
-
-            <!-- İşletme Çıkış -->
-            <div id="businessLogoutSection" class="user-auth-zone" style="display: none; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                <span id="businessWelcomeText" style="font-weight: 700; color: var(--neon-green); text-align: center; margin-bottom: 5px; font-size: 0.8rem;"></span>
-                <button class="nav-btn red-btn" onclick="handleBusinessLogout(); closeMobileMenu();" style="width: 100%; font-weight: bold; text-align: center; background: rgba(239, 68, 68, 0.15) !important; border: 1px solid #ef4444 !important; color: #f87171 !important; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">ÇIKIŞ YAP</button>
+                <button class="nav-btn red-btn" onclick="handleBusinessLogout(); closeMobileMenu();" style="margin-top: 15px; width: 100%; font-weight: bold; text-align: center; background: rgba(239, 68, 68, 0.15) !important; border: 1px solid #ef4444 !important; color: #f87171 !important; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">ÇIKIŞ YAP</button>
             </div>
         </div>
     </header>
@@ -669,6 +663,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.8"></script>
+    <script src="script.js?v=1.0.9"></script>
 </body>
 </html>

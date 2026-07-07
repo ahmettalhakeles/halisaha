@@ -3279,6 +3279,7 @@ main.business-mode {
 /* YEN� REZERVASYON MOB�L EKRANI ���N */
 @media (max-width: 768px) {
     header {
+        position: relative !important;
         flex-direction: column !important;
         align-items: center !important;
         padding: 10px !important;
@@ -3425,6 +3426,11 @@ main.business-mode {
         cursor: pointer;
         padding: 5px;
         display: none !important;
+        position: absolute !important;
+        left: 15px !important;
+        top: 15px !important;
+        transform: none !important;
+        z-index: 999 !important;
     }
 
     body.logged-in .hamburger-btn {
