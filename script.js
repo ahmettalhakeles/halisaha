@@ -329,8 +329,12 @@ function handleUserLogout() {
     loggedInUser = null;
     currentUser = null;
     userBlacklistedFields = [];
+    // Tüm oturum verilerini temizle
     localStorage.removeItem('userToken');
     localStorage.removeItem('userData');
+    localStorage.removeItem('userRemember');
+    sessionStorage.removeItem('userToken');
+    sessionStorage.removeItem('userData');
     renderFieldsGrid();
     updateLoginUIVisibility();
     alert("ÇIKIŞ YAPILDI. Tekrar giriş yapmak için lütfen giriş yapın.");
@@ -378,8 +382,12 @@ async function handleUserRegister(event) {
         if (result.success) {
             currentUser = result.user || null;
             loggedInUser = (result.user && result.user.name) ? result.user.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
-            localStorage.setItem('userToken', result.token);
-            localStorage.setItem('userData', JSON.stringify(result.user));
+            // Kayıt sonrası oturum sadece bu sekme için geçerli (beni hatırla yok)
+            sessionStorage.setItem('userToken', result.token);
+            sessionStorage.setItem('userData', JSON.stringify(result.user));
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('userRemember');
             await loadUserBlacklist();
             renderFieldsGrid();
             updateLoginUIVisibility();
