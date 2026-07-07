@@ -3856,7 +3856,8 @@ async function cancelMyReservation(id) {
     if (!confirmed) return;
     try {
         const response = await fetch(`/api/reservations/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: getAuthHeaders()
         });
         const result = await response.json();
         if (result.success) {
