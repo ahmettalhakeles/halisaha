@@ -249,6 +249,8 @@ window.onload = async function() {
     }
     
     if (isBusinessPage) {
+        await initPitchSelector();
+        await loadPitchSettingsFromDatabase();
         await loadDailyHoursList();
         // "Beni Hatırla" veya admin impersonation için localStorage, değilse inMemoryBusinessFieldKey
         const storedKey = localStorage.getItem('businessFieldKey') || inMemoryBusinessFieldKey || (localStorage.getItem('adminToken') && localStorage.getItem('adminImpersonateField') ? JSON.parse(localStorage.getItem('adminImpersonateField')).key : null);
@@ -4755,12 +4757,7 @@ function initAddFieldPanel() {
     // Phone mask for new panel
     const afPhone = document.getElementById('afPhone');
     if (afPhone && !afPhone.dataset.masked) {
-        afPhone.addEventListener('input', (e) => {
-            let v = e.target.value.replace(/\D/g, '');
-            if (!v.startsWith('05')) v = '05' + v.replace(/^0*/,'');
-            if (v.length > 11) v = v.substring(0, 11);
-            e.target.value = v;
-        });
+        applyPhoneMask(afPhone);
         afPhone.dataset.masked = 'true';
     }
 }
@@ -5198,13 +5195,28 @@ function loadAdminAnnouncements() {
         const container = document.getElementById('adminAnnouncementList');
         if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Henüz duyuru gönderilmemiş.</div>'; return; }
         container.innerHTML = data.data.map(a => `
-            <div class="admin-ann-item">
-                <div class="ann-title">${a.title}</div>
-                <div class="ann-meta">${a.created_by} · ${new Date(a.created_at).toLocaleString('tr-TR')} · Hedef: ${a.target_audience}</div>
-                <div class="ann-msg">${a.message}</div>
+            <div class="admin-ann-item" style="position:relative; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <div class="ann-title" style="font-weight:700; font-size:1.05rem; color:#fff; margin-bottom:5px;">${a.title}</div>
+                <div class="ann-meta" style="color:var(--text-muted); font-size:0.75rem; margin-bottom:8px;">${a.created_by} · ${new Date(a.created_at).toLocaleString('tr-TR')} · Hedef: ${a.target_audience}</div>
+                <div class="ann-msg" style="color:rgba(255,255,255,0.85); font-size:0.85rem; line-height:1.4;">${a.message}</div>
+                <button onclick="deleteAdminAnnouncement(${a.id})" style="position:absolute; right:15px; top:15px; background:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#ef4444; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:bold;">SİL</button>
             </div>
         `).join('');
     }).catch(() => document.getElementById('adminAnnouncementList').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
+}
+
+async function deleteAdminAnnouncement(id) {
+    const confirmed = await showConfirmModal("Bu duyuruyu silmek istediğinize emin misiniz?");
+    if (!confirmed) return;
+    fetch(`/api/admin/announcements/${id}`, { method: 'DELETE', headers: getAdminHeaders() })
+    .then(r => r.json()).then(d => {
+        if (d.success) {
+            showToast(d.message, 'info');
+            loadAdminAnnouncements();
+        } else {
+            showToast(d.message, 'error');
+        }
+    }).catch(() => showToast('Sunucu hatası!', 'error'));
 }
 
 // --- GELİR RAPORU ---

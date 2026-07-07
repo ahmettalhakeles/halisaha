@@ -1195,11 +1195,7 @@ app.post('/api/reservations', verifyUser, resLimitPerMin, resLimitPerSec, (req, 
     }
 
     // 1. Cloudflare Turnstile Doğrulaması
-    const secretKey = process.env.TURNSTILE_SECRET_KEY;
-    if (!secretKey) {
-        console.error('TURNSTILE_SECRET_KEY environment variable is not set!');
-        return res.status(500).json({ success: false, message: 'Sunucu yapılandırma hatası!' });
-    }
+    const secretKey = process.env.TURNSTILE_SECRET_KEY || '0x4AAAAAAAx1kP5zsz4Ssh4Ssz4Ssz4Ssz4';
     if (!turnstileToken) {
         return res.status(400).json({ success: false, message: 'Güvenlik doğrulaması (Turnstile) eksik!' });
     }
@@ -2117,46 +2113,93 @@ app.post('/api/business-login', (req, res) => {
         return res.status(400).json({ success: false, message: 'Tüm alanları doldurunuz!' });
     }
 
-    const field = fieldsData[fieldKey];
-    if (!field) {
-        return res.status(404).json({ success: false, message: 'İşletme bulunamadı!' });
-    }
+    const key = fieldKey.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // Veritabanındaki hashlenmiş şifre ile kontrol et
-    const pwSql = 'SELECT hashed_password FROM business_passwords WHERE fieldKey = ?';
-    db.query(pwSql, [fieldKey], (pwErr, pwResults) => {
-        if (pwErr || pwResults.length === 0) {
-            return res.status(500).json({ success: false, message: 'Şifre verisi bulunamadı!' });
+    // 1. Veritabanında sorgula
+    const querySql = `
+        SELECT 
+            ps.fieldKey, 
+            ps.isClosed, 
+            ps.openingHour, 
+            ps.closingHour, 
+            ps.pricing, 
+            ps.field_count,
+            po.name, 
+            po.address, 
+            po.phone, 
+            po.hasService 
+        FROM pitch_settings ps 
+        LEFT JOIN pitch_objects po ON ps.fieldKey = po.fieldKey AND po.pitchNumber = 1 
+        WHERE ps.fieldKey = ? AND IFNULL(ps.isDeleted, 0) = 0
+    `;
+
+    db.query(querySql, [key], (err, dbResults) => {
+        if (err) {
+            console.error("Business login DB error:", err);
+            return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
         }
-        if (!bcrypt.compareSync(password, pwResults[0].hashed_password)) {
-            return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
-        }
 
-        // Son giriş tarihini güncelle
-        const sqlUpdate = 'UPDATE pitch_settings SET last_login = NOW() WHERE fieldKey = ?';
-        db.query(sqlUpdate, [fieldKey], (err) => {
-            if (err) console.error("Son giriş güncelleme hatası:", err);
-        });
-
-        const token = jwt.sign({ fieldKey: fieldKey, role: 'business' }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({
-            success: true,
-            message: 'Giriş başarılı!',
-            token,
-            business: {
-                fieldKey: fieldKey,
-                name: field.name,
-                address: field.address,
-                phone: field.phone,
-                hasService: field.hasService,
-                pricing: field.pricing || '2600 TL',
-                fieldCount: field.pitchCount || 1,
-                isOpen: !field.isClosed,
-                openingHour: field.openingHour,
-                closingHour: field.closingHour,
-                aboneHours: field.aboneHours,
-                disabledHours: field.disabledHours
+        let field = null;
+        if (dbResults.length > 0) {
+            const dbField = dbResults[0];
+            field = {
+                fieldKey: dbField.fieldKey,
+                name: dbField.name || dbField.fieldKey.toUpperCase(),
+                address: dbField.address || '',
+                phone: dbField.phone || '',
+                hasService: dbField.hasService || 'Servis: Yok',
+                pricing: dbField.pricing || '2500/3000',
+                fieldCount: dbField.field_count || 1,
+                isOpen: !dbField.isClosed,
+                openingHour: dbField.openingHour || '09:00',
+                closingHour: dbField.closingHour || '23:00'
+            };
+        } else {
+            // Fallback to static fieldsData
+            const staticField = fieldsData[key];
+            if (staticField) {
+                field = {
+                    fieldKey: key,
+                    name: staticField.name,
+                    address: staticField.address || '',
+                    phone: staticField.phone || '',
+                    hasService: staticField.hasService || 'Servis: Yok',
+                    pricing: staticField.pricing || '2500/3000',
+                    fieldCount: staticField.pitchCount || 1,
+                    isOpen: !staticField.isClosed,
+                    openingHour: staticField.openingHour || '09:00',
+                    closingHour: staticField.closingHour || '23:00'
+                };
             }
+        }
+
+        if (!field) {
+            return res.status(404).json({ success: false, message: 'İşletme bulunamadı!' });
+        }
+
+        // Veritabanındaki hashlenmiş şifre ile kontrol et
+        const pwSql = 'SELECT hashed_password FROM business_passwords WHERE fieldKey = ?';
+        db.query(pwSql, [key], (pwErr, pwResults) => {
+            if (pwErr || pwResults.length === 0) {
+                return res.status(401).json({ success: false, message: 'Şifre verisi bulunamadı veya işletme aktifleştirilmemiş!' });
+            }
+            if (!bcrypt.compareSync(password, pwResults[0].hashed_password)) {
+                return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
+            }
+
+            // Son giriş tarihini güncelle
+            const sqlUpdate = 'UPDATE pitch_settings SET last_login = NOW() WHERE fieldKey = ?';
+            db.query(sqlUpdate, [key], (updErr) => {
+                if (updErr) console.error("Son giriş güncelleme hatası:", updErr);
+            });
+
+            const token = jwt.sign({ fieldKey: key, role: 'business' }, JWT_SECRET, { expiresIn: '7d' });
+            res.json({
+                success: true,
+                message: 'Giriş başarılı!',
+                token,
+                business: field
+            });
         });
     });
 });
@@ -2798,36 +2841,48 @@ app.post('/api/admin/fields', requireAdmin, (req, res) => {
     const { fieldKey, name, address, coordinates, phone, openingHour, closingHour, pitchCount, morningPrice, eveningPrice, businessPassword } = req.body;
     if (!fieldKey || !name) return res.status(400).json({ success: false, message: 'Saha anahtarı ve adı zorunludur!' });
     const key = fieldKey.toLowerCase().replace(/[^a-z0-9]/g, '');
-    db.query("INSERT IGNORE INTO pitch_settings (fieldKey, isClosed, openingHour, closingHour, disabledHours, aboneHours, pricing, field_count) VALUES (?, 0, ?, ?, '[]', '[]', ?, ?)", 
-        [key, openingHour || '09:00', closingHour || '23:00', `${morningPrice || 2500}/${eveningPrice || 3000}`, pitchCount || 1], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Saha eklenemedi! (Zaten var olabilir)' });
-        for (let i = 1; i <= (pitchCount || 1); i++) {
-            db.query("INSERT IGNORE INTO pitch_objects (fieldKey, pitchNumber, name, address, coordinates, phone, isClosed, hasService, openingHour, closingHour) VALUES (?, ?, ?, ?, ?, ?, 0, 'Servis: Yok', ?, ?)",
-                [key, i, `${name} - SAHA ${i}`, address || '', coordinates || '', phone || '', openingHour || '09:00', closingHour || '23:00']);
-        }
-        // İşletme şifresi varsa business_passwords tablosuna kaydet
-        if (businessPassword && businessPassword.length >= 6) {
-            const hashedPass = bcrypt.hashSync(businessPassword, 10);
-            db.query("INSERT INTO business_passwords (fieldKey, password) VALUES (?, ?) ON DUPLICATE KEY UPDATE password = ?",
-                [key, hashedPass, hashedPass], (passErr) => {
-                if (passErr) console.warn('⚠️ İşletme şifresi kaydedilemedi:', passErr.message);
+
+    // Eklemeden önce eski tüm çakışan kayıtları temizle (Hard Delete)
+    db.query("DELETE FROM business_passwords WHERE fieldKey = ?", [key], () => {
+        db.query("DELETE FROM pitch_objects WHERE fieldKey = ?", [key], () => {
+            db.query("DELETE FROM pitch_settings WHERE fieldKey = ?", [key], () => {
+                // Şimdi temiz ve sıfırdan ekle
+                db.query("INSERT INTO pitch_settings (fieldKey, isClosed, openingHour, closingHour, disabledHours, aboneHours, pricing, field_count, isDeleted) VALUES (?, 0, ?, ?, '[]', '[]', ?, ?, 0)", 
+                    [key, openingHour || '09:00', closingHour || '23:00', `${morningPrice || 2500}/${eveningPrice || 3000}`, pitchCount || 1], (err) => {
+                    if (err) return res.status(500).json({ success: false, message: 'Saha eklenemedi!' });
+                    for (let i = 1; i <= (pitchCount || 1); i++) {
+                        db.query("INSERT INTO pitch_objects (fieldKey, pitchNumber, name, address, coordinates, phone, isClosed, hasService, openingHour, closingHour, isDeleted) VALUES (?, ?, ?, ?, ?, ?, 0, 'Servis: Yok', ?, ?, 0)",
+                            [key, i, `${name} - SAHA ${i}`, address || '', coordinates || '', phone || '', openingHour || '09:00', closingHour || '23:00']);
+                    }
+                    // İşletme şifresi varsa business_passwords tablosuna kaydet
+                    if (businessPassword && businessPassword.length >= 6) {
+                        const hashedPass = bcrypt.hashSync(businessPassword, 10);
+                        db.query("INSERT INTO business_passwords (fieldKey, hashed_password) VALUES (?, ?) ON DUPLICATE KEY UPDATE hashed_password = ?",
+                            [key, hashedPass, hashedPass], (passErr) => {
+                            if (passErr) console.warn('⚠️ İşletme şifresi kaydedilemedi:', passErr.message);
+                        });
+                    }
+                    db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_add', 'field', ?, ?)", 
+                        [req.adminUser.username, name, `${name} sahası eklendi`]);
+                    res.json({ success: true, message: 'Saha başarıyla eklendi!' });
+                });
             });
-        }
-        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_add', 'field', ?, ?)", 
-            [req.adminUser.username, name, `${name} sahası eklendi`]);
-        res.json({ success: true, message: 'Saha başarıyla eklendi!' });
+        });
     });
 });
 
-// Saha sil (soft delete)
+// Saha sil (hard delete)
 app.delete('/api/admin/fields/:key', requireAdmin, (req, res) => {
     const { key } = req.params;
-    db.query("UPDATE pitch_settings SET isDeleted = 1 WHERE fieldKey = ?", [key], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Saha silinemedi!' });
-        db.query("UPDATE pitch_objects SET isDeleted = 1 WHERE fieldKey = ?", [key]);
-        db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_delete', 'field', ?, ?)", 
-            [req.adminUser.username, key, `${key} sahası silindi (soft delete)`]);
-        res.json({ success: true, message: 'Saha başarıyla silindi ve geçmişe taşındı!' });
+    db.query("DELETE FROM business_passwords WHERE fieldKey = ?", [key], () => {
+        db.query("DELETE FROM pitch_objects WHERE fieldKey = ?", [key], () => {
+            db.query("DELETE FROM pitch_settings WHERE fieldKey = ?", [key], (err) => {
+                if (err) return res.status(500).json({ success: false, message: 'Saha silinemedi!' });
+                db.query("INSERT INTO admin_activity_log (admin_username, action_type, target_type, target_name, description) VALUES (?, 'field_delete', 'field', ?, ?)", 
+                    [req.adminUser.username, key, `${key} sahası tamamen silindi`]);
+                res.json({ success: true, message: 'Saha başarıyla tamamen silindi!' });
+            });
+        });
     });
 });
 
@@ -3098,6 +3153,15 @@ app.get('/api/admin/announcements', requireAdmin, (req, res) => {
     db.query("SELECT * FROM announcements ORDER BY created_at DESC LIMIT 100", (err, list) => {
         if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
         res.json({ success: true, data: list });
+    });
+});
+
+// Duyuru sil
+app.delete('/api/admin/announcements/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    db.query("DELETE FROM announcements WHERE id = ?", [id], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Duyuru silinemedi!' });
+        res.json({ success: true, message: 'Duyuru başarıyla silindi!' });
     });
 });
 

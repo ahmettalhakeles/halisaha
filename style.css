@@ -2256,14 +2256,14 @@ main.business-mode {
 }
 
 .user-profile-card {
-    max-width: 900px !important;
+    max-width: 1050px !important;
     width: 95% !important;
     padding: 30px !important;
 }
 
 .profile-layout-container {
     display: grid;
-    grid-template-columns: 1fr 1.2fr;
+    grid-template-columns: 1.3fr 1fr;
     gap: 30px;
     margin-top: 15px;
 }
