@@ -1140,6 +1140,14 @@ app.get('/api/pitch-list', (req, res) => {
 
 // YENİ REZERVASYON EKLEME
 // HELPER: Türkçeleştirilmiş tarih metnini Date objesine çevirme
+// HELPER: Türkiye saat diliminde şu anki zamanı döndürür (UTC+3)
+function getNowTR() {
+    const now = new Date();
+    // UTC ms + 3 saat offset
+    const trMs = now.getTime() + (3 * 60 * 60 * 1000);
+    return new Date(trMs);
+}
+
 function parseTurkishDateString(dateStr) {
     if (!dateStr) return null;
     const months = {
@@ -1154,14 +1162,15 @@ function parseTurkishDateString(dateStr) {
     const month = months[monthStr];
     if (month === undefined) return null;
     
-    const today = new Date();
-    let year = today.getFullYear();
-    if (month < today.getMonth() - 2) {
+    const todayTR = getNowTR();
+    let year = todayTR.getUTCFullYear();
+    if (month < todayTR.getUTCMonth() - 2) {
         year += 1;
-    } else if (month > today.getMonth() + 10) {
+    } else if (month > todayTR.getUTCMonth() + 10) {
         year -= 1;
     }
-    return new Date(year, month, day);
+    // UTC olarak oluştur - tüm karşılaştırmalar UTC üzerinden yapılacak
+    return new Date(Date.UTC(year, month, day));
 }
 
 // HELPER: Play date crossover helper
@@ -1171,7 +1180,7 @@ function getActualPlayDate(dateText, hourText) {
     const hourPart = hourText.split(' - ')[0];
     const [h, m] = hourPart.split(':').map(Number);
     if (h < 6) {
-        d.setDate(d.getDate() + 1);
+        d.setUTCDate(d.getUTCDate() + 1);
     }
     return d;
 }
@@ -1179,7 +1188,7 @@ function getActualPlayDate(dateText, hourText) {
 // HELPER: Tarihin Türkçe gün adını getirme
 function getTurkishDayName(date) {
     const days = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
-    return days[date.getDay()];
+    return days[date.getUTCDay()];
 }
 
 // YENİ REZERVASYON EKLEME (GÜVENLİK, LİMİT VE BAN KONTROLLERİ DAHİL)
@@ -1267,13 +1276,13 @@ app.post('/api/reservations', verifyUser, resLimitPerMin, resLimitPerSec, (req, 
                             conn.query("SELECT dateText, hourText FROM reservations WHERE user_id = ? AND status != 'cancelled'", [user_id], (errResActive, activeUserResList) => {
                                 if (errResActive) return rollbackAndRelease(500, 'Limit kontrol hatası!');
 
-                                const now = new Date();
+                                const now = getNowTR();
                                 const activeFutureCount = activeUserResList.filter(r => {
                                     const playDate = getActualPlayDate(r.dateText, r.hourText);
                                     if (!playDate) return false;
                                     const hourPart = r.hourText.split(' - ')[1] || '23:59';
                                     const [h, m] = hourPart.split(':').map(Number);
-                                    playDate.setHours(h, m, 0, 0);
+                                    playDate.setUTCHours(h, m, 0, 0);
                                     return playDate.getTime() >= now.getTime();
                                 }).length;
 
@@ -1286,7 +1295,11 @@ app.post('/api/reservations', verifyUser, resLimitPerMin, resLimitPerSec, (req, 
                                 if (resDate) {
                                     const hourPart = hourText.split(' - ')[0];
                                     const [h, m] = hourPart.split(':').map(Number);
-                                    resDate.setHours(h, m, 0, 0);
+                                    // Gece saatleri (00:00-05:59) aslında ertesi güne ait
+                                    if (h < 6) {
+                                        resDate.setUTCDate(resDate.getUTCDate() + 1);
+                                    }
+                                    resDate.setUTCHours(h, m, 0, 0);
                                     if (resDate.getTime() + 60 * 60 * 1000 < now.getTime()) {
                                         return rollbackAndRelease(400, 'Geçmiş bir tarihe rezervasyon yapılamaz!');
                                     }
