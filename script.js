@@ -729,7 +729,7 @@ async function saveBusinessFieldCount() {
 }
 
 function loadPricingForSelectedPitch() {
-    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
+    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
     let pitchNum = 1;
     const pricingInputsZone = document.getElementById('pricingInputsZone');
     if (count === 2) {
@@ -746,7 +746,7 @@ function loadPricingForSelectedPitch() {
 }
 
 async function savePricingSchedule() {
-    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
+    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) {
         pitchNum = parseInt(document.getElementById('pricingPitchSelect').value);
@@ -776,6 +776,7 @@ async function savePricingSchedule() {
             if (existingPitch) { existingPitch.morningPrice = morningPrice; existingPitch.eveningPrice = eveningPrice; }
             else { pitchObjectsList.push({ fieldKey: currentBusinessFieldKey, pitchNumber: pitchNum, morningPrice, eveningPrice }); }
 
+            if (!fieldsData[currentBusinessFieldKey]) fieldsData[currentBusinessFieldKey] = {};
             const field = fieldsData[currentBusinessFieldKey];
             field.pricing = `${morningPrice}/${eveningPrice}`;
             if (pitchNum === 1) {
@@ -797,7 +798,7 @@ async function savePricingSchedule() {
 }
 
 async function loadHoursForSelectedPitch() {
-    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
+    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
     let pitchNum = 1;
     const hoursInputsZone = document.getElementById('hoursInputsZone');
     if (count === 2) {
@@ -870,7 +871,7 @@ function getSelectedAdminDayName() {
 }
 
 async function toggleWeekdayClosure() {
-    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
+    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) { 
         pitchNum = parseInt(document.getElementById('hoursPitchSelect').value); 
@@ -929,7 +930,7 @@ async function toggleWeekdayClosure() {
 
 function onAdminHoursDayChange() {
     const dayVal = document.getElementById('adminHoursDaySelect').value;
-    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
+    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) {
         pitchNum = parseInt(document.getElementById('hoursPitchSelect').value);
@@ -1059,7 +1060,7 @@ function renderAdminHoursGrid(pitch) {
 }
 
 async function saveOperatingHours() {
-    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
+    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) { pitchNum = parseInt(document.getElementById('hoursPitchSelect').value); if (!pitchNum) { alert("Lütfen saha seçin!"); return; } }
     const openHour = document.getElementById('adminOpeningHour').value;
@@ -1116,7 +1117,7 @@ async function saveOperatingHours() {
 }
 
 async function toggleFieldClosure() {
-    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
+    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) { pitchNum = parseInt(document.getElementById('hoursPitchSelect').value); if (!pitchNum) { alert("Lütfen saha seçin!"); return; } }
     const isClosed = document.getElementById('fieldClosureToggle').checked ? 1 : 0;
@@ -1139,7 +1140,7 @@ async function toggleFieldClosure() {
 // SAAT ENGEL İŞLEM KAYDEDİCİ (ABONE SEÇENEĞİ KALDIRILDI)
 async function saveHourAction() {
     const action = document.getElementById('hourActionSelect').value;
-    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
+    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) { pitchNum = parseInt(document.getElementById('hoursPitchSelect').value); if (!pitchNum) { alert("Lütfen saha seçin!"); return; } }
 
@@ -1217,7 +1218,7 @@ function renderBusinessReservations() {
         else activeList.push(res);
     });
 
-    const pitchCount = fieldsData[currentBusinessFieldKey].pitchCount || 1;
+    const pitchCount = (fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1;
 
     if (activeList.length === 0) {
         activeContainer.innerHTML = '<p style="color: var(--text-muted); padding: 12px; text-align:center; font-size:0.85rem;">Aktif rezervasyon bulunmamaktadır.</p>';
@@ -3751,17 +3752,18 @@ async function saveAllBusinessSettings() {
     
     try {
         // 1. Saha Sayısını Kaydet
+        if (!fieldsData[currentBusinessFieldKey]) fieldsData[currentBusinessFieldKey] = {};
         const field = fieldsData[currentBusinessFieldKey];
         const resSettings = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
             body: JSON.stringify({
                 isClosed: field.isClosed ? 1 : 0,
-                openingHour: field.openingHour,
-                closingHour: field.closingHour,
-                disabledHours: JSON.stringify(field.disabledHours),
-                aboneHours: JSON.stringify(field.aboneHours),
-                pricing: field.pricing,
+                openingHour: field.openingHour || '09:00',
+                closingHour: field.closingHour || '23:00',
+                disabledHours: JSON.stringify(field.disabledHours || []),
+                aboneHours: JSON.stringify(field.aboneHours || []),
+                pricing: field.pricing || '2500/3000',
                 field_count: count
             })
         });
@@ -3782,6 +3784,7 @@ async function saveAllBusinessSettings() {
         
         if (result.success) {
             // Lokal fieldsData güncelle
+            if (!fieldsData[currentBusinessFieldKey]) fieldsData[currentBusinessFieldKey] = {};
             fieldsData[currentBusinessFieldKey].pitchCount = count;
             fieldsData[currentBusinessFieldKey].phone = phone;
             fieldsData[currentBusinessFieldKey].hasService = hasService;

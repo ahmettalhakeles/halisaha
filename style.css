@@ -3967,6 +3967,8 @@ body.business-mode .header-actions #userAuthSection {
 
 @media (max-width: 768px) {
     /* Mobilde klonlanmış işletme menüsünün gösterilmesini garanti et */
+    #businessMobileMenuClone {
+        display: block !important;
     }
 }
 
