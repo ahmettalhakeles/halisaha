@@ -1695,7 +1695,7 @@ async function initPitchSelector() {
                 if (pitch.pitchNumber === 1) {
                     if (!fieldsData[pitch.fieldKey]) {
                         fieldsData[pitch.fieldKey] = {
-                            name: pitch.name || pitch.fieldKey.toUpperCase(),
+                            name: pitch.name ? pitch.name.replace(/\s*-\s*SAHA\s*1/i, '') : pitch.fieldKey.toUpperCase(),
                             address: pitch.address || '',
                             coordinates: pitch.coordinates || '',
                             phone: pitch.phone || '',
@@ -1713,6 +1713,7 @@ async function initPitchSelector() {
                             market: pitch.market || 'Market Yok'
                         };
                     } else {
+                        fieldsData[pitch.fieldKey].name = pitch.name ? pitch.name.replace(/\s*-\s*SAHA\s*1/i, '') : pitch.fieldKey.toUpperCase();
                         fieldsData[pitch.fieldKey].phone = pitch.phone;
                         fieldsData[pitch.fieldKey].hasService = pitch.hasService;
                         if (pitch.coordinates) {
@@ -1735,9 +1736,12 @@ async function loadPitchSettingsFromDatabase() {
         const result = await response.json();
         if (result.success) {
             result.data.forEach(setting => {
+                const pitch1 = pitchObjectsList.find(p => p.fieldKey === setting.fieldKey && p.pitchNumber === 1);
+                const displayName = pitch1 && pitch1.name ? pitch1.name.replace(/\s*-\s*SAHA\s*1/i, '') : setting.fieldKey.toUpperCase();
+
                 if (!fieldsData[setting.fieldKey]) {
                     fieldsData[setting.fieldKey] = {
-                        name: setting.fieldKey.toUpperCase(),
+                        name: displayName,
                         address: '',
                         coordinates: '',
                         phone: '',
@@ -1755,6 +1759,7 @@ async function loadPitchSettingsFromDatabase() {
                         market: 'Market Yok'
                     };
                 } else {
+                    fieldsData[setting.fieldKey].name = displayName;
                     fieldsData[setting.fieldKey].isClosed = setting.isClosed === 1;
                     fieldsData[setting.fieldKey].openingHour = setting.openingHour;
                     fieldsData[setting.fieldKey].closingHour = setting.closingHour;
