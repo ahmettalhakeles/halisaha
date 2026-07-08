@@ -200,6 +200,10 @@
             </button>
             <div id="businessMenuTabsContainer" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 15px;">
                 <div id="businessActiveNameBadge" style="padding: 8px 12px; text-align: center; color: var(--neon-green); font-weight: bold; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 10px; word-break: break-all;"></div>
+                <button class="nav-btn" onclick="switchBusinessTab('kontrol'); closeMobileMenu();" id="sidebar-btn-kontrol">
+                    <svg style="display:inline-block;vertical-align:middle;margin-right:7px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    KONTROL
+                </button>
                 <button class="nav-btn" onclick="switchBusinessTab('stats'); closeMobileMenu();">İSTATİSTİKLER</button>
                 <button class="nav-btn" onclick="switchBusinessTab('reservations'); closeMobileMenu();">REZERVASYONLAR</button>
                 <button class="nav-btn" onclick="switchBusinessTab('debts'); closeMobileMenu();">BORÇLAR</button>
@@ -243,6 +247,7 @@
 
             <!-- İŞLETME SEKME MENÜSÜ -->
             <div class="business-tabs">
+                <button class="tab-btn" id="tab-btn-kontrol" onclick="switchBusinessTab('kontrol')">KONTROL</button>
                 <button class="tab-btn active" id="tab-btn-stats" onclick="switchBusinessTab('stats')">İSTATİSTİKLER</button>
                 <button class="tab-btn" id="tab-btn-reservations" onclick="switchBusinessTab('reservations')">REZERVASYONLAR</button>
                 <button class="tab-btn" id="tab-btn-debts" onclick="switchBusinessTab('debts')">BORÇLAR</button>
@@ -252,6 +257,111 @@
                 <button class="tab-btn" id="tab-btn-hours" onclick="switchBusinessTab('hours')">SAAT & ENGEL AYARLARI</button>
                 <button class="tab-btn" id="tab-btn-subscriptions" onclick="switchBusinessTab('subscriptions')">ABONELİK YÖNETİMİ</button>
                 <button class="tab-btn" id="tab-btn-settings" onclick="switchBusinessTab('settings')">İŞLETME AYARLARI</button>
+            </div>
+
+            <!-- TAB: KONTROL - Haftalık Doluluk Çizelgesi -->
+            <div id="tab-kontrol" class="tab-content-zone" style="display:none;">
+                <div class="kontrol-panel-wrapper">
+                    <!-- Başlık -->
+                    <div class="kontrol-panel-header">
+                        <div class="kontrol-title-row">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                            <h2 class="kontrol-main-title">Canlı Haftalık Doluluk Kontrolü</h2>
+                            <span class="kontrol-live-badge">
+                                <span class="kontrol-live-dot"></span> CANLI
+                            </span>
+                        </div>
+                        <div class="kontrol-header-actions">
+                            <div class="kontrol-pitch-filter" id="kontrolPitchFilter" style="display:none;">
+                                <label>SAHA:</label>
+                                <select id="kontrolPitchSelect" class="form-control" onchange="loadWeeklySchedule()" style="max-width:130px;padding:5px 10px;font-size:0.8rem;">
+                                    <option value="">Tümü</option>
+                                    <option value="1">Saha 1</option>
+                                    <option value="2">Saha 2</option>
+                                </select>
+                            </div>
+                            <button class="kontrol-refresh-btn" onclick="loadWeeklySchedule()" title="Yenile">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                Yenile
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hafta Navigasyon Barı -->
+                    <div class="kontrol-week-nav">
+                        <button class="kontrol-week-btn" id="kontrol-prev-week" onclick="changeKontrolWeek(-1)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                            Önceki Hafta
+                        </button>
+                        <div class="kontrol-week-info">
+                            <span class="kontrol-week-label" id="kontrolWeekLabel">Bu Hafta</span>
+                            <span class="kontrol-week-dates" id="kontrolWeekDates"></span>
+                        </div>
+                        <button class="kontrol-week-btn" id="kontrol-next-week" onclick="changeKontrolWeek(1)">
+                            Sonraki Hafta
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Yükleniyor Göstergesi -->
+                    <div id="kontrolLoadingState" class="kontrol-loading" style="display:none;">
+                        <div class="kontrol-spinner"></div>
+                        <span>Çizelge yükleniyor...</span>
+                    </div>
+
+                    <!-- Bağlantı Hatası -->
+                    <div id="kontrolErrorState" class="kontrol-error-box" style="display:none;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <div>
+                            <strong id="kontrolErrorTitle">Bağlantı Hatası</strong>
+                            <p id="kontrolErrorMsg" style="font-size:0.82rem;margin:4px 0 0;color:var(--text-muted);">Sunucuya ulaşılamıyor. Lütfen tekrar deneyin.</p>
+                        </div>
+                        <button class="kontrol-refresh-btn" onclick="loadWeeklySchedule()">Tekrar Dene</button>
+                    </div>
+
+                    <!-- Masaüstü: Haftalık Grid Tablosu -->
+                    <div id="kontrolDesktopGrid" class="kontrol-desktop-grid">
+                        <div class="kontrol-grid-scroll-wrap">
+                            <table class="kontrol-table" id="kontrolScheduleTable">
+                                <thead>
+                                    <tr id="kontrolTableHead">
+                                        <th class="kontrol-th-time">SAAT</th>
+                                        <!-- Günler JS tarafından doldurulacak -->
+                                    </tr>
+                                </thead>
+                                <tbody id="kontrolTableBody">
+                                    <!-- Satırlar JS tarafından doldurulacak -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Mobil: Gün Seçici + Dikey Liste -->
+                    <div id="kontrolMobileView" class="kontrol-mobile-view" style="display:none;">
+                        <div class="kontrol-mobile-day-selector" id="kontrolMobileDaySelector">
+                            <!-- Günler JS tarafından doldurulacak -->
+                        </div>
+                        <div class="kontrol-mobile-hours-list" id="kontrolMobileHoursList">
+                            <!-- Saatler JS tarafından doldurulacak -->
+                        </div>
+                    </div>
+
+                    <!-- Özet Bilgi Barı -->
+                    <div class="kontrol-summary-bar" id="kontrolSummaryBar" style="display:none;">
+                        <div class="kontrol-summary-item kontrol-summary-dolu">
+                            <span class="kontrol-summary-dot dolu"></span>
+                            <span>Dolu: <strong id="kontrolSumDolu">0</strong></span>
+                        </div>
+                        <div class="kontrol-summary-item kontrol-summary-bos">
+                            <span class="kontrol-summary-dot bos"></span>
+                            <span>Boş: <strong id="kontrolSumBos">0</strong></span>
+                        </div>
+                        <div class="kontrol-summary-item kontrol-summary-kapali">
+                            <span class="kontrol-summary-dot kapali"></span>
+                            <span>Kapalı: <strong id="kontrolSumKapali">0</strong></span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- TAB 1: İSTATİSTİKLER -->

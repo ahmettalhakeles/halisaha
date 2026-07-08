@@ -4126,4 +4126,668 @@ body.admin-impersonating #sunsetWidget {
     margin-bottom: 10px;
     padding: 8px 0;
     border-bottom: 1px solid rgba(255,255,255,0.06);
-}
+}
+
+/* =======================================================
+   KONTROL PANELİ - Haftalık Doluluk Çizelgesi Stilleri
+   ======================================================= */
+
+.kontrol-panel-wrapper {
+    padding: 4px 0 20px;
+}
+
+/* Panel Başlığı */
+.kontrol-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    background: rgba(16, 185, 129, 0.04);
+    border: 1px solid rgba(16, 185, 129, 0.12);
+    border-radius: 12px;
+}
+
+.kontrol-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.kontrol-main-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+
+.kontrol-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #34d399;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.08em;
+}
+
+.kontrol-live-dot {
+    width: 7px;
+    height: 7px;
+    background: #34d399;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #34d399;
+    animation: kontrol-pulse 1.5s infinite;
+}
+
+@keyframes kontrol-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.kontrol-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.kontrol-pitch-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.kontrol-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Montserrat', sans-serif;
+}
+.kontrol-refresh-btn:hover {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #34d399;
+}
+
+/* Hafta Navigasyonu */
+.kontrol-week-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    padding: 10px 16px;
+}
+
+.kontrol-week-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Montserrat', sans-serif;
+}
+.kontrol-week-btn:hover {
+    background: rgba(16, 185, 129, 0.18);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+}
+
+.kontrol-week-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+}
+
+.kontrol-week-label {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.kontrol-week-dates {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* Yükleniyor */
+.kontrol-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.kontrol-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(16, 185, 129, 0.2);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: kontrol-spin 0.8s linear infinite;
+}
+
+@keyframes kontrol-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Hata Kutusu */
+.kontrol-error-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+/* ============ MASAÜSTÜ TABLO ============ */
+.kontrol-desktop-grid {
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.kontrol-grid-scroll-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.kontrol-table {
+    width: 100%;
+    min-width: 700px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* Başlık hücreleri */
+.kontrol-th-time {
+    background: rgba(16, 185, 129, 0.08);
+    color: #34d399;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 10px 8px;
+    text-align: center;
+    width: 64px;
+    min-width: 56px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    letter-spacing: 0.06em;
+}
+
+.kontrol-th-day {
+    background: rgba(21, 31, 50, 0.8);
+    color: rgba(255,255,255,0.7);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 8px 4px;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    min-width: 90px;
+}
+
+.kontrol-th-day.kontrol-today-col {
+    background: rgba(16, 185, 129, 0.06);
+    border-top: 2px solid rgba(16, 185, 129, 0.4);
+}
+
+.kontrol-day-name {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #e2e8f0;
+    margin-bottom: 2px;
+}
+
+.kontrol-day-date {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.kontrol-today-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399 !important;
+    font-weight: 800;
+}
+
+/* Saat sütunu */
+.kontrol-td-time {
+    background: rgba(11, 15, 25, 0.6);
+    color: rgba(255,255,255,0.45);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0 6px;
+    text-align: center;
+    height: 52px;
+    width: 64px;
+    min-width: 56px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    letter-spacing: 0.04em;
+}
+
+/* Genel hücre */
+.kontrol-cell {
+    height: 52px;
+    min-width: 90px;
+    text-align: center;
+    vertical-align: middle;
+    border-right: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    padding: 4px;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.kontrol-tr:hover .kontrol-td-time {
+    color: #fff;
+}
+
+/* BOŞ hücre */
+.kontrol-cell-bos {
+    background: rgba(16, 185, 129, 0.04);
+}
+.kontrol-cell-bos:hover {
+    background: rgba(16, 185, 129, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.4),
+                0 0 12px rgba(16, 185, 129, 0.15);
+    transform: scale(1.01);
+    z-index: 1;
+}
+.kontrol-cell-bos .kontrol-cell-label {
+    color: rgba(52, 211, 153, 0.7);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+.kontrol-cell-bos:hover .kontrol-cell-label {
+    color: #34d399;
+}
+
+/* DOLU hücre */
+.kontrol-cell-dolu {
+    background: rgba(239, 68, 68, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.15);
+}
+.kontrol-cell-dolu:hover {
+    background: rgba(239, 68, 68, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.4),
+                0 0 14px rgba(239, 68, 68, 0.15);
+    z-index: 1;
+}
+
+/* ABONELİK hücre */
+.kontrol-cell-abone {
+    background: rgba(139, 92, 246, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.2);
+}
+.kontrol-cell-abone:hover {
+    background: rgba(139, 92, 246, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.5),
+                0 0 14px rgba(139, 92, 246, 0.2);
+    z-index: 1;
+}
+
+/* KAPALI hücre */
+.kontrol-cell-kapali {
+    background: rgba(255, 255, 255, 0.015);
+    opacity: 0.55;
+}
+.kontrol-cell-kapali .kontrol-cell-label {
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 0.06em;
+}
+
+/* Hücre içerik */
+.kontrol-cell-name {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 86px;
+    margin: 0 auto;
+}
+
+.kontrol-cell-status {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.55);
+    margin-top: 2px;
+}
+.kontrol-cell-dolu .kontrol-cell-status { color: #fca5a5; }
+.kontrol-cell-abone .kontrol-cell-status { color: #c4b5fd; }
+
+/* ============ MOBİL GÖRÜNÜM ============ */
+.kontrol-mobile-view {
+    display: none;
+}
+
+/* Gün seçici yatay scroll */
+.kontrol-mobile-day-selector {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.kontrol-mobile-day-selector::-webkit-scrollbar { display: none; }
+
+.kontrol-mobile-day-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 52px;
+    padding: 8px 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    flex-shrink: 0;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.kontrol-mobile-day-btn.active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+.kontrol-mobile-day-btn.today {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.kontrol-mobile-day-short {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.kontrol-mobile-day-date {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+/* Mobil saatler listesi */
+.kontrol-mobile-hours-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.kontrol-mobile-hour-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    transition: all 0.18s ease;
+    min-height: 52px;
+}
+
+.kontrol-mobile-hour-item.bos {
+    border-color: rgba(16, 185, 129, 0.15);
+    background: rgba(16, 185, 129, 0.04);
+}
+.kontrol-mobile-hour-item.bos:hover {
+    background: rgba(16, 185, 129, 0.10);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+}
+
+.kontrol-mobile-hour-item.dolu {
+    border-color: rgba(239, 68, 68, 0.2);
+    background: rgba(239, 68, 68, 0.06);
+}
+
+.kontrol-mobile-hour-item.abone {
+    border-color: rgba(139, 92, 246, 0.25);
+    background: rgba(139, 92, 246, 0.06);
+}
+
+.kontrol-mobile-hour-item.kapali {
+    opacity: 0.45;
+}
+
+.kontrol-mobile-slot {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #fff;
+    min-width: 48px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.kontrol-mobile-res-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.kontrol-mobile-res-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kontrol-mobile-res-phone {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.kontrol-mobile-res-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.kontrol-mobile-pay-status {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+/* Durum Rozetleri */
+.kontrol-mobile-status-badge {
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.06em;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.kontrol-mobile-status-badge.bos {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.kontrol-mobile-status-badge.dolu {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.kontrol-mobile-status-badge.abone {
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.kontrol-mobile-status-badge.kapali {
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.3);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Hızlı rezervasyon butonu (mobil) */
+.kontrol-mobile-quick-btn {
+    margin-left: auto;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #34d399;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 5px 11px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-family: 'Montserrat', sans-serif;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.kontrol-mobile-quick-btn:hover {
+    background: rgba(16, 185, 129, 0.22);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
+/* ============ ÖZET BAR ============ */
+.kontrol-summary-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+}
+
+.kontrol-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.7);
+    font-family: 'Montserrat', sans-serif;
+}
+
+.kontrol-summary-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.kontrol-summary-dot.dolu {
+    background: #ef4444;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+}
+
+.kontrol-summary-dot.bos {
+    background: #10b981;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.kontrol-summary-dot.kapali {
+    background: rgba(255,255,255,0.2);
+}
+
+.kontrol-summary-item strong {
+    color: #fff;
+    font-weight: 800;
+}
+
+/* Responsive - Kontrol paneli mobil medya sorguları */
+@media (max-width: 767px) {
+    .kontrol-panel-header {
+        padding: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .kontrol-main-title {
+        font-size: 1rem;
+    }
+    .kontrol-week-nav {
+        padding: 8px 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+    .kontrol-week-btn {
+        padding: 7px 12px;
+        font-size: 0.75rem;
+    }
+    .kontrol-week-label {
+        font-size: 0.82rem;
+    }
+    .kontrol-week-dates {
+        font-size: 0.68rem;
+    }
+    .kontrol-desktop-grid {
+        display: none !important;
+    }
+    .kontrol-mobile-view {
+        display: block !important;
+    }
+    .kontrol-summary-bar {
+        gap: 12px;
+        justify-content: center;
+    }
+}
+

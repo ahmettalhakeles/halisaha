@@ -463,9 +463,11 @@ function switchBusinessTab(tabName) {
     document.querySelectorAll('.tab-content-zone').forEach(zone => {
         zone.style.display = 'none';
     });
-    document.getElementById(`tab-${tabName}`).style.display = 'block';
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    if (targetTab) targetTab.style.display = 'block';
     
     const tabMap = {
+        'kontrol': 'kontrol',
         'stats': 'istatistikler',
         'reservations': 'rezervasyonlar',
         'debts': 'borçlar',
@@ -483,7 +485,9 @@ function switchBusinessTab(tabName) {
         btn.classList.toggle('active', btnText.includes(expected));
     });
 
-    if (tabName === 'debts') {
+    if (tabName === 'kontrol') {
+        loadWeeklySchedule();
+    } else if (tabName === 'debts') {
         loadBusinessDebts('all');
     } else if (tabName === 'comments') {
         loadBusinessComments();
@@ -533,9 +537,426 @@ function showBusinessUI() {
     loadBusinessDashboard();
 }
 
+// =======================================================
+// KONTROL PANELİ - Haftalık Doluluk Çizelgesi
+// =======================================================
+
+// State
+let kontrolWeekOffset = 0; // 0 = bu hafta, -1 = önceki, +1 = sonraki
+let kontrolScheduleData = null;
+let kontrolSelectedMobileDay = 0; // Mobilde seçili gün index'i (0=Pzt)
+
+const KONTROL_GUNLER = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const KONTROL_GUN_FULL = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+
+// Haftanın Pazartesi ve Pazar tarihlerini döndür (weekOffset'e göre)
+function getKontrolWeekRange(offset) {
+    const now = new Date();
+    const day = now.getDay(); // 0=Pazar, 1=Pzt...
+    const diffToPzt = (day === 0) ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToPzt + offset * 7);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { monday, sunday };
+}
+
+function formatDateYMD(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function formatDateDM(date) {
+    return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function changeKontrolWeek(dir) {
+    kontrolWeekOffset += dir;
+    loadWeeklySchedule();
+}
+
+// Saat dilimlerini listele (openingHour'dan closingHour'a kadar)
+function getKontrolHourSlots(opening, closing) {
+    const slots = [];
+    let h = parseInt(opening.split(':')[0]);
+    const closeH = parseInt(closing.split(':')[0]);
+    const maxIter = 24;
+    let iter = 0;
+    while (iter < maxIter) {
+        slots.push(`${String(h % 24).padStart(2, '0')}:00`);
+        if (h % 24 === closeH) break;
+        h++;
+        iter++;
+    }
+    return slots;
+}
+
+// Türkiye tarih formatına çevir (DD.MM.YYYY)
+function normalizeDateText(dateStr) {
+    if (!dateStr) return '';
+    // Zaten DD.MM.YYYY formatındaysa direkt döndür
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateStr)) return dateStr;
+    // YYYY-MM-DD formatını DD.MM.YYYY'e çevir
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [y, m, d] = dateStr.split('-');
+        return `${d}.${m}.${y}`;
+    }
+    return dateStr;
+}
+
+async function loadWeeklySchedule() {
+    if (!currentBusinessFieldKey) return;
+
+    const loadingEl = document.getElementById('kontrolLoadingState');
+    const errorEl = document.getElementById('kontrolErrorState');
+    const desktopGrid = document.getElementById('kontrolDesktopGrid');
+    const mobileView = document.getElementById('kontrolMobileView');
+    const summaryBar = document.getElementById('kontrolSummaryBar');
+
+    // Göster/gizle
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (errorEl) errorEl.style.display = 'none';
+    if (desktopGrid) desktopGrid.style.display = 'none';
+    if (mobileView) mobileView.style.display = 'none';
+    if (summaryBar) summaryBar.style.display = 'none';
+
+    const { monday, sunday } = getKontrolWeekRange(kontrolWeekOffset);
+    const weekStart = formatDateYMD(monday);
+    const weekEnd = formatDateYMD(sunday);
+
+    // Hafta bilgisi label'larını güncelle
+    const labelEl = document.getElementById('kontrolWeekLabel');
+    const datesEl = document.getElementById('kontrolWeekDates');
+    if (labelEl) {
+        if (kontrolWeekOffset === 0) labelEl.textContent = 'Bu Hafta';
+        else if (kontrolWeekOffset === -1) labelEl.textContent = 'Geçen Hafta';
+        else if (kontrolWeekOffset === 1) labelEl.textContent = 'Gelecek Hafta';
+        else labelEl.textContent = `${Math.abs(kontrolWeekOffset)} hafta ${kontrolWeekOffset < 0 ? 'önce' : 'sonra'}`;
+    }
+    if (datesEl) {
+        datesEl.textContent = `${formatDateDM(monday)} — ${formatDateDM(sunday)}.${sunday.getFullYear()}`;
+    }
+
+    // Pitch sayısına göre filtre göster
+    const pitchFilterEl = document.getElementById('kontrolPitchFilter');
+
+    const pitchSel = document.getElementById('kontrolPitchSelect');
+    const pitchNumber = pitchSel ? pitchSel.value : '';
+
+    try {
+        const token = localStorage.getItem('businessToken');
+        if (!token) throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+
+        const url = `/api/weekly-schedule/${currentBusinessFieldKey}?weekStart=${weekStart}&weekEnd=${weekEnd}${pitchNumber ? '&pitchNumber=' + pitchNumber : ''}`;
+        const resp = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            throw new Error(errData.message || `Sunucu hatası: ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.message || 'Veri alınamadı.');
+
+        kontrolScheduleData = { ...data, monday, weekStart, weekEnd };
+
+        // Pitch filtresi göster/gizle
+        if (pitchFilterEl) {
+            pitchFilterEl.style.display = (data.pitchCount > 1) ? 'flex' : 'none';
+        }
+
+        if (loadingEl) loadingEl.style.display = 'none';
+
+        // Responsive: mobil mi masaüstü mü?
+        const isMobile = window.innerWidth < 768;
+        renderKontrolGrid(data, monday, isMobile);
+
+        if (!isMobile) {
+            if (desktopGrid) desktopGrid.style.display = 'block';
+        } else {
+            if (mobileView) mobileView.style.display = 'block';
+        }
+        if (summaryBar) summaryBar.style.display = 'flex';
+
+    } catch (err) {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorEl) {
+            errorEl.style.display = 'flex';
+            const titleEl = document.getElementById('kontrolErrorTitle');
+            const msgEl = document.getElementById('kontrolErrorMsg');
+            if (titleEl) titleEl.textContent = 'Bağlantı Hatası';
+            if (msgEl) msgEl.textContent = err.message || 'Sunucuya ulaşılamıyor.';
+        }
+    }
+}
+
+function renderKontrolGrid(data, monday, isMobile) {
+    const { reservations, dailyHours, disabledHours } = data;
+
+    // Genel açılış/kapanış (fallback)
+    const defaultOpen = '17:00';
+    const defaultClose = '01:00';
+
+    // Her gün için tarih ve saat dilimlerini hesapla
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const jsDay = d.getDay(); // 0=Pazar, 1=Pzt...
+        const hoursForDay = dailyHours[jsDay] || { opening: defaultOpen, closing: defaultClose };
+        const slots = getKontrolHourSlots(hoursForDay.opening, hoursForDay.closing);
+        days.push({ date: d, dateStr: formatDateDM(d), fullDate: formatDateYMD(d), slots, jsDay });
+    }
+
+    // Tüm benzersiz saat slotlarını birleştir (union)
+    const allSlotsSet = new Set();
+    days.forEach(d => d.slots.forEach(s => allSlotsSet.add(s)));
+    const allSlots = Array.from(allSlotsSet).sort((a, b) => {
+        const ha = parseInt(a.split(':')[0]);
+        const hb = parseInt(b.split(':')[0]);
+        const na = ha < 6 ? ha + 24 : ha;
+        const nb = hb < 6 ? hb + 24 : hb;
+        return na - nb;
+    });
+
+    // Rezervasyonları hızlı erişim haritasına al: key = "YYYY-MM-DD|HH:00"
+    const resMap = {};
+    (reservations || []).forEach(r => {
+        let rDate = r.dateText;
+        // DD.MM.YYYY formatını YYYY-MM-DD'e çevir
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(rDate)) {
+            const [dd, mm, yyyy] = rDate.split('.');
+            rDate = `${yyyy}-${mm}-${dd}`;
+        }
+        const hourKey = r.hourText ? r.hourText.split(' - ')[0].trim() : '';
+        const key = `${rDate}|${hourKey}`;
+        if (!resMap[key]) resMap[key] = [];
+        resMap[key].push(r);
+    });
+
+    // Engelli saatler haritası: key = "pitchNum|HH:00"
+    const disabledMap = {};
+    (disabledHours || []).forEach(d => {
+        const hourStr = d.hour ? d.hour.split(' - ')[0].trim() : d.hour;
+        const key = `${d.pitchNumber}|${hourStr}`;
+        disabledMap[key] = true;
+    });
+
+    // Sayım
+    let countDolu = 0, countBos = 0, countKapali = 0;
+
+    if (!isMobile) {
+        // === MASAÜSTÜ TABLO ===
+        const thead = document.getElementById('kontrolTableHead');
+        const tbody = document.getElementById('kontrolTableBody');
+        if (!thead || !tbody) return;
+
+        // Başlık satırı - günler
+        thead.innerHTML = '<th class="kontrol-th-time">SAAT</th>';
+        const today = formatDateYMD(new Date());
+        days.forEach((day, i) => {
+            const isToday = day.fullDate === today;
+            thead.innerHTML += `<th class="kontrol-th-day${isToday ? ' kontrol-today-col' : ''}">
+                <div class="kontrol-day-name">${KONTROL_GUNLER[i]}</div>
+                <div class="kontrol-day-date ${isToday ? 'kontrol-today-badge' : ''}">${day.dateStr}</div>
+            </th>`;
+        });
+
+        // Satırlar - saatler
+        tbody.innerHTML = '';
+        allSlots.forEach(slot => {
+            const tr = document.createElement('tr');
+            tr.className = 'kontrol-tr';
+            tr.innerHTML = `<td class="kontrol-td-time">${slot}</td>`;
+
+            days.forEach((day, di) => {
+                const inRange = day.slots.includes(slot);
+                const resKey = `${day.fullDate}|${slot}`;
+                const resArr = resMap[resKey] || [];
+                const isDisabled = Object.keys(disabledMap).some(k => k.endsWith(`|${slot}`));
+
+                let cellClass = 'kontrol-cell';
+                let cellContent = '';
+                let cellTitle = '';
+                let cellClick = '';
+
+                if (!inRange) {
+                    // Çalışma saati dışı
+                    cellClass += ' kontrol-cell-kapali';
+                    cellContent = '<span class="kontrol-cell-label">KAPALI</span>';
+                    countKapali++;
+                } else if (isDisabled) {
+                    cellClass += ' kontrol-cell-kapali';
+                    cellContent = '<span class="kontrol-cell-label">ENGELLİ</span>';
+                    countKapali++;
+                } else if (resArr.length > 0) {
+                    const r = resArr[0];
+                    const isAbone = r.type === 'abone';
+                    cellClass += isAbone ? ' kontrol-cell-abone' : ' kontrol-cell-dolu';
+                    const displayName = (r.name || r.reserverName || 'Rezervasyon').substring(0, 12);
+                    const payStatus = r.payment_status === 'odendi' ? '✅' : '⚠️';
+                    cellContent = `<span class="kontrol-cell-name">${displayName}</span><span class="kontrol-cell-status">${payStatus} ${isAbone ? 'ABONELİK' : 'DOLU'}</span>`;
+                    cellTitle = `${r.name || ''} | ${r.phone || ''} | ${r.payment_status === 'odendi' ? 'Ödendi' : 'Ödenmedi'} | ${r.reservation_price ? r.reservation_price + ' TL' : ''}`;
+                    cellClick = `showKontrolReservationDetail(${JSON.stringify(r).replace(/"/g, '&quot;')})`;
+                    countDolu++;
+                } else {
+                    cellClass += ' kontrol-cell-bos';
+                    cellContent = '<span class="kontrol-cell-label">BOŞ</span>';
+                    cellClick = `openKontrolQuickReserve('${day.fullDate}', '${slot}')`;
+                    countBos++;
+                }
+
+                tr.innerHTML += `<td class="${cellClass}" 
+                    ${cellTitle ? `title="${cellTitle}"` : ''}
+                    ${cellClick ? `onclick="${cellClick}"` : ''}
+                    style="${cellClick ? 'cursor:pointer;' : ''}">
+                    ${cellContent}
+                </td>`;
+            });
+
+            tbody.appendChild(tr);
+        });
+
+    } else {
+        // === MOBİL GÖRÜNÜM ===
+        const daySel = document.getElementById('kontrolMobileDaySelector');
+        if (!daySel) return;
+
+        daySel.innerHTML = '';
+        const today = formatDateYMD(new Date());
+        days.forEach((day, i) => {
+            const isToday = day.fullDate === today;
+            const btn = document.createElement('button');
+            btn.className = `kontrol-mobile-day-btn${i === kontrolSelectedMobileDay ? ' active' : ''}${isToday ? ' today' : ''}`;
+            btn.innerHTML = `<span class="kontrol-mobile-day-short">${KONTROL_GUNLER[i]}</span><span class="kontrol-mobile-day-date">${day.dateStr}</span>`;
+            btn.onclick = () => {
+                kontrolSelectedMobileDay = i;
+                document.querySelectorAll('.kontrol-mobile-day-btn').forEach((b, bi) => {
+                    b.classList.toggle('active', bi === i);
+                });
+                renderKontrolMobileDay(days[i], resMap, disabledMap, allSlots);
+            };
+            daySel.appendChild(btn);
+        });
+
+        renderKontrolMobileDay(days[kontrolSelectedMobileDay] || days[0], resMap, disabledMap, allSlots);
+    }
+
+    // Özet bar güncelle
+    const sumDolu = document.getElementById('kontrolSumDolu');
+    const sumBos = document.getElementById('kontrolSumBos');
+    const sumKapali = document.getElementById('kontrolSumKapali');
+    if (sumDolu) sumDolu.textContent = countDolu;
+    if (sumBos) sumBos.textContent = countBos;
+    if (sumKapali) sumKapali.textContent = countKapali;
+}
+
+function renderKontrolMobileDay(day, resMap, disabledMap, allSlots) {
+    const list = document.getElementById('kontrolMobileHoursList');
+    if (!list || !day) return;
+    list.innerHTML = '';
+
+    allSlots.forEach(slot => {
+        const inRange = day.slots.includes(slot);
+        const resKey = `${day.fullDate}|${slot}`;
+        const resArr = resMap[resKey] || [];
+        const isDisabled = Object.keys(disabledMap).some(k => k.endsWith(`|${slot}`));
+
+        const item = document.createElement('div');
+        item.className = 'kontrol-mobile-hour-item';
+
+        if (!inRange) {
+            item.classList.add('kapali');
+            item.innerHTML = `<span class="kontrol-mobile-slot">${slot}</span><span class="kontrol-mobile-status-badge kapali">KAPALI</span>`;
+        } else if (isDisabled) {
+            item.classList.add('kapali');
+            item.innerHTML = `<span class="kontrol-mobile-slot">${slot}</span><span class="kontrol-mobile-status-badge kapali">ENGELLİ</span>`;
+        } else if (resArr.length > 0) {
+            const r = resArr[0];
+            const isAbone = r.type === 'abone';
+            item.classList.add(isAbone ? 'abone' : 'dolu');
+            const payStatus = r.payment_status === 'odendi' ? '✅ Ödendi' : '⚠️ Ödenmedi';
+            item.innerHTML = `
+                <span class="kontrol-mobile-slot">${slot}</span>
+                <div class="kontrol-mobile-res-info">
+                    <span class="kontrol-mobile-res-name">${r.name || r.reserverName || 'Rezervasyon'}</span>
+                    <span class="kontrol-mobile-res-phone">${r.phone || ''}</span>
+                </div>
+                <div class="kontrol-mobile-res-right">
+                    <span class="kontrol-mobile-status-badge ${isAbone ? 'abone' : 'dolu'}">${isAbone ? 'ABONELİK' : 'DOLU'}</span>
+                    <span class="kontrol-mobile-pay-status">${payStatus}</span>
+                </div>`;
+            item.style.cursor = 'pointer';
+            item.onclick = () => showKontrolReservationDetail(r);
+        } else {
+            item.classList.add('bos');
+            item.innerHTML = `
+                <span class="kontrol-mobile-slot">${slot}</span>
+                <span class="kontrol-mobile-status-badge bos">BOŞ</span>
+                <button class="kontrol-mobile-quick-btn" onclick="openKontrolQuickReserve('${day.fullDate}', '${slot}')">+ Rezervasyon</button>`;
+        }
+
+        list.appendChild(item);
+    });
+}
+
+function showKontrolReservationDetail(r) {
+    const name = r.name || r.reserverName || '-';
+    const phone = r.phone || r.reserverPhone || '-';
+    const date = r.dateText || '-';
+    const hour = r.hourText || '-';
+    const type = r.type === 'abone' ? '📋 Abonelik' : '⚽ Normal';
+    const payStatus = r.payment_status === 'odendi' ? '✅ Ödendi' : '⚠️ Ödenmedi';
+    const price = r.reservation_price ? r.reservation_price + ' TL' : '-';
+    const pitch = r.pitchNumber ? `Saha ${r.pitchNumber}` : '-';
+
+    alert(`📋 REZERVASYON DETAYI\n\nAd Soyad: ${name}\nTelefon: ${phone}\nTarih: ${date}\nSaat: ${hour}\nSaha: ${pitch}\nTür: ${type}\nÖdeme: ${payStatus}\nFiyat: ${price}`);
+}
+
+function openKontrolQuickReserve(dateStr, hourSlot) {
+    // Rezervasyon sekmesine geç ve ilgili alanları doldur
+    switchBusinessTab('reservations');
+    const dateSelect = document.getElementById('businessGridDateSelect');
+    if (dateSelect) {
+        // YYYY-MM-DD'den DD.MM.YYYY formatına çevir
+        const [y, m, d] = dateStr.split('-');
+        const trDate = `${d}.${m}.${y}`;
+        for (let i = 0; i < dateSelect.options.length; i++) {
+            if (dateSelect.options[i].value === trDate || dateSelect.options[i].text.includes(trDate)) {
+                dateSelect.selectedIndex = i;
+                break;
+            }
+        }
+        if (typeof renderBusinessHoursGrid === 'function') renderBusinessHoursGrid();
+    }
+    showToast(`${hourSlot} saati için rezervasyon eklemek üzere Rezervasyonlar sekmesi açıldı.`, 'info');
+}
+
+// Responsive listener - ekran boyutu değişince yeniden render et
+window.addEventListener('resize', () => {
+    if (document.getElementById('tab-kontrol') && 
+        document.getElementById('tab-kontrol').style.display !== 'none' &&
+        kontrolScheduleData) {
+        const isMobile = window.innerWidth < 768;
+        const desktopGrid = document.getElementById('kontrolDesktopGrid');
+        const mobileView = document.getElementById('kontrolMobileView');
+        if (desktopGrid) desktopGrid.style.display = isMobile ? 'none' : 'block';
+        if (mobileView) mobileView.style.display = isMobile ? 'block' : 'none';
+        renderKontrolGrid(kontrolScheduleData, kontrolScheduleData.monday, isMobile);
+    }
+});
+
+
+
 async function handleBusinessLogin() {
     const keyInput = document.getElementById('businessKey');
     const passInput = document.getElementById('businessPassword');
+
     if (!keyInput || !passInput) return;
 
     const key = keyInput.value.trim().toLowerCase();

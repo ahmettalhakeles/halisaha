@@ -163,8 +163,8 @@ const db = mysql.createPool({
     host: process.env.DB_HOST || process.env.MYSQLHOST || '127.0.0.1',
     user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
     password: process.env.DB_PASSWORD || process.env.DB_PASS || process.env.MYSQLPASSWORD || '',
-    database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'ksk_db',
-    port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3306'),
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'halisaha_kiralama',
+    port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3307'),
     waitForConnections: true,
     connectionLimit: 15,
     queueLimit: 0,
@@ -2279,6 +2279,100 @@ app.get('/api/business-reservations/:fieldKey', verifyBusiness, (req, res) => {
             return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
         }
         res.json({ success: true, data: results });
+    });
+});
+
+// =======================================================
+// HAFTALIK DOLULUK ÇİZELGESİ (Kontrol Paneli)
+// =======================================================
+app.get('/api/weekly-schedule/:fieldKey', verifyBusiness, (req, res) => {
+    const { fieldKey } = req.params;
+    const { weekStart, weekEnd, pitchNumber } = req.query;
+
+    if (!weekStart || !weekEnd) {
+        return res.status(400).json({ success: false, message: 'weekStart ve weekEnd parametreleri gerekli!' });
+    }
+
+    const pitchFilter = pitchNumber ? ' AND pitchNumber = ?' : '';
+    const params = pitchNumber ? [fieldKey, weekStart, weekEnd, parseInt(pitchNumber)] : [fieldKey, weekStart, weekEnd];
+
+    // Rezervasyonları çek (aktif ve abone)
+    const resSql = `
+        SELECT r.*, 
+               r.name AS reserverName,
+               r.phone AS reserverPhone,
+               r.dateText,
+               r.hourText,
+               r.pitchNumber,
+               r.type,
+               r.payment_status,
+               r.reservation_price,
+               r.status
+        FROM reservations r
+        WHERE r.fieldKey = ?
+          AND r.dateText >= ?
+          AND r.dateText <= ?
+          AND (r.status IS NULL OR r.status != 'cancelled')
+          ${pitchFilter}
+        ORDER BY r.dateText ASC, r.hourText ASC
+    `;
+
+    // Çalışma saatlerini çek
+    const hoursSql = `
+        SELECT * FROM field_daily_hours WHERE fieldKey = ?
+    `;
+
+    // Saha ayarlarını çek
+    const settingsSql = `
+        SELECT * FROM pitch_settings WHERE fieldKey = ? ORDER BY pitchNumber ASC
+    `;
+
+    db.query(hoursSql, [fieldKey], (hErr, hoursRows) => {
+        if (hErr) {
+            console.error("Saat SQL Hatası:", hErr);
+            return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        }
+
+        db.query(settingsSql, [fieldKey], (sErr, settingsRows) => {
+            if (sErr) {
+                console.error("Ayar SQL Hatası:", sErr);
+                return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            }
+
+            db.query(resSql, params, (rErr, resRows) => {
+                if (rErr) {
+                    console.error("Rezervasyon SQL Hatası:", rErr);
+                    return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                }
+
+                // Saatleri gün bazında düzenle (0=Pazar,...,6=Cumartesi)
+                const dailyHours = {};
+                hoursRows.forEach(h => {
+                    dailyHours[h.dayOfWeek] = { opening: h.openingHour, closing: h.closingHour };
+                });
+
+                // Engelli/kilitli saatleri topla
+                const disabledHours = [];
+                settingsRows.forEach(s => {
+                    if (s.disabledHours) {
+                        try {
+                            const parsed = JSON.parse(s.disabledHours);
+                            if (Array.isArray(parsed)) {
+                                parsed.forEach(h => disabledHours.push({ pitchNumber: s.pitchNumber, hour: h }));
+                            }
+                        } catch (e) {}
+                    }
+                });
+
+                res.json({
+                    success: true,
+                    reservations: resRows,
+                    dailyHours,
+                    disabledHours,
+                    pitchCount: settingsRows.length || 1
+                });
+            });
+        });
     });
 });
 
