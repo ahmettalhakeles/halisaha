@@ -2299,8 +2299,8 @@ app.get('/api/weekly-schedule/:fieldKey', verifyBusiness, (req, res) => {
     // Rezervasyonları çek (aktif ve abone)
     const resSql = `
         SELECT r.*, 
-               r.name AS reserverName,
-               r.phone AS reserverPhone,
+               r.user_name AS reserverName,
+               r.user_phone AS reserverPhone,
                r.dateText,
                r.hourText,
                r.pitchNumber,
