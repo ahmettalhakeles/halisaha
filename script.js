@@ -647,13 +647,13 @@ async function loadWeeklySchedule() {
     const pitchNumber = pitchSel ? pitchSel.value : '';
 
     try {
-        const token = localStorage.getItem('businessToken');
-        if (!token) throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+        const headers = getAuthHeaders();
+        if (!headers['Authorization'] && !headers['x-admin-token']) {
+            throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+        }
 
         const url = `/api/weekly-schedule/${currentBusinessFieldKey}?weekStart=${weekStart}&weekEnd=${weekEnd}${pitchNumber ? '&pitchNumber=' + pitchNumber : ''}`;
-        const resp = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const resp = await fetch(url, { headers });
 
         if (!resp.ok) {
             const errData = await resp.json().catch(() => ({}));
