@@ -164,7 +164,7 @@ const db = mysql.createPool({
     user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
     password: process.env.DB_PASSWORD || process.env.DB_PASS || process.env.MYSQLPASSWORD || '',
     database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'halisaha_kiralama',
-    port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3307'),
+    port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3306'),
     waitForConnections: true,
     connectionLimit: 15,
     queueLimit: 0,
