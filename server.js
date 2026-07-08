@@ -2324,7 +2324,7 @@ app.get('/api/weekly-schedule/:fieldKey', verifyBusiness, (req, res) => {
 
     // Saha ayarlarını çek
     const settingsSql = `
-        SELECT * FROM pitch_settings WHERE fieldKey = ? ORDER BY pitchNumber ASC
+        SELECT * FROM pitch_objects WHERE fieldKey = ? ORDER BY pitchNumber ASC
     `;
 
     db.query(hoursSql, [fieldKey], (hErr, hoursRows) => {
