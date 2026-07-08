@@ -696,39 +696,24 @@ async function loadWeeklySchedule() {
 }
 
 function renderKontrolGrid(data, monday, isMobile) {
-    const { reservations, dailyHours, disabledHours } = data;
+    const { reservations, dailyHours, disabledHours, pitchCount } = data;
 
-    // Genel açılış/kapanış (fallback)
     const defaultOpen = '17:00';
     const defaultClose = '01:00';
 
-    // Her gün için tarih ve saat dilimlerini hesapla
     const days = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
-        const jsDay = d.getDay(); // 0=Pazar, 1=Pzt...
+        const jsDay = d.getDay();
         const hoursForDay = dailyHours[jsDay] || { opening: defaultOpen, closing: defaultClose };
         const slots = getKontrolHourSlots(hoursForDay.opening, hoursForDay.closing);
         days.push({ date: d, dateStr: formatDateDM(d), fullDate: formatDateYMD(d), slots, jsDay });
     }
 
-    // Tüm benzersiz saat slotlarını birleştir (union)
-    const allSlotsSet = new Set();
-    days.forEach(d => d.slots.forEach(s => allSlotsSet.add(s)));
-    const allSlots = Array.from(allSlotsSet).sort((a, b) => {
-        const ha = parseInt(a.split(':')[0]);
-        const hb = parseInt(b.split(':')[0]);
-        const na = ha < 6 ? ha + 24 : ha;
-        const nb = hb < 6 ? hb + 24 : hb;
-        return na - nb;
-    });
-
-    // Rezervasyonları hızlı erişim haritasına al: key = "YYYY-MM-DD|HH:00"
     const resMap = {};
     (reservations || []).forEach(r => {
         let rDate = r.dateText;
-        // DD.MM.YYYY formatını YYYY-MM-DD'e çevir
         if (/^\d{2}\.\d{2}\.\d{4}$/.test(rDate)) {
             const [dd, mm, yyyy] = rDate.split('.');
             rDate = `${yyyy}-${mm}-${dd}`;
@@ -739,7 +724,6 @@ function renderKontrolGrid(data, monday, isMobile) {
         resMap[key].push(r);
     });
 
-    // Engelli saatler haritası: key = "pitchNum|HH:00"
     const disabledMap = {};
     (disabledHours || []).forEach(d => {
         const hourStr = d.hour ? d.hour.split(' - ')[0].trim() : d.hour;
@@ -747,107 +731,86 @@ function renderKontrolGrid(data, monday, isMobile) {
         disabledMap[key] = true;
     });
 
-    // Sayım
+    const daysListContainer = document.getElementById('kontrolDaysList');
+    if (!daysListContainer) return;
+    daysListContainer.innerHTML = '';
+
     let countDolu = 0, countBos = 0, countKapali = 0;
+    const today = formatDateYMD(new Date());
 
-    if (!isMobile) {
-        // === MASAÜSTÜ TABLO ===
-        const thead = document.getElementById('kontrolTableHead');
-        const tbody = document.getElementById('kontrolTableBody');
-        if (!thead || !tbody) return;
+    days.forEach((day, di) => {
+        const isToday = day.fullDate === today;
+        
+        const dayCard = document.createElement('div');
+        dayCard.className = `kontrol-day-row-card${isToday ? ' today' : ''}`;
 
-        // Başlık satırı - günler
-        thead.innerHTML = '<th class="kontrol-th-time">SAAT</th>';
-        const today = formatDateYMD(new Date());
-        days.forEach((day, i) => {
-            const isToday = day.fullDate === today;
-            thead.innerHTML += `<th class="kontrol-th-day${isToday ? ' kontrol-today-col' : ''}">
-                <div class="kontrol-day-name">${KONTROL_GUNLER[i]}</div>
-                <div class="kontrol-day-date ${isToday ? 'kontrol-today-badge' : ''}">${day.dateStr}</div>
-            </th>`;
-        });
+        const dayTitle = document.createElement('div');
+        dayTitle.className = 'kontrol-day-row-title';
+        dayTitle.innerHTML = `
+            <span class="kontrol-day-row-name">${KONTROL_GUN_FULL[di]}</span>
+            <span class="kontrol-day-row-date ${isToday ? 'today-badge' : ''}">${day.dateStr}</span>
+        `;
+        dayCard.appendChild(dayTitle);
 
-        // Satırlar - saatler
-        tbody.innerHTML = '';
-        allSlots.forEach(slot => {
-            const tr = document.createElement('tr');
-            tr.className = 'kontrol-tr';
-            tr.innerHTML = `<td class="kontrol-td-time">${slot}</td>`;
+        const activePitches = pitchCount > 1 ? Array.from({ length: pitchCount }, (_, i) => i + 1) : [1];
 
-            days.forEach((day, di) => {
-                const inRange = day.slots.includes(slot);
+        activePitches.forEach(pitchNum => {
+            const pitchRow = document.createElement('div');
+            pitchRow.className = 'kontrol-pitch-row';
+
+            if (pitchCount > 1) {
+                const pitchLabel = document.createElement('div');
+                pitchLabel.className = 'kontrol-pitch-row-label';
+                pitchLabel.textContent = `SAHA ${pitchNum}`;
+                pitchRow.appendChild(pitchLabel);
+            }
+
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'kontrol-hours-inline-list';
+
+            day.slots.forEach(slot => {
                 const resKey = `${day.fullDate}|${slot}`;
-                const resArr = resMap[resKey] || [];
-                const isDisabled = Object.keys(disabledMap).some(k => k.endsWith(`|${slot}`));
+                const resArr = (resMap[resKey] || []).filter(r => !r.pitchNumber || r.pitchNumber === pitchNum);
+                const isDisabled = disabledMap[`${pitchNum}|${slot}`];
 
-                let cellClass = 'kontrol-cell';
-                let cellContent = '';
-                let cellTitle = '';
-                let cellClick = '';
+                const btn = document.createElement('button');
+                
+                const startHour = parseInt(slot.split(':')[0]);
+                const endHour = String((startHour + 1) % 24).padStart(2, '0');
+                const fullHourText = `${slot} - ${endHour}:00`;
 
-                if (!inRange) {
-                    // Çalışma saati dışı
-                    cellClass += ' kontrol-cell-kapali';
-                    cellContent = '<span class="kontrol-cell-label">KAPALI</span>';
-                    countKapali++;
-                } else if (isDisabled) {
-                    cellClass += ' kontrol-cell-kapali';
-                    cellContent = '<span class="kontrol-cell-label">ENGELLİ</span>';
+                btn.className = 'kontrol-hour-btn';
+                btn.innerHTML = `<span class="hour-text">${fullHourText}</span>`;
+
+                if (isDisabled) {
+                    btn.classList.add('kapali');
+                    btn.title = 'Saha Kilitli / Engelli Saat';
                     countKapali++;
                 } else if (resArr.length > 0) {
                     const r = resArr[0];
                     const isAbone = r.type === 'abone';
-                    cellClass += isAbone ? ' kontrol-cell-abone' : ' kontrol-cell-dolu';
-                    const displayName = (r.name || r.reserverName || 'Rezervasyon').substring(0, 12);
+                    btn.classList.add(isAbone ? 'abone' : 'dolu');
                     const payStatus = r.payment_status === 'odendi' ? '✅' : '⚠️';
-                    cellContent = `<span class="kontrol-cell-name">${displayName}</span><span class="kontrol-cell-status">${payStatus} ${isAbone ? 'ABONELİK' : 'DOLU'}</span>`;
-                    cellTitle = `${r.name || ''} | ${r.phone || ''} | ${r.payment_status === 'odendi' ? 'Ödendi' : 'Ödenmedi'} | ${r.reservation_price ? r.reservation_price + ' TL' : ''}`;
-                    cellClick = `showKontrolReservationDetail(${JSON.stringify(r).replace(/"/g, '&quot;')})`;
+                    btn.title = `${r.reserverName || 'Rezervasyon'} | ${r.reserverPhone || ''} | ${payStatus}`;
+                    btn.onclick = () => showKontrolReservationDetail(r);
                     countDolu++;
                 } else {
-                    cellClass += ' kontrol-cell-bos';
-                    cellContent = '<span class="kontrol-cell-label">BOŞ</span>';
-                    cellClick = `openKontrolQuickReserve('${day.fullDate}', '${slot}')`;
+                    btn.classList.add('bos');
+                    btn.title = 'Boş Saat - Hızlı Rezervasyon';
+                    btn.onclick = () => openKontrolQuickReserve(day.fullDate, slot);
                     countBos++;
                 }
 
-                tr.innerHTML += `<td class="${cellClass}" 
-                    ${cellTitle ? `title="${cellTitle}"` : ''}
-                    ${cellClick ? `onclick="${cellClick}"` : ''}
-                    style="${cellClick ? 'cursor:pointer;' : ''}">
-                    ${cellContent}
-                </td>`;
+                buttonsContainer.appendChild(btn);
             });
 
-            tbody.appendChild(tr);
+            pitchRow.appendChild(buttonsContainer);
+            dayCard.appendChild(pitchRow);
         });
 
-    } else {
-        // === MOBİL GÖRÜNÜM ===
-        const daySel = document.getElementById('kontrolMobileDaySelector');
-        if (!daySel) return;
+        daysListContainer.appendChild(dayCard);
+    });
 
-        daySel.innerHTML = '';
-        const today = formatDateYMD(new Date());
-        days.forEach((day, i) => {
-            const isToday = day.fullDate === today;
-            const btn = document.createElement('button');
-            btn.className = `kontrol-mobile-day-btn${i === kontrolSelectedMobileDay ? ' active' : ''}${isToday ? ' today' : ''}`;
-            btn.innerHTML = `<span class="kontrol-mobile-day-short">${KONTROL_GUNLER[i]}</span><span class="kontrol-mobile-day-date">${day.dateStr}</span>`;
-            btn.onclick = () => {
-                kontrolSelectedMobileDay = i;
-                document.querySelectorAll('.kontrol-mobile-day-btn').forEach((b, bi) => {
-                    b.classList.toggle('active', bi === i);
-                });
-                renderKontrolMobileDay(days[i], resMap, disabledMap, allSlots);
-            };
-            daySel.appendChild(btn);
-        });
-
-        renderKontrolMobileDay(days[kontrolSelectedMobileDay] || days[0], resMap, disabledMap, allSlots);
-    }
-
-    // Özet bar güncelle
     const sumDolu = document.getElementById('kontrolSumDolu');
     const sumBos = document.getElementById('kontrolSumBos');
     const sumKapali = document.getElementById('kontrolSumKapali');
@@ -856,58 +819,9 @@ function renderKontrolGrid(data, monday, isMobile) {
     if (sumKapali) sumKapali.textContent = countKapali;
 }
 
-function renderKontrolMobileDay(day, resMap, disabledMap, allSlots) {
-    const list = document.getElementById('kontrolMobileHoursList');
-    if (!list || !day) return;
-    list.innerHTML = '';
-
-    allSlots.forEach(slot => {
-        const inRange = day.slots.includes(slot);
-        const resKey = `${day.fullDate}|${slot}`;
-        const resArr = resMap[resKey] || [];
-        const isDisabled = Object.keys(disabledMap).some(k => k.endsWith(`|${slot}`));
-
-        const item = document.createElement('div');
-        item.className = 'kontrol-mobile-hour-item';
-
-        if (!inRange) {
-            item.classList.add('kapali');
-            item.innerHTML = `<span class="kontrol-mobile-slot">${slot}</span><span class="kontrol-mobile-status-badge kapali">KAPALI</span>`;
-        } else if (isDisabled) {
-            item.classList.add('kapali');
-            item.innerHTML = `<span class="kontrol-mobile-slot">${slot}</span><span class="kontrol-mobile-status-badge kapali">ENGELLİ</span>`;
-        } else if (resArr.length > 0) {
-            const r = resArr[0];
-            const isAbone = r.type === 'abone';
-            item.classList.add(isAbone ? 'abone' : 'dolu');
-            const payStatus = r.payment_status === 'odendi' ? '✅ Ödendi' : '⚠️ Ödenmedi';
-            item.innerHTML = `
-                <span class="kontrol-mobile-slot">${slot}</span>
-                <div class="kontrol-mobile-res-info">
-                    <span class="kontrol-mobile-res-name">${r.name || r.reserverName || 'Rezervasyon'}</span>
-                    <span class="kontrol-mobile-res-phone">${r.phone || ''}</span>
-                </div>
-                <div class="kontrol-mobile-res-right">
-                    <span class="kontrol-mobile-status-badge ${isAbone ? 'abone' : 'dolu'}">${isAbone ? 'ABONELİK' : 'DOLU'}</span>
-                    <span class="kontrol-mobile-pay-status">${payStatus}</span>
-                </div>`;
-            item.style.cursor = 'pointer';
-            item.onclick = () => showKontrolReservationDetail(r);
-        } else {
-            item.classList.add('bos');
-            item.innerHTML = `
-                <span class="kontrol-mobile-slot">${slot}</span>
-                <span class="kontrol-mobile-status-badge bos">BOŞ</span>
-                <button class="kontrol-mobile-quick-btn" onclick="openKontrolQuickReserve('${day.fullDate}', '${slot}')">+ Rezervasyon</button>`;
-        }
-
-        list.appendChild(item);
-    });
-}
-
 function showKontrolReservationDetail(r) {
-    const name = r.name || r.reserverName || '-';
-    const phone = r.phone || r.reserverPhone || '-';
+    const name = r.reserverName || r.user_name || '-';
+    const phone = r.reserverPhone || r.user_phone || '-';
     const date = r.dateText || '-';
     const hour = r.hourText || '-';
     const type = r.type === 'abone' ? '📋 Abonelik' : '⚽ Normal';
@@ -919,11 +833,9 @@ function showKontrolReservationDetail(r) {
 }
 
 function openKontrolQuickReserve(dateStr, hourSlot) {
-    // Rezervasyon sekmesine geç ve ilgili alanları doldur
     switchBusinessTab('reservations');
     const dateSelect = document.getElementById('businessGridDateSelect');
     if (dateSelect) {
-        // YYYY-MM-DD'den DD.MM.YYYY formatına çevir
         const [y, m, d] = dateStr.split('-');
         const trDate = `${d}.${m}.${y}`;
         for (let i = 0; i < dateSelect.options.length; i++) {
@@ -937,17 +849,11 @@ function openKontrolQuickReserve(dateStr, hourSlot) {
     showToast(`${hourSlot} saati için rezervasyon eklemek üzere Rezervasyonlar sekmesi açıldı.`, 'info');
 }
 
-// Responsive listener - ekran boyutu değişince yeniden render et
 window.addEventListener('resize', () => {
     if (document.getElementById('tab-kontrol') && 
         document.getElementById('tab-kontrol').style.display !== 'none' &&
         kontrolScheduleData) {
-        const isMobile = window.innerWidth < 768;
-        const desktopGrid = document.getElementById('kontrolDesktopGrid');
-        const mobileView = document.getElementById('kontrolMobileView');
-        if (desktopGrid) desktopGrid.style.display = isMobile ? 'none' : 'block';
-        if (mobileView) mobileView.style.display = isMobile ? 'block' : 'none';
-        renderKontrolGrid(kontrolScheduleData, kontrolScheduleData.monday, isMobile);
+        renderKontrolGrid(kontrolScheduleData, kontrolScheduleData.monday, window.innerWidth < 768);
     }
 });
 

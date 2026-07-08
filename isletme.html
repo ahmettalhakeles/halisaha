@@ -319,32 +319,14 @@
                         <button class="kontrol-refresh-btn" onclick="loadWeeklySchedule()">Tekrar Dene</button>
                     </div>
 
-                    <!-- Masaüstü: Haftalık Grid Tablosu -->
+                    <!-- Masaüstü & Mobil Birleşik: Yatay Saat Çizelgesi Listesi -->
                     <div id="kontrolDesktopGrid" class="kontrol-desktop-grid">
-                        <div class="kontrol-grid-scroll-wrap">
-                            <table class="kontrol-table" id="kontrolScheduleTable">
-                                <thead>
-                                    <tr id="kontrolTableHead">
-                                        <th class="kontrol-th-time">SAAT</th>
-                                        <!-- Günler JS tarafından doldurulacak -->
-                                    </tr>
-                                </thead>
-                                <tbody id="kontrolTableBody">
-                                    <!-- Satırlar JS tarafından doldurulacak -->
-                                </tbody>
-                            </table>
+                        <div class="kontrol-days-list" id="kontrolDaysList">
+                            <!-- Günler ve yatay saat butonları JS tarafından buraya basılacak -->
                         </div>
                     </div>
 
-                    <!-- Mobil: Gün Seçici + Dikey Liste -->
-                    <div id="kontrolMobileView" class="kontrol-mobile-view" style="display:none;">
-                        <div class="kontrol-mobile-day-selector" id="kontrolMobileDaySelector">
-                            <!-- Günler JS tarafından doldurulacak -->
-                        </div>
-                        <div class="kontrol-mobile-hours-list" id="kontrolMobileHoursList">
-                            <!-- Saatler JS tarafından doldurulacak -->
-                        </div>
-                    </div>
+
 
                     <!-- Özet Bilgi Barı -->
                     <div class="kontrol-summary-bar" id="kontrolSummaryBar" style="display:none;">
