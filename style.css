@@ -3425,16 +3425,12 @@ main.business-mode {
         font-size: 1.5rem;
         cursor: pointer;
         padding: 5px;
-        display: none !important;
+        display: block !important;
         position: absolute !important;
         left: 15px !important;
         top: 15px !important;
         transform: none !important;
         z-index: 999 !important;
-    }
-
-    body.logged-in .hamburger-btn {
-        display: block !important;
     }
 
     .menu-close-btn {

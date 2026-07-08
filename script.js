@@ -3021,6 +3021,7 @@ function updateLoginUIVisibility() {
     const welcomeText = document.getElementById('welcomeText');
 
     if (loggedInUser) {
+        document.body.classList.add('logged-in');
         if (userAuthSection) userAuthSection.style.display = 'none';
         if (businessAuthSection) businessAuthSection.style.display = 'none';
         if (userLogoutSection) userLogoutSection.style.display = 'flex';
@@ -3035,6 +3036,7 @@ function updateLoginUIVisibility() {
         if (addRev) addRev.style.display = 'block';
         if (authAlert) authAlert.style.display = 'none';
     } else {
+        document.body.classList.remove('logged-in');
         if (userAuthSection) userAuthSection.style.display = 'flex';
         if (businessAuthSection) businessAuthSection.style.display = 'flex';
         if (userLogoutSection) userLogoutSection.style.display = 'none';
