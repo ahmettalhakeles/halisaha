@@ -1575,7 +1575,14 @@ async function saveHourAction() {
 // =======================================================
 async function loadBusinessReservations() {
     try {
-        const response = await fetch(`/api/business-reservations/${currentBusinessFieldKey}`, { headers: getAuthHeaders() });
+        const now = new Date();
+        const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const end = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+        const tzOffset = now.getTimezoneOffset() * 60000;
+        const weekStart = new Date(start.getTime() - tzOffset).toISOString().split('T')[0];
+        const weekEnd = new Date(end.getTime() - tzOffset).toISOString().split('T')[0];
+
+        const response = await fetch(`/api/business-reservations/${currentBusinessFieldKey}?weekStart=${weekStart}&weekEnd=${weekEnd}`, { headers: getAuthHeaders() });
         const result = await response.json();
         if (result.success) {
             currentBusinessReservations = result.data;

@@ -165,14 +165,7 @@ function initReservationRoutes(app, db) {
         });
     });
 
-    // Business reservations (path param version)
-    app.get('/api/business-reservations/:fieldKey', (req, res) => {
-        const { fieldKey } = req.params;
-        db.query('SELECT * FROM reservations WHERE fieldKey = ? ORDER BY play_date ASC, hourText ASC', [fieldKey], (err, results) => {
-            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            res.json({ success: true, data: results });
-        });
-    });
+
 
     // Update payment status
     app.put('/api/reservations/:id/payment', (req, res) => {

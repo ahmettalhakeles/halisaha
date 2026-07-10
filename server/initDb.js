@@ -117,7 +117,112 @@ async function initDatabase(connection) {
         console.error('Super admin seeding error:', e.message);
     }
 
+    // Backfill play_date for legacy reservations
+    try {
+        const [resRows] = await connection.query("SELECT id, dateText, hourText, created_at FROM reservations WHERE play_date IS NULL");
+        if (resRows.length > 0) {
+            console.log(`Eski rezervasyonlar için play_date güncellemesi başlatılıyor: ${resRows.length} kayıt...`);
+            for (const row of resRows) {
+                const parsed = parseLegacyPlayDate(row.dateText, row.hourText, row.created_at);
+                const playDateStr = formatDateToYYYYMMDD(parsed);
+                if (playDateStr) {
+                    await connection.query("UPDATE reservations SET play_date = ? WHERE id = ?", [playDateStr, row.id]);
+                }
+            }
+            console.log(`play_date migrasyonu başarıyla tamamlandı.`);
+        }
+    } catch (e) {
+        console.error('play_date migrasyon hatası:', e.message);
+    }
+
     console.log('Veritabanı migration tamamlandı.');
+}
+
+function parseLegacyPlayDate(dateText, hourText, createdAt) {
+    if (!dateText) return null;
+    try {
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateText)) {
+            const [dd, mm, yyyy] = dateText.split('.');
+            return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+        }
+
+        const turkishMonthsDotted = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+        const turkishMonthsUndotted = ['OCAK', 'SUBAT', 'MART', 'NISAN', 'MAYIS', 'HAZIRAN', 'TEMMUZ', 'AGUSTOS', 'EYLUL', 'EKIM', 'KASIM', 'ARALIK'];
+        
+        const parts = dateText.trim().split(' ');
+        if (parts.length < 2) return null;
+        const day = parseInt(parts[0]);
+        
+        const monthStr = parts[1].toLocaleUpperCase('tr-TR');
+        
+        const normalize = (str) => {
+            return str
+                .replace(/İ/g, 'I')
+                .replace(/Ş/g, 'S')
+                .replace(/Ç/g, 'C')
+                .replace(/Ğ/g, 'G')
+                .replace(/Ü/g, 'U')
+                .replace(/Ö/g, 'O');
+        };
+        
+        let monthIdx = turkishMonthsDotted.indexOf(monthStr);
+        if (monthIdx === -1) {
+            monthIdx = turkishMonthsUndotted.indexOf(monthStr);
+        }
+        if (monthIdx === -1) {
+            monthIdx = turkishMonthsUndotted.indexOf(normalize(monthStr));
+        }
+        
+        if (monthIdx === -1 && monthStr.length >= 3) {
+            const sub3 = monthStr.substring(0, 3);
+            const dotted3 = turkishMonthsDotted.map(m => m.substring(0, 3));
+            const undotted3 = turkishMonthsUndotted.map(m => m.substring(0, 3));
+            
+            monthIdx = dotted3.indexOf(sub3);
+            if (monthIdx === -1) {
+                monthIdx = undotted3.indexOf(sub3);
+            }
+            if (monthIdx === -1) {
+                monthIdx = undotted3.indexOf(normalize(sub3));
+            }
+        }
+        
+        if (monthIdx === -1) return null;
+        
+        let year;
+        if (parts.length >= 3) {
+            year = parseInt(parts[2]);
+        } else {
+            const refDate = createdAt ? new Date(createdAt) : new Date();
+            year = refDate.getFullYear();
+            if (monthIdx < refDate.getMonth()) {
+                year += 1;
+            }
+        }
+        
+        if (isNaN(year)) return null;
+        
+        let d = new Date(year, monthIdx, day);
+        
+        if (hourText) {
+            const hourPart = hourText.split(' - ')[0];
+            const [h] = hourPart.split(':').map(Number);
+            if (h < 6) {
+                d.setDate(d.getDate() + 1);
+            }
+        }
+        return d;
+    } catch (e) {
+        return null;
+    }
+}
+
+function formatDateToYYYYMMDD(d) {
+    if (!d || isNaN(d.getTime())) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
 }
 
 module.exports = { initDatabase };

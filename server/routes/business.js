@@ -72,6 +72,44 @@ function initBusinessRoutes(app, db) {
         });
     });
 
+    // Get business reservations (date-filtered)
+    app.get('/api/business-reservations/:fieldKey', (req, res) => {
+        const { fieldKey } = req.params;
+        const { weekStart, weekEnd, pitchNumber } = req.query;
+
+        if (!weekStart || !weekEnd) {
+            return res.status(400).json({ success: false, message: 'weekStart ve weekEnd parametreleri gerekli!' });
+        }
+
+        const pitchFilter = pitchNumber ? ' AND r.pitchNumber = ?' : '';
+        const params = pitchNumber ? [fieldKey, weekStart, weekEnd, parseInt(pitchNumber)] : [fieldKey, weekStart, weekEnd];
+
+        const resSql = `
+            SELECT r.*, 
+                   r.user_name AS reserverName,
+                   r.user_phone AS reserverPhone,
+                   r.dateText,
+                   r.play_date,
+                   r.hourText,
+                   r.pitchNumber,
+                   r.type,
+                   r.payment_status,
+                   r.reservation_price,
+                   r.status
+            FROM reservations r
+            WHERE r.fieldKey = ?
+              AND r.play_date >= ? AND r.play_date <= ?
+              AND (r.status IS NULL OR r.status != 'cancelled')
+              ${pitchFilter}
+            ORDER BY r.play_date ASC, r.hourText ASC
+        `;
+
+        db.query(resSql, params, (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, data: results });
+        });
+    });
+
     // İşletme borç listesi
     app.get('/api/business-debts/:fieldKey', (req, res) => {
         const { fieldKey } = req.params;
