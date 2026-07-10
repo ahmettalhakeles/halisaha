@@ -443,6 +443,18 @@ function initBusinessRoutes(app, db) {
             });
         });
     });
+
+    // Get announcements
+    app.get('/api/announcements', (req, res) => {
+        db.query("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC", (err, results) => {
+            if (err) {
+                console.error("Announcements error:", err);
+                return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            }
+            res.json({ success: true, data: results });
+        });
+    });
+
 }
 
 function getActualPlayDate(dateText, hourText) {
@@ -462,17 +474,5 @@ function getActualPlayDate(dateText, hourText) {
     } catch (e) {
         return null;
     }
-    // Get announcements
-    app.get('/api/announcements', (req, res) => {
-        db.query("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC", (err, results) => {
-            if (err) {
-                console.error("Announcements error:", err);
-                return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            }
-            res.json({ success: true, data: results });
-        });
-    });
-
 }
-
 module.exports = { initBusinessRoutes };

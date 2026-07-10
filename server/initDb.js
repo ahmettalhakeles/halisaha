@@ -25,6 +25,8 @@ async function initDatabase(connection) {
         "SHOW COLUMNS FROM pitch_objects LIKE 'shower'",
         "SHOW COLUMNS FROM pitch_objects LIKE 'market'",
         "SHOW COLUMNS FROM subscriptions LIKE 'dayOfWeek'",
+        "SHOW COLUMNS FROM subscriptions LIKE 'user_id'",
+        "SHOW COLUMNS FROM subscriptions LIKE 'subscriberPhone'",
         "SHOW COLUMNS FROM reservations LIKE 'payment_status'",
         "SHOW COLUMNS FROM reservations LIKE 'reservation_price'",
         "SHOW COLUMNS FROM reservations LIKE 'user_id'",
@@ -44,6 +46,8 @@ async function initDatabase(connection) {
         shower: "ALTER TABLE pitch_objects ADD COLUMN shower VARCHAR(50) DEFAULT 'Duş Yok'",
         market: "ALTER TABLE pitch_objects ADD COLUMN market VARCHAR(50) DEFAULT 'Market Yok'",
         dayOfWeek: "ALTER TABLE subscriptions ADD COLUMN dayOfWeek VARCHAR(50) DEFAULT 'PAZARTESİ'",
+        user_id_sub: "ALTER TABLE subscriptions ADD COLUMN user_id INT DEFAULT NULL",
+        subscriberPhone_sub: "ALTER TABLE subscriptions ADD COLUMN subscriberPhone VARCHAR(20) DEFAULT NULL",
         payment_status: "ALTER TABLE reservations ADD COLUMN payment_status ENUM('odenmedi','odendi') DEFAULT 'odenmedi'",
         reservation_price: "ALTER TABLE reservations ADD COLUMN reservation_price INT DEFAULT 0",
         user_id: "ALTER TABLE reservations ADD COLUMN user_id INT DEFAULT NULL",
@@ -55,7 +59,7 @@ async function initDatabase(connection) {
         height_users: 'height', weight_users: 'weight',
         height_ms: 'height', weight_ms: 'weight',
         refreshments: 'refreshments', cleats: 'cleats', shower: 'shower', market: 'market',
-        dayOfWeek: 'dayOfWeek',
+        dayOfWeek: 'dayOfWeek', user_id_sub: 'user_id', subscriberPhone_sub: 'subscriberPhone',
         payment_status: 'payment_status', reservation_price: 'reservation_price', user_id: 'user_id',
         player_id: 'player_id'
     };
