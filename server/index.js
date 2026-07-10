@@ -37,6 +37,10 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false,
 }));
 
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 app.use((req, res, next) => {
     if (req.headers['x-forwarded-proto'] !== 'https' && process.env.NODE_ENV === 'production') {
         return res.redirect(301, `https://${req.headers.host}${req.url}`);
@@ -45,10 +49,6 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
-
-app.get('/health', (req, res) => {
-    res.status(200).send('OK');
-});
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
@@ -120,6 +120,6 @@ async function processWeeklySubscriptions() {
 processWeeklySubscriptions().catch(err => console.error('Cron baslatma hatasi:', err));
 setInterval(processWeeklySubscriptions, 60 * 60 * 1000);
 
-app.listen(port, () => {
-    console.log(`Sunucu http://127.0.0.1:${port} adresinde calisiyor!`);
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Sunucu http://0.0.0.0:${port} adresinde calisiyor!`);
 });
