@@ -16,7 +16,8 @@ const pool = mysql.createPool({
     maxIdle: 5,
     idleTimeout: 60000,
     multipleStatements: true,
-    charset: 'utf8mb4'
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_unicode_ci'
 });
 
 module.exports = pool;

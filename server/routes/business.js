@@ -10,8 +10,8 @@ function initBusinessRoutes(app, db) {
             return res.status(400).json({ success: false, message: 'weekStart ve weekEnd parametreleri gerekli!' });
         }
 
-        const pitchFilter = pitchNumber ? ' AND pitchNumber = ?' : '';
-        const params = pitchNumber ? [fieldKey, parseInt(pitchNumber)] : [fieldKey];
+        const pitchFilter = pitchNumber ? ' AND r.pitchNumber = ?' : '';
+        const params = pitchNumber ? [fieldKey, weekStart, weekEnd, parseInt(pitchNumber)] : [fieldKey, weekStart, weekEnd];
 
         const resSql = `
             SELECT r.*, 
@@ -27,6 +27,7 @@ function initBusinessRoutes(app, db) {
                    r.status
             FROM reservations r
             WHERE r.fieldKey = ?
+              AND r.play_date >= ? AND r.play_date <= ?
               AND (r.status IS NULL OR r.status != 'cancelled')
               ${pitchFilter}
             ORDER BY r.play_date ASC, r.hourText ASC
@@ -86,23 +87,26 @@ function initBusinessRoutes(app, db) {
             const startOf7DaysAgo = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
             const startOf30DaysAgo = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+            const tzOffset = now.getTimezoneOffset() * 60000;
+            const todayStr = new Date(now.getTime() - tzOffset).toISOString().split('T')[0];
+            const startOf7DaysAgoStr = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000 - tzOffset).toISOString().split('T')[0];
+            const startOf30DaysAgoStr = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000 - tzOffset).toISOString().split('T')[0];
+
             let filtered = results;
             if (filter === 'daily') {
                 filtered = results.filter(r => {
-                    const pDate = r.play_date ? new Date(r.play_date) : (getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at));
-                    return pDate.toDateString() === now.toDateString();
+                    const pStr = getPlayDateString(r.play_date, r.dateText, r.hourText, r.created_at);
+                    return pStr === todayStr;
                 });
             } else if (filter === 'weekly') {
                 filtered = results.filter(r => {
-                    const pDate = r.play_date ? new Date(r.play_date) : (getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at));
-                    const pTime = pDate.getTime();
-                    return pTime >= startOf7DaysAgo.getTime() && pTime <= endOfToday.getTime();
+                    const pStr = getPlayDateString(r.play_date, r.dateText, r.hourText, r.created_at);
+                    return pStr && pStr >= startOf7DaysAgoStr && pStr <= todayStr;
                 });
             } else if (filter === 'monthly') {
                 filtered = results.filter(r => {
-                    const pDate = r.play_date ? new Date(r.play_date) : (getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at));
-                    const pTime = pDate.getTime();
-                    return pTime >= startOf30DaysAgo.getTime() && pTime <= endOfToday.getTime();
+                    const pStr = getPlayDateString(r.play_date, r.dateText, r.hourText, r.created_at);
+                    return pStr && pStr >= startOf30DaysAgoStr && pStr <= todayStr;
                 });
             }
             
@@ -384,10 +388,10 @@ function initBusinessRoutes(app, db) {
                     last7DaysEarningsPaid: 0, last7DaysEarningsUnpaid: 0 
                 };
 
-                const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
-                const startOf7DaysAgo = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
-                const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                const tzOffset = now.getTimezoneOffset() * 60000;
+                const todayStr = new Date(now.getTime() - tzOffset).toISOString().split('T')[0];
+                const startOf7DaysAgoStr = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 - tzOffset).toISOString().split('T')[0];
+                const startOfThisMonthStr = new Date(now.getFullYear(), now.getMonth(), 1 - tzOffset / (24 * 60 * 60 * 1000)).toISOString().split('T')[0];
 
                 for (const resRow of results) {
                     const mPrice = Number(resRow.morningPrice) || 0;
@@ -397,26 +401,25 @@ function initBusinessRoutes(app, db) {
                     const price = Number(resRow.reservation_price || (isEvening ? ePrice : mPrice));
                     const isPaid = resRow.payment_status === 'odendi';
 
-                    const resDate = resRow.play_date ? new Date(resRow.play_date) : (getActualPlayDate(resRow.dateText, resRow.hourText) || new Date(resRow.created_at));
-                    const pTime = resDate.getTime();
+                    const pStr = getPlayDateString(resRow.play_date, resRow.dateText, resRow.hourText, resRow.created_at);
 
                     stats.total++;
                     if (isPaid) stats.totalEarningsPaid += price;
                     else stats.totalEarningsUnpaid += price;
 
-                    if (resDate.toDateString() === now.toDateString()) {
+                    if (pStr === todayStr) {
                         stats.today++;
                         if (isPaid) stats.todayEarningsPaid += price;
                         else stats.todayEarningsUnpaid += price;
                     }
 
-                    if (pTime >= startOf7DaysAgo.getTime() && pTime <= endOfToday.getTime()) {
+                    if (pStr && pStr >= startOf7DaysAgoStr && pStr <= todayStr) {
                         stats.last7Days++;
                         if (isPaid) stats.last7DaysEarningsPaid += price;
                         else stats.last7DaysEarningsUnpaid += price;
                     }
 
-                    if (pTime >= startOfThisMonth.getTime() && pTime <= endOfToday.getTime()) {
+                    if (pStr && pStr >= startOfThisMonthStr && pStr <= todayStr) {
                         stats.thisMonth++;
                         if (isPaid) stats.thisMonthEarningsPaid += price;
                         else stats.thisMonthEarningsUnpaid += price;
@@ -470,7 +473,7 @@ function initBusinessRoutes(app, db) {
 
     // Get announcements
     app.get('/api/announcements', (req, res) => {
-        db.query("SELECT * FROM announcements ORDER BY created_at DESC", (err, results) => {
+        db.query("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC", (err, results) => {
             if (err) {
                 console.error("Announcements error:", err);
                 return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
@@ -482,21 +485,103 @@ function initBusinessRoutes(app, db) {
 }
 
 function getActualPlayDate(dateText, hourText) {
+    if (!dateText) return null;
     try {
-        const months = {
-            'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3, 'MAYIS': 4, 'HAZİRAN': 5,
-            'TEMMUZ': 6, 'AĞUSTOS': 7, 'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
-        };
-        const parts = dateText.split(' ');
-        if (parts.length < 3) return null;
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateText)) {
+            const [dd, mm, yyyy] = dateText.split('.');
+            return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+        }
+
+        const turkishMonthsDotted = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+        const turkishMonthsUndotted = ['OCAK', 'SUBAT', 'MART', 'NISAN', 'MAYIS', 'HAZIRAN', 'TEMMUZ', 'AGUSTOS', 'EYLUL', 'EKIM', 'KASIM', 'ARALIK'];
+        
+        const parts = dateText.trim().split(' ');
+        if (parts.length < 2) return null;
         const day = parseInt(parts[0]);
-        const monthName = parts[1].toLocaleUpperCase('tr-TR');
-        const year = parseInt(parts[2]);
-        const month = months[monthName];
-        if (isNaN(day) || month === undefined || isNaN(year)) return null;
-        return new Date(year, month, day);
+        
+        const monthStr = parts[1].toLocaleUpperCase('tr-TR');
+        
+        const normalize = (str) => {
+            return str
+                .replace(/İ/g, 'I')
+                .replace(/Ş/g, 'S')
+                .replace(/Ç/g, 'C')
+                .replace(/Ğ/g, 'G')
+                .replace(/Ü/g, 'U')
+                .replace(/Ö/g, 'O');
+        };
+        
+        let monthIdx = turkishMonthsDotted.indexOf(monthStr);
+        if (monthIdx === -1) {
+            monthIdx = turkishMonthsUndotted.indexOf(monthStr);
+        }
+        if (monthIdx === -1) {
+            monthIdx = turkishMonthsUndotted.indexOf(normalize(monthStr));
+        }
+        
+        if (monthIdx === -1 && monthStr.length >= 3) {
+            const sub3 = monthStr.substring(0, 3);
+            const dotted3 = turkishMonthsDotted.map(m => m.substring(0, 3));
+            const undotted3 = turkishMonthsUndotted.map(m => m.substring(0, 3));
+            
+            monthIdx = dotted3.indexOf(sub3);
+            if (monthIdx === -1) {
+                monthIdx = undotted3.indexOf(sub3);
+            }
+            if (monthIdx === -1) {
+                monthIdx = undotted3.indexOf(normalize(sub3));
+            }
+        }
+        
+        if (monthIdx === -1) return null;
+        
+        let year;
+        if (parts.length >= 3) {
+            year = parseInt(parts[2]);
+        } else {
+            const today = new Date();
+            year = today.getFullYear();
+            if (monthIdx < today.getMonth()) {
+                year += 1;
+            }
+        }
+        
+        if (isNaN(year)) return null;
+        
+        let d = new Date(year, monthIdx, day);
+        
+        if (hourText) {
+            const hourPart = hourText.split(' - ')[0];
+            const [h] = hourPart.split(':').map(Number);
+            if (h < 6) {
+                d.setDate(d.getDate() + 1);
+            }
+        }
+        return d;
     } catch (e) {
         return null;
     }
+}
+
+function getPlayDateString(play_date, dateText, hourText, created_at) {
+    if (play_date) {
+        if (play_date instanceof Date) {
+            const y = play_date.getFullYear();
+            const m = String(play_date.getMonth() + 1).padStart(2, '0');
+            const d = String(play_date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        if (typeof play_date === 'string') {
+            return play_date.split('T')[0];
+        }
+    }
+    const actualDate = getActualPlayDate(dateText, hourText) || (created_at ? new Date(created_at) : null);
+    if (actualDate) {
+        const y = actualDate.getFullYear();
+        const m = String(actualDate.getMonth() + 1).padStart(2, '0');
+        const d = String(actualDate.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    return null;
 }
 module.exports = { initBusinessRoutes };

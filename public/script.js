@@ -781,7 +781,7 @@ function renderKontrolGrid(data, monday, isMobile) {
 
             day.slots.forEach(slot => {
                 const resKey = `${day.fullDate}|${slot}`;
-                const resArr = (resMap[resKey] || []).filter(r => !r.pitchNumber || r.pitchNumber == pitchNum);
+                const resArr = (resMap[resKey] || []).filter(r => !r.pitchNumber || Number(r.pitchNumber) === Number(pitchNum));
                 const isDisabled = disabledMap[`${pitchNum}|${slot}`];
 
                 const btn = document.createElement('button');
@@ -2542,7 +2542,7 @@ document.addEventListener('click', function(e) {
 // =======================================================
 function selectField(key) {
     if (currentUser && userBlacklistedFields.includes(key)) {
-        alert("Bu hal? saha taraf?ndan engellendi?iniz i?in işlem yapamazs?n?z!");
+        alert("Bu halı saha tarafından engellendiğiniz için işlem yapamazsınız!");
         return;
     }
     currentSelectedFieldKey = key;
@@ -2756,7 +2756,7 @@ function onDateOrFieldChange() {
                         turnstileCont.style.display = 'block';
                         await loadTurnstileScript();
                         if (typeof turnstile !== 'undefined') {
-                            turnstile.reset('#bookingTurnstile');
+                            renderTurnstileWidget();
                         }
                     }
                 };
@@ -2865,7 +2865,8 @@ async function executePendingBooking() {
         const result = await response.json();
         if (result.success) {
             if (typeof turnstile !== 'undefined') {
-                turnstile.reset('#bookingTurnstile');
+                if (turnstileWidgetId !== null) turnstile.reset(turnstileWidgetId);
+                else turnstile.reset('#bookingTurnstile');
                 latestTurnstileToken = "";
             }
             const turnstileCont = document.getElementById('turnstileContainer');
@@ -4636,6 +4637,36 @@ async function submitFieldCardComment(fieldKey, event) {
 // TURNSTILE DESTEĞİ
 let latestTurnstileToken = "";
 let turnstileScriptLoaded = false;
+let turnstileSiteKey = "";
+let turnstileWidgetId = null;
+
+// Fetch config on load
+fetch('/api/config')
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.turnstileSiteKey) {
+            turnstileSiteKey = data.turnstileSiteKey;
+        }
+    })
+    .catch(e => console.error("Config load error:", e));
+
+function renderTurnstileWidget() {
+    if (typeof turnstile !== 'undefined' && turnstileSiteKey) {
+        try {
+            if (turnstileWidgetId === null) {
+                turnstileWidgetId = turnstile.render('#bookingTurnstile', {
+                    sitekey: turnstileSiteKey,
+                    callback: onTurnstileSuccess
+                });
+            } else {
+                turnstile.reset(turnstileWidgetId);
+            }
+        } catch (e) {
+            console.error("Turnstile render error:", e);
+        }
+    }
+}
+
 function loadTurnstileScript() {
     return new Promise((resolve) => {
         if (window.turnstile) { turnstileScriptLoaded = true; resolve(); return; }

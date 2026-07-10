@@ -44,8 +44,11 @@ function initAuthRoutes(app, db) {
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
             const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = bcrypt.hashSync(password, 10);
+
             const sqlQuery = 'INSERT INTO users (name, phone, email, password, is_email_verified, otp_code, otp_expiry) VALUES (?, ?, ?, ?, 1, ?, ?)';
-            db.query(sqlQuery, [name, phone, email, password, otpCode, otpExpiry], (err, result) => {
+            db.query(sqlQuery, [name, phone, email, hashedPassword, otpCode, otpExpiry], (err, result) => {
                 if (err) {
                     if (err.code === 'ER_DUP_ENTRY') {
                         let field = 'telefon numarası veya e-posta';
@@ -55,10 +58,12 @@ function initAuthRoutes(app, db) {
                     }
                     return res.status(500).json({ success: false, message: 'Kayıt olurken veritabanı hatası oluştu!' });
                 }
+                const token = require('jsonwebtoken').sign({ id: result.insertId, email }, process.env.JWT_SECRET || 'jwt_key', { expiresIn: '7d' });
                 res.json({
                     success: true,
                     message: 'Kayıt başarılı! Giriş yapıldı.',
                     unverified: false,
+                    token,
                     user: { id: result.insertId, name, email, phone, age: null, position: null, experience: null }
                 });
             });
@@ -68,13 +73,38 @@ function initAuthRoutes(app, db) {
     // Login
     app.post('/api/login', authLimiter, (req, res) => {
         const { email, password } = req.body;
-        db.query('SELECT id, name, phone, email, age, position, experience, is_email_verified, status FROM users WHERE email = ? AND password = ?', [email, password], (err, results) => {
+        db.query('SELECT id, name, phone, email, password as dbPassword, age, position, experience, is_email_verified, status FROM users WHERE email = ?', [email], (err, results) => {
             if (err || results.length === 0) return res.status(401).json({ success: false, message: 'Hatalı giriş!' });
+            
             const user = results[0];
+            const bcrypt = require('bcryptjs');
+            
+            let isMatch = false;
+            if (user.dbPassword.startsWith('$2a$') || user.dbPassword.startsWith('$2b$')) {
+                isMatch = bcrypt.compareSync(password, user.dbPassword);
+            } else {
+                isMatch = (password === user.dbPassword);
+                // Migrate plaintext to bcrypt hash on successful login
+                if (isMatch) {
+                    const newHash = bcrypt.hashSync(password, 10);
+                    db.query('UPDATE users SET password = ? WHERE id = ?', [newHash, user.id], (updErr) => {
+                        if (updErr) console.error('Password hash migration failed:', updErr);
+                    });
+                }
+            }
+            
+            if (!isMatch) return res.status(401).json({ success: false, message: 'Hatalı giriş!' });
+            
             if (user.status === 'globally_banned') {
                 return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
             }
-            res.json({ success: true, user });
+            
+            const token = require('jsonwebtoken').sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'jwt_key', { expiresIn: '7d' });
+            
+            // Remove dbPassword before sending to client
+            delete user.dbPassword;
+            
+            res.json({ success: true, token, user });
         });
     });
 
@@ -228,8 +258,10 @@ function initAuthRoutes(app, db) {
                     if (updErr) console.error('Login zamanı güncellenemedi:', updErr);
                 });
 
+                const token = require('jsonwebtoken').sign({ fieldKey: fieldKey, role: 'business' }, process.env.JWT_SECRET || 'jwt_key', { expiresIn: '7d' });
+
                 res.json({
-                    success: true, message: 'Giriş başarılı!', field: {
+                    success: true, message: 'Giriş başarılı!', token, field: {
                         fieldKey, name: field.name || (staticField ? staticField.name : fieldKey.toUpperCase()), address: field.address || (staticField ? staticField.address : ''), coordinates: field.coordinates || (staticField ? staticField.coordinates : ''),
                         phone: field.phone || (staticField ? staticField.phone : ''), pitchCount: field.field_count || (staticField ? staticField.pitchCount : 1), isClosed: field.isClosed,
                         openingHour: field.openingHour, closingHour: field.closingHour,

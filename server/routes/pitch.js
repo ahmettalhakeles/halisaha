@@ -229,17 +229,32 @@ function initPitchRoutes(app, db) {
         });
     });
 
-    // Dummy field photos endpoints
+    // Field photos endpoints
     app.get('/api/field-photos/:fieldKey', (req, res) => {
-        res.json({ success: true, data: [] });
+        const { fieldKey } = req.params;
+        db.query('SELECT id, url, caption FROM field_photos WHERE fieldKey = ? ORDER BY created_at DESC', [fieldKey], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, data: results });
+        });
     });
 
     app.post('/api/field-photos/upload', (req, res) => {
-        res.json({ success: true, message: 'Fotoğraf yüklendi!' });
+        const { fieldKey, imageData, caption } = req.body;
+        if (!fieldKey || !imageData) {
+            return res.status(400).json({ success: false, message: 'Saha anahtarı ve görsel verisi zorunludur!' });
+        }
+        db.query('INSERT INTO field_photos (fieldKey, url, caption) VALUES (?, ?, ?)', [fieldKey, imageData, caption || null], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, message: 'Fotoğraf başarıyla yüklendi!' });
+        });
     });
 
     app.delete('/api/field-photos/:id', (req, res) => {
-        res.json({ success: true, message: 'Fotoğraf silindi!' });
+        const { id } = req.params;
+        db.query('DELETE FROM field_photos WHERE id = ?', [id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, message: 'Fotoğraf başarıyla silindi!' });
+        });
     });
 }
 

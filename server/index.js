@@ -51,11 +51,17 @@ app.use((req, res, next) => {
 const compression = require('compression');
 app.use(compression());
 
-const oneYear = 31536000000;
 app.use(express.static(path.join(__dirname, '..', 'public'), {
-    maxAge: oneYear,
+    maxAge: 0,
     etag: true
 }));
+
+app.get('/api/config', (req, res) => {
+    res.json({
+        success: true,
+        turnstileSiteKey: process.env.TURNSTILE_SITEKEY || '1x00000000000000000000AA'
+    });
+});
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
@@ -81,6 +87,7 @@ const { initReviewRoutes } = require('./routes/reviews');
 const { initPlayerReviewRoutes } = require('./routes/playerReviews');
 const { initFieldCommentRoutes } = require('./routes/fieldComments');
 const { initBlacklistRoutes } = require('./routes/blacklist');
+const { initAdminRoutes } = require('./routes/admin');
 
 initAuthRoutes(app, db);
 initPitchRoutes(app, db);
@@ -92,6 +99,7 @@ initReviewRoutes(app, db);
 initPlayerReviewRoutes(app, db);
 initFieldCommentRoutes(app, db);
 initBlacklistRoutes(app, db);
+initAdminRoutes(app, db);
 
 // DB baglantisini baslat + migration
 (async () => {

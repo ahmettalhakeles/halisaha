@@ -56,6 +56,10 @@ async function initDatabase(connection) {
         { check: "SHOW COLUMNS FROM reviews LIKE 'owner_reply'",    alter: "ALTER TABLE reviews ADD COLUMN owner_reply TEXT DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM reviews LIKE 'owner_reply_at'", alter: "ALTER TABLE reviews ADD COLUMN owner_reply_at DATETIME DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM reviews LIKE 'is_anonymous'",   alter: "ALTER TABLE reviews ADD COLUMN is_anonymous TINYINT DEFAULT 0" },
+        // New tables/columns for fixes
+        { check: "SHOW TABLES LIKE 'field_photos'", alter: "CREATE TABLE field_photos (id INT AUTO_INCREMENT PRIMARY KEY, fieldKey VARCHAR(50) NOT NULL, url LONGTEXT NOT NULL, caption VARCHAR(255) DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
+        { check: "SHOW TABLES LIKE 'super_admins'", alter: "CREATE TABLE super_admins (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, display_name VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
+        { check: "SHOW COLUMNS FROM announcements LIKE 'status'", alter: "ALTER TABLE announcements ADD COLUMN status VARCHAR(20) DEFAULT 'active'" }
     ];
 
     for (const { check, alter } of migrations) {
@@ -100,6 +104,18 @@ async function initDatabase(connection) {
             try { await connection.query("ALTER TABLE subscriptions ADD UNIQUE KEY unique_subscription_day (fieldKey, pitchNumber, dayOfWeek, hourText)"); } catch (e) {}
         }
     } catch (err) {}
+
+    // Seed default super admin
+    try {
+        const bcrypt = require('bcryptjs');
+        const adminHash = bcrypt.hashSync('admin123', 10);
+        await connection.query(
+            "INSERT IGNORE INTO super_admins (username, password, display_name) VALUES ('admin', ?, 'Sistem Yöneticisi')",
+            [adminHash]
+        );
+    } catch (e) {
+        console.error('Super admin seeding error:', e.message);
+    }
 
     console.log('Veritabanı migration tamamlandı.');
 }
