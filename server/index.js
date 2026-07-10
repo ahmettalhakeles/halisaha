@@ -23,13 +23,13 @@ app.use(express.json());
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            defaultSrc: ["'self'", "https://www.gstatic.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://www.gstatic.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            scriptSrc: ["'self'", "https://challenges.cloudflare.com"],
+            scriptSrc: ["'self'", "https://challenges.cloudflare.com", "https://translate.googleapis.com", "'unsafe-inline'"],
             scriptSrcAttr: ["'unsafe-inline'"],
             frameSrc: ["'self'", "https://challenges.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https://www.google.com"],
+            imgSrc: ["'self'", "data:", "https://www.google.com", "https://www.gstatic.com"],
             connectSrc: ["'self'", "https://api.open-meteo.com"],
             formAction: ["'self'"],
         },
@@ -52,6 +52,14 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
+app.get('/isletme', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'isletme.html'));
+});
+
+app.get('/yonetici', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'yonetici.html'));
 });
 
 app.use(errorHandler);
