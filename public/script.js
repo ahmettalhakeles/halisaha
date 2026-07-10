@@ -1728,8 +1728,9 @@ function initBusinessGridDateSelect() {
         const d = new Date();
         d.setDate(d.getDate() + i);
         const dateText = d.toLocaleDateString('tr-TR', optionsFormat).toLocaleUpperCase('tr-TR');
+        const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const opt = document.createElement('option');
-        opt.value = dateText;
+        opt.value = ymd;
         opt.textContent = dateText;
         if (i === 0) opt.selected = true;
         sel.appendChild(opt);
@@ -2183,10 +2184,12 @@ function initDateDropdowns() {
     for (let i = 0; i < 14; i++) {
         let d = new Date(); d.setDate(d.getDate() + i);
         let dateText = d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
+        let ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         let dayName = dayNamesMap[d.getDay()];
         [customerPicker, forumPicker].forEach(p => {
+            if (!p) return;
             let opt = document.createElement('option');
-            opt.value = dateText; opt.text = dateText;
+            opt.value = ymd; opt.text = dateText;
             opt.dataset.dayName = dayName;
             p.appendChild(opt);
         });
@@ -2354,7 +2357,7 @@ async function loadFieldPhotos(fieldKey) {
         const result = await response.json();
         if (result.success && result.data.length > 0) {
             container.innerHTML = result.data.map(p =>
-                `<img src="${p.url}" alt="${p.caption || ''}" style="width:80px;height:60px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation();showPhotoGallery('${fieldKey}', ${p.id})">`
+                `<img src="${p.url}" alt="${p.caption || ''}" loading="lazy" style="width:80px;height:60px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation();showPhotoGallery('${fieldKey}', ${p.id})">`
             ).join('');
         } else {
             container.innerHTML = '';
@@ -2403,7 +2406,7 @@ async function loadBusinessFieldPhotos() {
         if (result.success && result.data.length > 0) {
             container.innerHTML = result.data.map(p =>
                 `<div style="position:relative;">
-                    <img src="${p.url}" alt="${p.caption || ''}" style="width:100%;height:90px;object-fit:cover;border-radius:6px;">
+                    <img src="${p.url}" alt="${p.caption || ''}" loading="lazy" style="width:100%;height:90px;object-fit:cover;border-radius:6px;">
                     ${p.caption ? `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${p.caption}</div>` : ''}
                     <button style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:14px;cursor:pointer;line-height:1;padding:0;" onclick="deleteFieldPhoto(${p.id})">×</button>
                 </div>`
@@ -3033,9 +3036,10 @@ function initMatchSeekerForm() {
     for (let i = 0; i < 7; i++) {
         let d = new Date(); d.setDate(d.getDate() + i);
         let dateText = d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
+        const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const label = document.createElement('label');
         label.className = 'checkbox-item';
-        label.innerHTML = `<input type="checkbox" value="${dateText}" onchange="this.parentElement.classList.toggle('checked', this.checked)"> ${dateText}`;
+        label.innerHTML = `<input type="checkbox" value="${ymd}" onchange="this.parentElement.classList.toggle('checked', this.checked)"> ${dateText}`;
         dateGrid.appendChild(label);
     }
 
@@ -3653,6 +3657,9 @@ function formatPhoneForWhatsApp(phone) {
 
 function parseTurkishDateString(dateStr) {
     if (!dateStr) return null;
+    if (dateStr.includes('-') && !isNaN(Date.parse(dateStr))) {
+        return new Date(dateStr);
+    }
     const turkishMonthsDotted = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
     const turkishMonthsUndotted = ['OCAK', 'SUBAT', 'MART', 'NISAN', 'MAYIS', 'HAZIRAN', 'TEMMUZ', 'AGUSTOS', 'EYLUL', 'EKIM', 'KASIM', 'ARALIK'];
     

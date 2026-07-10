@@ -204,24 +204,36 @@ function initAuthRoutes(app, db) {
     app.post('/api/business-login', (req, res) => {
         const { fieldKey, password } = req.body;
         if (!fieldKey || !password) return res.status(400).json({ success: false, message: 'Tüm alanları doldurunuz!' });
-        const field = fieldsData[fieldKey];
-        if (!field) return res.status(404).json({ success: false, message: 'Geçersiz işletme anahtarı!' });
-        if (field.password !== password) return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
 
-        db.query('UPDATE pitch_settings SET last_login = NOW() WHERE fieldKey = ?', [fieldKey], (err) => {
-            if (err) console.error('Login zamanı güncellenemedi:', err);
-        });
+        db.query(
+            `SELECT ps.*, po.name, po.address, po.coordinates, po.phone, po.refreshments, po.cleats, po.shower, po.market 
+             FROM pitch_settings ps 
+             LEFT JOIN pitch_objects po ON ps.fieldKey = po.fieldKey AND po.pitchNumber = 1
+             WHERE ps.fieldKey = ?`, 
+            [fieldKey], 
+            (err, results) => {
+                if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                if (results.length === 0) return res.status(404).json({ success: false, message: 'Geçersiz işletme anahtarı!' });
+                
+                const field = results[0];
+                if (field.password !== password) return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
 
-        res.json({
-            success: true, message: 'Giriş başarılı!', field: {
-                fieldKey, name: field.name, address: field.address, coordinates: field.coordinates,
-                phone: field.phone, pitchCount: field.pitchCount, isClosed: field.isClosed,
-                openingHour: field.openingHour, closingHour: field.closingHour,
-                hasService: field.hasService, disabledHours: field.disabledHours,
-                aboneHours: field.aboneHours, refreshments: field.refreshments || '',
-                cleats: field.cleats, shower: field.shower, market: field.market
+                db.query('UPDATE pitch_settings SET last_login = NOW() WHERE fieldKey = ?', [fieldKey], (updErr) => {
+                    if (updErr) console.error('Login zamanı güncellenemedi:', updErr);
+                });
+
+                res.json({
+                    success: true, message: 'Giriş başarılı!', field: {
+                        fieldKey, name: field.name, address: field.address, coordinates: field.coordinates,
+                        phone: field.phone, pitchCount: field.field_count || 1, isClosed: field.isClosed,
+                        openingHour: field.openingHour, closingHour: field.closingHour,
+                        hasService: field.hasService || 'Servis: Yok', disabledHours: JSON.parse(field.disabledHours || '[]'),
+                        aboneHours: JSON.parse(field.aboneHours || '[]'), refreshments: field.refreshments || '',
+                        cleats: field.cleats || 'Krampon Kiralanmaz', shower: field.shower || 'Duş Yok', market: field.market || 'Market Yok'
+                    }
+                });
             }
-        });
+        );
     });
 }
 

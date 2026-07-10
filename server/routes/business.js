@@ -18,6 +18,7 @@ function initBusinessRoutes(app, db) {
                    r.user_name AS reserverName,
                    r.user_phone AS reserverPhone,
                    r.dateText,
+                   r.play_date,
                    r.hourText,
                    r.pitchNumber,
                    r.type,
@@ -28,11 +29,12 @@ function initBusinessRoutes(app, db) {
             WHERE r.fieldKey = ?
               AND (r.status IS NULL OR r.status != 'cancelled')
               ${pitchFilter}
-            ORDER BY r.dateText ASC, r.hourText ASC
+            ORDER BY r.play_date ASC, r.hourText ASC
         `;
 
         const hoursSql = 'SELECT * FROM field_daily_hours WHERE fieldKey = ?';
         const settingsSql = 'SELECT * FROM pitch_objects WHERE fieldKey = ? ORDER BY pitchNumber ASC';
+        const pitchSettingsSql = 'SELECT field_count FROM pitch_settings WHERE fieldKey = ?';
 
         db.query(hoursSql, [fieldKey], (hErr, hoursRows) => {
             if (hErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
@@ -40,25 +42,30 @@ function initBusinessRoutes(app, db) {
             db.query(settingsSql, [fieldKey], (sErr, settingsRows) => {
                 if (sErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
 
-                db.query(resSql, params, (rErr, resRows) => {
-                    if (rErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                db.query(pitchSettingsSql, [fieldKey], (psErr, pitchSettingsRows) => {
+                    if (psErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                    const pitchCount = pitchSettingsRows.length > 0 ? (parseInt(pitchSettingsRows[0].field_count) || 1) : 1;
 
-                    const dailyHours = {};
-                    hoursRows.forEach(h => {
-                        dailyHours[h.dayOfWeek] = { opening: h.openingHour, closing: h.closingHour };
+                    db.query(resSql, params, (rErr, resRows) => {
+                        if (rErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+
+                        const dailyHours = {};
+                        hoursRows.forEach(h => {
+                            dailyHours[h.dayOfWeek] = { opening: h.openingHour, closing: h.closingHour };
+                        });
+
+                        const disabledHours = [];
+                        settingsRows.forEach(s => {
+                            if (s.disabledHours) {
+                                try {
+                                    const parsed = JSON.parse(s.disabledHours);
+                                    if (Array.isArray(parsed)) parsed.forEach(h => disabledHours.push({ pitchNumber: s.pitchNumber, hour: h }));
+                                } catch (e) {}
+                            }
+                        });
+
+                        res.json({ success: true, reservations: resRows, dailyHours, disabledHours, pitchCount: pitchCount });
                     });
-
-                    const disabledHours = [];
-                    settingsRows.forEach(s => {
-                        if (s.disabledHours) {
-                            try {
-                                const parsed = JSON.parse(s.disabledHours);
-                                if (Array.isArray(parsed)) parsed.forEach(h => disabledHours.push({ pitchNumber: s.pitchNumber, hour: h }));
-                            } catch (e) {}
-                        }
-                    });
-
-                    res.json({ success: true, reservations: resRows, dailyHours, disabledHours, pitchCount: settingsRows.length || 1 });
                 });
             });
         });
@@ -69,7 +76,7 @@ function initBusinessRoutes(app, db) {
         const { fieldKey } = req.params;
         const { filter } = req.query;
         
-        const sqlQuery = "SELECT * FROM reservations WHERE fieldKey = ? AND status != 'cancelled' ORDER BY dateText ASC, hourText ASC";
+        const sqlQuery = "SELECT * FROM reservations WHERE fieldKey = ? AND status != 'cancelled' ORDER BY play_date ASC, hourText ASC";
         db.query(sqlQuery, [fieldKey], (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             
@@ -82,18 +89,18 @@ function initBusinessRoutes(app, db) {
             let filtered = results;
             if (filter === 'daily') {
                 filtered = results.filter(r => {
-                    const pDate = getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at);
+                    const pDate = r.play_date ? new Date(r.play_date) : (getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at));
                     return pDate.toDateString() === now.toDateString();
                 });
             } else if (filter === 'weekly') {
                 filtered = results.filter(r => {
-                    const pDate = getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at);
+                    const pDate = r.play_date ? new Date(r.play_date) : (getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at));
                     const pTime = pDate.getTime();
                     return pTime >= startOf7DaysAgo.getTime() && pTime <= endOfToday.getTime();
                 });
             } else if (filter === 'monthly') {
                 filtered = results.filter(r => {
-                    const pDate = getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at);
+                    const pDate = r.play_date ? new Date(r.play_date) : (getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at));
                     const pTime = pDate.getTime();
                     return pTime >= startOf30DaysAgo.getTime() && pTime <= endOfToday.getTime();
                 });
@@ -158,8 +165,27 @@ function initBusinessRoutes(app, db) {
             }
 
             let filtered = results;
+
+            // Filter out past postings (where all availableDates are in the past)
+            const todayStr = new Date().toISOString().split('T')[0];
+            filtered = filtered.filter(ms => {
+                try {
+                    const dates = JSON.parse(ms.availableDates);
+                    if (Array.isArray(dates)) {
+                        return dates.some(d => {
+                            // If it's standard YYYY-MM-DD
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                                return d >= todayStr;
+                            }
+                            return true; // Keep legacy formats Best Effort
+                        });
+                    }
+                } catch (e) {}
+                return true;
+            });
+
             if (minFee || maxFee) {
-                filtered = results.filter(r => {
+                filtered = filtered.filter(r => {
                     const fee = parseInt(r.requestedFee) || 0;
                     if (r.requestedFee === 'ÜCRETSIZ' || r.requestedFee === 'ÜCRETSİZ') return (!minFee || parseInt(minFee) <= 0);
                     if (minFee && fee < parseInt(minFee)) return false;
@@ -341,7 +367,7 @@ function initBusinessRoutes(app, db) {
         const { fieldKey } = req.params;
 
         db.query(
-            `SELECT r.pitchNumber, r.hourText, r.created_at, r.dateText, r.reservation_price, r.payment_status, po.morningPrice, po.eveningPrice
+            `SELECT r.pitchNumber, r.hourText, r.created_at, r.dateText, r.play_date, r.reservation_price, r.payment_status, po.morningPrice, po.eveningPrice
              FROM reservations r
              LEFT JOIN pitch_objects po ON r.fieldKey COLLATE utf8mb4_unicode_ci = po.fieldKey COLLATE utf8mb4_unicode_ci AND r.pitchNumber = po.pitchNumber
              WHERE r.fieldKey = ? AND r.status != 'cancelled'`,
@@ -371,7 +397,7 @@ function initBusinessRoutes(app, db) {
                     const price = Number(resRow.reservation_price || (isEvening ? ePrice : mPrice));
                     const isPaid = resRow.payment_status === 'odendi';
 
-                    const resDate = getActualPlayDate(resRow.dateText, resRow.hourText) || new Date(resRow.created_at);
+                    const resDate = resRow.play_date ? new Date(resRow.play_date) : (getActualPlayDate(resRow.dateText, resRow.hourText) || new Date(resRow.created_at));
                     const pTime = resDate.getTime();
 
                     stats.total++;
@@ -416,9 +442,9 @@ function initBusinessRoutes(app, db) {
         const { fieldKey } = req.query;
         if (!fieldKey) return res.status(400).json({ success: false, message: 'fieldKey zorunludur!' });
 
-        const today = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR');
+        const today = new Date().toISOString().split('T')[0];
 
-        db.query('SELECT COUNT(*) AS count FROM reservations WHERE fieldKey = ? AND dateText = ?', [fieldKey, today], (err, todayReservations) => {
+        db.query('SELECT COUNT(*) AS count FROM reservations WHERE fieldKey = ? AND play_date = ?', [fieldKey, today], (err, todayReservations) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             db.query('SELECT COUNT(*) AS count FROM reservations WHERE fieldKey = ?', [fieldKey], (err, totalReservations) => {
                 if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });

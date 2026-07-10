@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
 CREATE TABLE IF NOT EXISTS pitch_settings (
   fieldKey VARCHAR(50) NOT NULL,
+  password VARCHAR(255) NOT NULL DEFAULT '123456',
   isClosed TINYINT NOT NULL DEFAULT 0,
   isDeleted TINYINT NOT NULL DEFAULT 0,
   openingHour VARCHAR(5) NOT NULL DEFAULT '09:00',
@@ -282,14 +283,14 @@ CREATE TABLE IF NOT EXISTS announcements (
 -- Default super admin is created in server.js startup if not exists
 
 -- Seed data for fields (sadece yoksa ekle)
-INSERT IGNORE INTO pitch_settings (fieldKey, isClosed, openingHour, closingHour, disabledHours, aboneHours, pricing, field_count, total_reservations, last_login, average_rating)
+INSERT IGNORE INTO pitch_settings (fieldKey, password, isClosed, openingHour, closingHour, disabledHours, aboneHours, pricing, field_count, total_reservations, last_login, average_rating)
 VALUES
-('final', 0, '12:00', '23:00', '[]', '[]', '2500/2800', 2, 0, NULL, 0.00),
-('arena', 0, '10:00', '22:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00),
-('ciragan', 0, '12:00', '23:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00),
-('olimpiyat', 0, '08:00', '23:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00),
-('sporium05', 0, '14:00', '23:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00),
-('ziyaret', 0, '15:00', '00:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00);
+('final', 'final123', 0, '12:00', '23:00', '[]', '[]', '2500/2800', 2, 0, NULL, 0.00),
+('arena', 'arena123', 0, '10:00', '22:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00),
+('ciragan', 'ciragan123', 0, '12:00', '23:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00),
+('olimpiyat', 'olimpiyat123', 0, '08:00', '23:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00),
+('sporium05', 'sporium123', 0, '14:00', '23:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00),
+('ziyaret', 'ziyaret123', 0, '15:00', '00:00', '[]', '[]', '2500/2800', 1, 0, NULL, 0.00);
 
 INSERT IGNORE INTO pitch_objects (fieldKey, pitchNumber, name, address, coordinates, phone, isClosed, hasService, openingHour, closingHour, disabledHours, aboneHours, closedDays, refreshments, cleats, shower, market, morningPrice, eveningPrice, average_rating)
 VALUES

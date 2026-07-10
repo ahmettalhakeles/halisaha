@@ -48,7 +48,14 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.static(path.join(__dirname, '..', 'public')));
+const compression = require('compression');
+app.use(compression());
+
+const oneYear = 31536000000;
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+    maxAge: oneYear,
+    etag: true
+}));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
@@ -116,10 +123,14 @@ async function processWeeklySubscriptions() {
         const [subs] = await db.promise().query('SELECT * FROM subscriptions WHERE dayOfWeek = ?', [todayName]);
         if (subs.length === 0) return;
         const dateText = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toLocaleUpperCase('tr-TR');
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const play_date = `${yyyy}-${mm}-${dd}`;
         for (const sub of subs) {
-            const [existing] = await db.promise().query('SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND dateText = ? AND hourText = ? AND type = ?', [sub.fieldKey, sub.pitchNumber, dateText, sub.hourText, 'abone']);
+            const [existing] = await db.promise().query('SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND (play_date = ? OR dateText = ?) AND hourText = ? AND type = ?', [sub.fieldKey, sub.pitchNumber, play_date, dateText, sub.hourText, 'abone']);
             if (existing.length > 0) continue;
-            await db.promise().query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")', [sub.fieldKey, sub.pitchNumber, dateText, sub.hourText, sub.subscriberName, sub.user_id]);
+            await db.promise().query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")', [sub.fieldKey, sub.pitchNumber, dateText, play_date, sub.hourText, sub.subscriberName, sub.user_id]);
         }
     } catch (err) {
         console.error('Cron: Abonelik hatasi:', err);

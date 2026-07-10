@@ -85,7 +85,7 @@ function initReviewRoutes(app, db) {
             }
 
             const r = results[0];
-            const playDate = getActualPlayDate(r.dateText, r.hourText);
+            const playDate = r.play_date ? new Date(r.play_date) : getActualPlayDate(r.dateText, r.hourText);
             if (!playDate) {
                 return res.status(400).json({ success: false, message: 'Rezervasyon tarihi geçersiz!' });
             }

@@ -14,10 +14,13 @@ function initForumRoutes(app, db) {
 
     // Create forum post
     app.post('/api/forum', (req, res) => {
-        const { dateText, hourText, position, payment, phone, msg, user_id } = req.body;
-        if (!dateText || !hourText || !position || !payment) {
+        const { dateText, play_date, hourText, position, payment, phone, msg, user_id } = req.body;
+        if ((!dateText && !play_date) || !hourText || !position || !payment) {
             return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
         }
+
+        const playDateVal = play_date || parseTurkishDateString(dateText);
+        const displayDateText = dateText || (play_date ? new Date(play_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR') : '');
 
         if (user_id) {
             db.query('SELECT id, status FROM users WHERE id = ?', [user_id], (errUser, userResult) => {
@@ -33,8 +36,8 @@ function initForumRoutes(app, db) {
 
         function doInsert() {
             db.query(
-                'INSERT INTO forum_posts (dateText, hourText, position, payment, phone, msg, user_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [dateText, hourText, position, payment, phone || null, msg || null, user_id || null, 'aktif'],
+                'INSERT INTO forum_posts (dateText, play_date, hourText, position, payment, phone, msg, user_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [displayDateText, playDateVal, hourText, position, payment, phone || null, msg || null, user_id || null, 'aktif'],
                 (err, result) => {
                     if (err) return res.status(500).json({ success: false, message: 'İlan kaydedilemedi!' });
                     res.json({ success: true, message: 'İlan başarıyla yayınlandı!' });
@@ -92,6 +95,69 @@ function initForumRoutes(app, db) {
             }
         );
     });
+}
+
+function parseTurkishDateString(dateStr) {
+    if (!dateStr) return null;
+    const turkishMonthsDotted = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+    const turkishMonthsUndotted = ['OCAK', 'SUBAT', 'MART', 'NISAN', 'MAYIS', 'HAZIRAN', 'TEMMUZ', 'AGUSTOS', 'EYLUL', 'EKIM', 'KASIM', 'ARALIK'];
+    
+    const parts = dateStr.trim().split(' ');
+    if (parts.length < 2) return null;
+    const day = parseInt(parts[0]);
+    
+    const monthStr = parts[1].toLocaleUpperCase('tr-TR');
+    
+    const normalize = (str) => {
+        return str
+            .replace(/İ/g, 'I')
+            .replace(/Ş/g, 'S')
+            .replace(/Ç/g, 'C')
+            .replace(/Ğ/g, 'G')
+            .replace(/Ü/g, 'U')
+            .replace(/Ö/g, 'O');
+    };
+    
+    let monthIdx = turkishMonthsDotted.indexOf(monthStr);
+    if (monthIdx === -1) {
+        monthIdx = turkishMonthsUndotted.indexOf(monthStr);
+    }
+    if (monthIdx === -1) {
+        monthIdx = turkishMonthsUndotted.indexOf(normalize(monthStr));
+    }
+    
+    if (monthIdx === -1 && monthStr.length >= 3) {
+        const sub3 = monthStr.substring(0, 3);
+        const dotted3 = turkishMonthsDotted.map(m => m.substring(0, 3));
+        const undotted3 = turkishMonthsUndotted.map(m => m.substring(0, 3));
+        
+        monthIdx = dotted3.indexOf(sub3);
+        if (monthIdx === -1) {
+            monthIdx = undotted3.indexOf(sub3);
+        }
+        if (monthIdx === -1) {
+            monthIdx = undotted3.indexOf(normalize(sub3));
+        }
+    }
+    
+    if (monthIdx === -1) return null;
+    
+    let year;
+    if (parts.length >= 3) {
+        year = parseInt(parts[2]);
+    } else {
+        const today = new Date();
+        year = today.getFullYear();
+        if (monthIdx < today.getMonth()) {
+            year += 1;
+        }
+    }
+    
+    if (isNaN(year)) return null;
+    
+    const mm = String(monthIdx + 1).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    return `${year}-${mm}-${dd}`;
 }
 
 module.exports = { initForumRoutes };

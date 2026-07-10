@@ -62,9 +62,7 @@ h4,
 .map-link,
 .phone-link,
 .action-btn,
-label,
-select,
-option {
+label {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }

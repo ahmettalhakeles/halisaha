@@ -71,9 +71,13 @@ function initSubscriptionRoutes(app, db) {
                 const nextDate = new Date();
                 nextDate.setDate(nextDate.getDate() + daysUntil);
                 const dateText = nextDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toLocaleUpperCase('tr-TR');
+                const yyyy = nextDate.getFullYear();
+                const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(nextDate.getDate()).padStart(2, '0');
+                const play_date = `${yyyy}-${mm}-${dd}`;
 
-                db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")',
-                    [fieldKey, pitchNumber, dateText, hourText, subscriberName, user_id || null],
+                db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")',
+                    [fieldKey, pitchNumber, dateText, play_date, hourText, subscriberName, user_id || null],
                     (insErr) => {
                         if (insErr) console.error('Abone rezervasyon kaydı oluşturma hatası:', insErr);
                     }

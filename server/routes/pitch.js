@@ -31,14 +31,14 @@ function initPitchRoutes(app, db) {
 
     // Get all pitch objects
     app.get('/api/pitch-list', (req, res) => {
-        db.query('SELECT * FROM pitch_objects', (err, results) => {
+        db.query('SELECT * FROM pitch_objects WHERE isDeleted = 0', (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             res.json({ success: true, data: results });
         });
     });
 
     app.get('/api/all-fields', (req, res) => {
-        db.query('SELECT * FROM pitch_objects', (err, results) => {
+        db.query('SELECT * FROM pitch_objects WHERE isDeleted = 0', (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             res.json(results);
         });
@@ -46,7 +46,7 @@ function initPitchRoutes(app, db) {
 
     // Get all pitch settings
     app.get('/api/pitch-settings', (req, res) => {
-        db.query('SELECT * FROM pitch_settings', (err, results) => {
+        db.query('SELECT * FROM pitch_settings WHERE isDeleted = 0', (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             res.json({ success: true, data: results });
         });
@@ -55,7 +55,7 @@ function initPitchRoutes(app, db) {
     // Get single pitch settings
     app.get('/api/pitch-settings/:fieldKey', (req, res) => {
         const { fieldKey } = req.params;
-        db.query('SELECT * FROM pitch_settings WHERE fieldKey = ?', [fieldKey], (err, results) => {
+        db.query('SELECT * FROM pitch_settings WHERE fieldKey = ? AND isDeleted = 0', [fieldKey], (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             if (results.length === 0) return res.status(404).json({ success: false, message: 'Saha bulunamadı!' });
             res.json({ success: true, data: results[0] });
@@ -213,7 +213,7 @@ function initPitchRoutes(app, db) {
         const { fieldKey } = req.params;
         const { aboneHours, disabledHours } = req.body;
 
-        db.query('SELECT COUNT(*) AS cnt FROM pitch_settings WHERE fieldKey = ?', [fieldKey], (errCheck, checkRes) => {
+        db.query('SELECT COUNT(*) AS cnt FROM pitch_settings WHERE fieldKey = ? AND isDeleted = 0', [fieldKey], (errCheck, checkRes) => {
             if (errCheck) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             if (checkRes[0].cnt === 0) {
                 db.query('INSERT INTO pitch_settings (fieldKey, aboneHours, disabledHours) VALUES (?, ?, ?)', [fieldKey, aboneHours || '', disabledHours || ''], (insErr) => {
