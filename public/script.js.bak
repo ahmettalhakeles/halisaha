@@ -1,13 +1,3 @@
-let isAdminLoggedIn = false;
-let adminToken = null;
-let adminData = null;
-let inMemoryBusinessToken = null;
-let inMemoryBusinessFieldKey = null;
-
-const isBusinessPage = window.location.pathname.includes('isletme');
-const isAdminPage = window.location.pathname.includes('yonetici');
-const isUserPage = !isBusinessPage && !isAdminPage;
-
 const masterHoursList = [
     "06:00 - 07:00", "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
     "10:00 - 11:00", "11:00 - 12:00", "12:00 - 13:00", "13:00 - 14:00",
@@ -27,7 +17,7 @@ const fieldsData = {
         address: "Hacilar Meydani, Merkez, Amasya",
         coordinates: "40.66015930710386, 35.79187401098129",
         phone: "03582120001",
-
+        password: "final123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "12:00",
@@ -48,6 +38,7 @@ const fieldsData = {
         address: "Akbilek, Merkez, Amasya",
         coordinates: "40.69411694565239, 35.8179294637939",
         phone: "05051234562",
+        password: "arena123",
         isClosed: false,
         hasService: "Servis: Yok",
         openingHour: "10:00",
@@ -68,6 +59,7 @@ const fieldsData = {
         address: "Seyhcui, Merkez, Amasya",
         coordinates: "40.6528721257016, 35.79966936221245",
         phone: "05051234563",
+        password: "ciragan123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "12:00",
@@ -88,6 +80,7 @@ const fieldsData = {
         address: "Fatih, Merkez, Amasya",
         coordinates: "40.68148422172459, 35.82695848316526",
         phone: "05051234564",
+        password: "olimpiyat123",
         isClosed: false,
         hasService: "Servis: Yok",
         openingHour: "08:00",
@@ -108,6 +101,7 @@ const fieldsData = {
         address: "Kursunlu, Merkez, Amasya",
         coordinates: "40.61455229320892, 35.825450789697356",
         phone: "05051234565",
+        password: "sporium123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "14:00",
@@ -128,6 +122,7 @@ const fieldsData = {
         address: "Ziyaret Beldesi, Amasya",
         coordinates: "40.688429882215665, 35.86403902395539",
         phone: "05051234566",
+        password: "ziyaret123",
         isClosed: false,
         hasService: "Servis: Var",
         openingHour: "15:00",
@@ -144,7 +139,6 @@ const fieldsData = {
         market: "Market Yok"
     }
 };
-window.fieldsData = fieldsData;
 
 // Durum Yonetim Havuzu
 let loggedInUser = null;
@@ -163,163 +157,80 @@ let currentPitchDailyHours = [];
 let pendingBookingData = null;
 let userBlacklistedFields = [];
 
-function getAuthHeaders() {
-    const headers = { 'Content-Type': 'application/json' };
-    // Kullanıcı token'ı: "Beni Hatırla" ise localStorage, değilse sessionStorage
-    const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
-    // İşletme token'ı: "Beni Hatırla" ise localStorage, değilse inMemoryBusinessToken
-    const businessToken = localStorage.getItem('businessToken') || inMemoryBusinessToken;
-    const adminToken = localStorage.getItem('adminToken');
-    
-    // Admin token sadece admin ve işletme sayfalarında ekle
-    if (isAdminPage && adminToken) {
-        headers['x-admin-token'] = adminToken;
-    }
-    
-    if (isBusinessPage) {
-        if (adminToken) {
-            // Admin is impersonating a business
-            headers['x-admin-token'] = adminToken;
-        } else if (businessToken) {
-            headers['Authorization'] = `Bearer ${businessToken}`;
-        }
-    } else if (!isAdminPage && userToken) {
-        // Normal kullanıcı sayfasında sadece kullanıcı token'ı ekle
-        headers['Authorization'] = `Bearer ${userToken}`;
-    }
-    return headers;
-}
-
 // =======================================================
 // SAYFA YÜKLEME
 // =======================================================
 window.onload = async function() {
     await loadPitchSettingsFromDatabase();
-    
-    if (isUserPage) {
-        // "Beni Hatırla" seçildiyse localStorage, yoksa sessionStorage'dan oku
-        const userRemember = localStorage.getItem('userRemember');
-        const storedUserToken = userRemember === 'true'
-            ? localStorage.getItem('userToken')
-            : sessionStorage.getItem('userToken');
-        const storedUserData = userRemember === 'true'
-            ? localStorage.getItem('userData')
-            : sessionStorage.getItem('userData');
-        if (storedUserToken && storedUserData) {
-            try {
-                currentUser = JSON.parse(storedUserData);
-                loggedInUser = currentUser.name.toLocaleUpperCase('tr-TR');
-                // getAuthHeaders için de doğru yere koy
-                if (userRemember !== 'true') {
-                    localStorage.removeItem('userToken');
-                    localStorage.removeItem('userData');
-                }
-            } catch (e) {
-                console.error("Stored user parse error:", e);
-            }
-        }
-        await initWeatherWidget();
-        initDateDropdowns();
-        await initPitchSelector();
-        await loadDailyHoursList();
-        renderFieldsGrid();
-        initMatchSeekerForm();
-        initTeamSeekerForm();
-        updateLoginUIVisibility();
+    await initWeatherWidget();
+    initDateDropdowns();
+    await initPitchSelector();
+    await loadDailyHoursList();
+    renderFieldsGrid();
+    initMatchSeekerForm();
+    initTeamSeekerForm();
+    updateLoginUIVisibility();
 
-        await loadReservationsFromServer();
-        await loadForumPostsFromServer();
-        await loadMatchSeekers();
-        await loadTeamSeekers();
+    await loadReservationsFromServer();
+    await loadForumPostsFromServer();
+    await loadMatchSeekers();
+    await loadTeamSeekers();
 
-        if (currentUser) {
-            await loadUserBlacklist();
-            renderFieldsGrid();
-        }
-
-        const confirmYes = document.getElementById('confirmYesBtn');
-        if (confirmYes) confirmYes.onclick = () => closeConfirmModal(true);
-        const confirmNo = document.getElementById('confirmNoBtn');
-        if (confirmNo) confirmNo.onclick = () => closeConfirmModal(false);
-
-        const bookingConfirmYes = document.getElementById('bookingConfirmYesBtn');
-        if (bookingConfirmYes) bookingConfirmYes.onclick = () => closeBookingConfirmModal(true);
-        const bookingConfirmNo = document.getElementById('bookingConfirmNoBtn');
-        if (bookingConfirmNo) bookingConfirmNo.onclick = () => closeBookingConfirmModal(false);
-    }
-    
-    if (isBusinessPage) {
-        await initPitchSelector();
-        await loadPitchSettingsFromDatabase();
-        await loadDailyHoursList();
-        // "Beni Hatırla" veya admin impersonation için localStorage, değilse inMemoryBusinessFieldKey
-        const storedKey = localStorage.getItem('businessFieldKey') || inMemoryBusinessFieldKey || (localStorage.getItem('adminToken') && localStorage.getItem('adminImpersonateField') ? JSON.parse(localStorage.getItem('adminImpersonateField')).key : null);
-        const storedAdminToken = localStorage.getItem('adminToken');
-        const impersonateDataStr = localStorage.getItem('adminImpersonateField');
-
-        if (storedKey && storedAdminToken && impersonateDataStr) {
-            currentBusinessFieldKey = storedKey;
-            isBusinessLoggedIn = true;
-            showBusinessUI();
-
-            try {
-                const impData = JSON.parse(impersonateDataStr);
-                const banner = document.getElementById('adminImpersonationBanner');
-                const fieldNameEl = document.getElementById('adminImpersonatedFieldName');
-                if (banner && fieldNameEl) {
-                    fieldNameEl.innerText = impData.name.toLocaleUpperCase('tr-TR');
-                    banner.style.display = 'flex';
-                    document.body.classList.add('admin-impersonating');
-                }
-            } catch (e) {
-                console.error("Error parsing impersonate data:", e);
-            }
-        } else if (storedKey) {
-            // Normal business login (from localStorage remember me)
-            currentBusinessFieldKey = storedKey;
-            isBusinessLoggedIn = true;
-            showBusinessUI();
-        } else {
-            localStorage.removeItem('businessFieldKey');
-            localStorage.removeItem('businessToken');
-            inMemoryBusinessFieldKey = null;
-            inMemoryBusinessToken = null;
-            showBusinessLoginWrapper();
-        }
-        
-        const confirmYes = document.getElementById('confirmYesBtn');
-        if (confirmYes) confirmYes.onclick = () => closeConfirmModal(true);
-        const confirmNo = document.getElementById('confirmNoBtn');
-        if (confirmNo) confirmNo.onclick = () => closeConfirmModal(false);
-    }
-    
-    if (isAdminPage) {
-        const storedToken = localStorage.getItem('adminToken');
-        const storedData = localStorage.getItem('adminData');
-        const storedRemember = localStorage.getItem('adminRemember');
-        if (storedToken && storedData && storedRemember === 'true') {
-            isAdminLoggedIn = true;
-            adminToken = storedToken;
-            adminData = JSON.parse(storedData);
-            showAdminUI();
-        } else {
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('adminData');
-            localStorage.removeItem('adminRemember');
-            showAdminLoginWrapper();
-        }
-        
-        const confirmYes = document.getElementById('confirmYesBtn');
-        if (confirmYes) confirmYes.onclick = () => closeConfirmModal(true);
-        const confirmNo = document.getElementById('confirmNoBtn');
-        if (confirmNo) confirmNo.onclick = () => closeConfirmModal(false);
-    }
-
+    // Rezervasyonlar zaten loadReservationsFromServer() ile yüklendi (cancelled hariç)
     // Telefon maskelerini bağlama
-    ['forumPhone', 'matchPhone', 'regPhone', 'subPhoneInput', 'profilePhoneInput', 'businessSettingPhone', 'blacklistPhoneInput'].forEach(id => {
+    ['forumPhone', 'matchPhone', 'regPhone', 'subPhoneInput', 'profilePhoneInput', 'businessSettingPhone', 'completeProfilePhone', 'blacklistPhoneInput'].forEach(id => {
         const input = document.getElementById(id);
         if (input) applyPhoneMask(input);
     });
+
+    // OAuth ve Yönlendirme Kontrolleri
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthError = urlParams.get('error');
+    const needsPhone = urlParams.get('needs_phone');
+    const oauthToken = urlParams.get('token');
+    const oauthUserJson = urlParams.get('user');
+
+    if (oauthError) {
+        if (oauthError === 'globally_banned') {
+            alert("Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!");
+        } else if (oauthError === 'oauth_registration_failed') {
+            alert("Sosyal giriş ile kayıt esnasında hata oluştu!");
+        } else {
+            alert("Sosyal giriş doğrulaması başarısız oldu!");
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (needsPhone === 'true') {
+        const completeUserId = urlParams.get('userId');
+        const completeEmail = urlParams.get('email');
+        document.getElementById('completeProfileUserId').value = completeUserId || '';
+        openModal('socialCompleteProfileModal');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (oauthToken && oauthUserJson) {
+        try {
+            const userObj = JSON.parse(decodeURIComponent(oauthUserJson));
+            localStorage.setItem('userToken', oauthToken);
+            loggedInUser = userObj.name.toLocaleUpperCase('tr-TR');
+            currentUser = userObj;
+            await loadUserBlacklist();
+            renderFieldsGrid();
+            updateLoginUIVisibility();
+            alert(`Hoş geldiniz, ${userObj.name || 'Oyuncu'}! Giriş yapıldı.`);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (e) {
+            console.error("OAuth user parse error:", e);
+        }
+    }
+
+    if (currentUser) {
+        await loadUserBlacklist();
+        renderFieldsGrid();
+    }
+
+    document.getElementById('confirmYesBtn').onclick = () => closeConfirmModal(true);
+    document.getElementById('confirmNoBtn').onclick = () => closeConfirmModal(false);
+
+    document.getElementById('bookingConfirmYesBtn').onclick = () => closeBookingConfirmModal(true);
+    document.getElementById('bookingConfirmNoBtn').onclick = () => closeBookingConfirmModal(false);
 };
 
 // =======================================================
@@ -329,12 +240,7 @@ function handleUserLogout() {
     loggedInUser = null;
     currentUser = null;
     userBlacklistedFields = [];
-    // Tüm oturum verilerini temizle
     localStorage.removeItem('userToken');
-    localStorage.removeItem('userData');
-    localStorage.removeItem('userRemember');
-    sessionStorage.removeItem('userToken');
-    sessionStorage.removeItem('userData');
     renderFieldsGrid();
     updateLoginUIVisibility();
     alert("ÇIKIŞ YAPILDI. Tekrar giriş yapmak için lütfen giriş yapın.");
@@ -348,21 +254,8 @@ async function handleUserRegister(event) {
     const email = document.getElementById('regEmail').value.trim();
     const pass = document.getElementById('regPassword').value;
 
-    const kvkkChecked = document.getElementById('regKvkk').checked;
-    if (!kvkkChecked) {
-        alert("Kayıt olabilmek için KVKK Aydınlatma Metni'ni kabul etmelisiniz.");
-        return;
-    }
-
     if (!name || !phone || !email || !pass) {
         alert("Lütfen tüm alanları doldurun.");
-        return;
-    }
-
-    // Telefon format kontrolü: 05 ile başlamalı, tam 11 hane
-    const phoneClean = phone.replace(/\D/g, '');
-    if (!phoneClean.startsWith('05') || phoneClean.length !== 11) {
-        alert("Telefon numarası 05 ile başlamalı ve tam 11 rakam olmalıdır! (Örn: 05XXXXXXXXX)");
         return;
     }
 
@@ -370,7 +263,7 @@ async function handleUserRegister(event) {
         const response = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, phone: phoneClean, email, password: pass })
+            body: JSON.stringify({ name, phone, email, password: pass })
         });
         let result;
         try { result = await response.json(); } catch (jsonError) {
@@ -380,22 +273,24 @@ async function handleUserRegister(event) {
         }
 
         if (result.success) {
-            currentUser = result.user || null;
-            loggedInUser = (result.user && result.user.name) ? result.user.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
-            // Kayıt sonrası oturum sadece bu sekme için geçerli (beni hatırla yok)
-            sessionStorage.setItem('userToken', result.token);
-            sessionStorage.setItem('userData', JSON.stringify(result.user));
-            localStorage.removeItem('userToken');
-            localStorage.removeItem('userData');
-            localStorage.removeItem('userRemember');
-            await loadUserBlacklist();
-            renderFieldsGrid();
-            updateLoginUIVisibility();
-            closeModal('registerModal');
-            document.getElementById('registerForm').reset();
-            if (currentSelectedFieldKey) onDateOrFieldChange();
-            fillFormsFromProfile();
-            if (result.message) alert(result.message);
+            if (result.unverified) {
+                document.getElementById('otpUserId').value = result.userId || '';
+                document.getElementById('otpEmail').value = result.email || '';
+                closeModal('registerModal');
+                openModal('otpVerificationModal');
+                alert(result.message);
+            } else {
+                currentUser = result.user || null;
+                loggedInUser = (result.user && result.user.name) ? result.user.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
+                await loadUserBlacklist();
+                renderFieldsGrid();
+                updateLoginUIVisibility();
+                closeModal('registerModal');
+                document.getElementById('registerForm').reset();
+                if (currentSelectedFieldKey) onDateOrFieldChange();
+                fillFormsFromProfile();
+                if (result.message) alert(result.message);
+            }
         } else {
             alert("Hata: " + result.message);
         }
@@ -408,8 +303,6 @@ async function handleUserRegister(event) {
 async function handleUserLogin() {
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPassword').value;
-    const rememberMe = document.getElementById('userRememberMe');
-    const remember = rememberMe && rememberMe.checked;
 
     if (!email || !pass) {
         alert("LÜTFEN ALANLARI DOLDURUNUZ.");
@@ -427,17 +320,6 @@ async function handleUserLogin() {
         if (result.success) {
             currentUser = result.user;
             loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
-            if (remember) {
-                localStorage.setItem('userToken', result.token);
-                localStorage.setItem('userData', JSON.stringify(result.user));
-                localStorage.setItem('userRemember', 'true');
-            } else {
-                sessionStorage.setItem('userToken', result.token);
-                sessionStorage.setItem('userData', JSON.stringify(result.user));
-                localStorage.removeItem('userToken');
-                localStorage.removeItem('userData');
-                localStorage.removeItem('userRemember');
-            }
             await loadUserBlacklist();
             renderFieldsGrid();
             updateLoginUIVisibility();
@@ -445,6 +327,12 @@ async function handleUserLogin() {
             if (currentSelectedFieldKey) onDateOrFieldChange();
             fillFormsFromProfile();
         } else {
+            if (result.unverified) {
+                document.getElementById('otpUserId').value = result.userId || '';
+                document.getElementById('otpEmail').value = result.email || '';
+                closeModal('loginModal');
+                openModal('otpVerificationModal');
+            }
             alert("HATA: " + result.message);
         }
     } catch (error) {
@@ -463,475 +351,75 @@ function switchBusinessTab(tabName) {
     document.querySelectorAll('.tab-content-zone').forEach(zone => {
         zone.style.display = 'none';
     });
-    const targetTab = document.getElementById(`tab-${tabName}`);
-    if (targetTab) targetTab.style.display = 'block';
-    
-    const tabMap = {
-        'kontrol': 'kontrol',
-        'stats': 'istatistikler',
-        'reservations': 'rezervasyonlar',
-        'debts': 'borçlar',
-        'comments': 'yorumlar',
-        'blacklist': 'kara liste',
-        'pricing': 'fiyat tarifesi',
-        'hours': 'saat & engel',
-        'subscriptions': 'abonelik',
-        'settings': 'işletme ayarları'
-    };
-    
-    document.querySelectorAll('#businessMenuTabsContainer .nav-btn').forEach(btn => {
-        const btnText = btn.textContent.trim().toLowerCase();
-        const expected = tabMap[tabName];
-        btn.classList.toggle('active', btnText.includes(expected));
+    document.getElementById(`tab-${tabName}`).style.display = 'block';
+    document.querySelectorAll('.business-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
     });
-
-    if (tabName === 'kontrol') {
-        loadWeeklySchedule();
-    } else if (tabName === 'debts') {
+    document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+    if (tabName === 'debts') {
         loadBusinessDebts('all');
     } else if (tabName === 'comments') {
         loadBusinessComments();
     } else if (tabName === 'blacklist') {
         loadBusinessBlacklist();
-    } else if (tabName === 'settings') {
-        loadBusinessFieldPhotos();
     }
 }
-
-function showBusinessLoginWrapper() {
-    document.body.classList.remove('logged-in');
-    const loginWrapper = document.getElementById('businessLoginWrapper');
-    if (loginWrapper) loginWrapper.style.display = 'flex';
-    const panel = document.getElementById('businessPanel');
-    if (panel) panel.style.display = 'none';
-    const logoutSec = document.getElementById('businessLogoutSection');
-    if (logoutSec) logoutSec.style.display = 'none';
-    const burger = document.getElementById('mobileHamburgerBtn');
-    if (burger) burger.style.display = 'none';
-}
-
-function showBusinessUI() {
-    document.body.classList.add('logged-in');
-    const loginWrapper = document.getElementById('businessLoginWrapper');
-    if (loginWrapper) loginWrapper.style.display = 'none';
-    const panel = document.getElementById('businessPanel');
-    if (panel) panel.style.display = 'block';
-    const logoutSec = document.getElementById('businessLogoutSection');
-    if (logoutSec) logoutSec.style.display = 'flex';
-    const burger = document.getElementById('mobileHamburgerBtn');
-    if (burger) burger.style.display = 'block';
-
-    const field = fieldsData[currentBusinessFieldKey];
-    if (field) {
-        const welcome = document.getElementById('businessWelcomeText');
-        if (welcome) welcome.innerText = `İŞLETME: ${field.name}`;
-        const badge = document.getElementById('businessActiveNameBadge');
-        if (badge) badge.innerText = field.name.toLocaleUpperCase('tr-TR');
-        const titleEl = document.getElementById('businessPanelTitle');
-        if (titleEl) titleEl.innerText = `YÖNETİM PANELİ`;
-        const hbf = document.getElementById('hamburgerFieldName');
-        if (hbf) hbf.innerText = field.name.toLocaleUpperCase('tr-TR');
-    }
-
-    switchBusinessTab('stats');
-    loadBusinessDashboard();
-}
-
-// =======================================================
-// KONTROL PANELİ - Haftalık Doluluk Çizelgesi
-// =======================================================
-
-// State
-let kontrolWeekOffset = 0; // 0 = bu hafta, -1 = önceki, +1 = sonraki
-let kontrolScheduleData = null;
-let kontrolSelectedMobileDay = 0; // Mobilde seçili gün index'i (0=Pzt)
-
-const KONTROL_GUNLER = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-const KONTROL_GUN_FULL = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-
-// Haftanın Pazartesi ve Pazar tarihlerini döndür (weekOffset'e göre)
-function getKontrolWeekRange(offset) {
-    const now = new Date();
-    const day = now.getDay(); // 0=Pazar, 1=Pzt...
-    const diffToPzt = (day === 0) ? -6 : 1 - day;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToPzt + offset * 7);
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    return { monday, sunday };
-}
-
-function formatDateYMD(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
-
-function formatDateDM(date) {
-    return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function changeKontrolWeek(dir) {
-    kontrolWeekOffset += dir;
-    loadWeeklySchedule();
-}
-
-// Saat dilimlerini listele (openingHour'dan closingHour'a kadar)
-function getKontrolHourSlots(opening, closing) {
-    const slots = [];
-    let h = parseInt(opening.split(':')[0]);
-    const closeH = parseInt(closing.split(':')[0]);
-    const maxIter = 24;
-    let iter = 0;
-    while (iter < maxIter) {
-        slots.push(`${String(h % 24).padStart(2, '0')}:00`);
-        if (h % 24 === closeH) break;
-        h++;
-        iter++;
-    }
-    return slots;
-}
-
-// Türkiye tarih formatına çevir (DD.MM.YYYY)
-function normalizeDateText(dateStr) {
-    if (!dateStr) return '';
-    // Zaten DD.MM.YYYY formatındaysa direkt döndür
-    if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateStr)) return dateStr;
-    // YYYY-MM-DD formatını DD.MM.YYYY'e çevir
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        const [y, m, d] = dateStr.split('-');
-        return `${d}.${m}.${y}`;
-    }
-    return dateStr;
-}
-
-async function loadWeeklySchedule() {
-    if (!currentBusinessFieldKey) return;
-
-    const loadingEl = document.getElementById('kontrolLoadingState');
-    const errorEl = document.getElementById('kontrolErrorState');
-    const desktopGrid = document.getElementById('kontrolDesktopGrid');
-    const mobileView = document.getElementById('kontrolMobileView');
-    const summaryBar = document.getElementById('kontrolSummaryBar');
-
-    // Göster/gizle
-    if (loadingEl) loadingEl.style.display = 'flex';
-    if (errorEl) errorEl.style.display = 'none';
-    if (desktopGrid) desktopGrid.style.display = 'none';
-    if (mobileView) mobileView.style.display = 'none';
-    if (summaryBar) summaryBar.style.display = 'none';
-
-    const { monday, sunday } = getKontrolWeekRange(kontrolWeekOffset);
-    const weekStart = formatDateYMD(monday);
-    const weekEnd = formatDateYMD(sunday);
-
-    // Hafta bilgisi label'larını güncelle
-    const labelEl = document.getElementById('kontrolWeekLabel');
-    const datesEl = document.getElementById('kontrolWeekDates');
-    if (labelEl) {
-        if (kontrolWeekOffset === 0) labelEl.textContent = 'Bu Hafta';
-        else if (kontrolWeekOffset === -1) labelEl.textContent = 'Geçen Hafta';
-        else if (kontrolWeekOffset === 1) labelEl.textContent = 'Gelecek Hafta';
-        else labelEl.textContent = `${Math.abs(kontrolWeekOffset)} hafta ${kontrolWeekOffset < 0 ? 'önce' : 'sonra'}`;
-    }
-    if (datesEl) {
-        datesEl.textContent = `${formatDateDM(monday)} — ${formatDateDM(sunday)}.${sunday.getFullYear()}`;
-    }
-
-    // Pitch sayısına göre filtre göster
-    const pitchFilterEl = document.getElementById('kontrolPitchFilter');
-
-    const pitchSel = document.getElementById('kontrolPitchSelect');
-    const pitchNumber = pitchSel ? pitchSel.value : '';
-
-    try {
-        const headers = getAuthHeaders();
-        if (!headers['Authorization'] && !headers['x-admin-token']) {
-            throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-        }
-
-        const url = `/api/weekly-schedule/${currentBusinessFieldKey}?weekStart=${weekStart}&weekEnd=${weekEnd}${pitchNumber ? '&pitchNumber=' + pitchNumber : ''}`;
-        const resp = await fetch(url, { headers });
-
-        if (!resp.ok) {
-            const errData = await resp.json().catch(() => ({}));
-            throw new Error(errData.message || `Sunucu hatası: ${resp.status}`);
-        }
-
-        const data = await resp.json();
-        if (!data.success) throw new Error(data.message || 'Veri alınamadı.');
-
-        kontrolScheduleData = { ...data, monday, weekStart, weekEnd };
-
-        // Pitch filtresi göster/gizle
-        if (pitchFilterEl) {
-            pitchFilterEl.style.display = (data.pitchCount > 1) ? 'flex' : 'none';
-        }
-
-        if (loadingEl) loadingEl.style.display = 'none';
-
-        // Responsive: mobil mi masaüstü mü?
-        const isMobile = window.innerWidth < 768;
-        renderKontrolGrid(data, monday, isMobile);
-
-        if (!isMobile) {
-            if (desktopGrid) desktopGrid.style.display = 'block';
-        } else {
-            if (mobileView) mobileView.style.display = 'block';
-        }
-        if (summaryBar) summaryBar.style.display = 'flex';
-
-    } catch (err) {
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (errorEl) {
-            errorEl.style.display = 'flex';
-            const titleEl = document.getElementById('kontrolErrorTitle');
-            const msgEl = document.getElementById('kontrolErrorMsg');
-            if (titleEl) titleEl.textContent = 'Bağlantı Hatası';
-            if (msgEl) msgEl.textContent = err.message || 'Sunucuya ulaşılamıyor.';
-        }
-    }
-}
-
-function renderKontrolGrid(data, monday, isMobile) {
-    const { reservations, dailyHours, disabledHours, pitchCount } = data;
-
-    const defaultOpen = '17:00';
-    const defaultClose = '01:00';
-
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        const jsDay = d.getDay();
-        const hoursForDay = dailyHours[jsDay] || { opening: defaultOpen, closing: defaultClose };
-        const slots = getKontrolHourSlots(hoursForDay.opening, hoursForDay.closing);
-        days.push({ date: d, dateStr: formatDateDM(d), fullDate: formatDateYMD(d), slots, jsDay });
-    }
-
-    const resMap = {};
-    (reservations || []).forEach(r => {
-        let rDate = r.dateText;
-        if (/^\d{2}\.\d{2}\.\d{4}$/.test(rDate)) {
-            const [dd, mm, yyyy] = rDate.split('.');
-            rDate = `${yyyy}-${mm}-${dd}`;
-        }
-        const hourKey = r.hourText ? r.hourText.split(' - ')[0].trim() : '';
-        const key = `${rDate}|${hourKey}`;
-        if (!resMap[key]) resMap[key] = [];
-        resMap[key].push(r);
-    });
-
-    const disabledMap = {};
-    (disabledHours || []).forEach(d => {
-        const hourStr = d.hour ? d.hour.split(' - ')[0].trim() : d.hour;
-        const key = `${d.pitchNumber}|${hourStr}`;
-        disabledMap[key] = true;
-    });
-
-    const daysListContainer = document.getElementById('kontrolDaysList');
-    if (!daysListContainer) return;
-    daysListContainer.innerHTML = '';
-
-    let countDolu = 0, countBos = 0, countKapali = 0;
-    const today = formatDateYMD(new Date());
-
-    days.forEach((day, di) => {
-        const isToday = day.fullDate === today;
-        
-        const dayCard = document.createElement('div');
-        dayCard.className = `kontrol-day-row-card${isToday ? ' today' : ''}`;
-
-        const dayTitle = document.createElement('div');
-        dayTitle.className = 'kontrol-day-row-title';
-        dayTitle.innerHTML = `
-            <span class="kontrol-day-row-name">${KONTROL_GUN_FULL[di]}</span>
-            <span class="kontrol-day-row-date ${isToday ? 'today-badge' : ''}">${day.dateStr}</span>
-        `;
-        dayCard.appendChild(dayTitle);
-
-        const activePitches = pitchCount > 1 ? Array.from({ length: pitchCount }, (_, i) => i + 1) : [1];
-
-        activePitches.forEach(pitchNum => {
-            const pitchRow = document.createElement('div');
-            pitchRow.className = 'kontrol-pitch-row';
-
-            if (pitchCount > 1) {
-                const pitchLabel = document.createElement('div');
-                pitchLabel.className = 'kontrol-pitch-row-label';
-                pitchLabel.textContent = `SAHA ${pitchNum}`;
-                pitchRow.appendChild(pitchLabel);
-            }
-
-            const buttonsContainer = document.createElement('div');
-            buttonsContainer.className = 'kontrol-hours-inline-list';
-
-            day.slots.forEach(slot => {
-                const resKey = `${day.fullDate}|${slot}`;
-                const resArr = (resMap[resKey] || []).filter(r => !r.pitchNumber || r.pitchNumber === pitchNum);
-                const isDisabled = disabledMap[`${pitchNum}|${slot}`];
-
-                const btn = document.createElement('button');
-                
-                const startHour = parseInt(slot.split(':')[0]);
-                const endHour = String((startHour + 1) % 24).padStart(2, '0');
-                const fullHourText = `${slot} - ${endHour}:00`;
-
-                btn.className = 'kontrol-hour-btn';
-                btn.innerHTML = `<span class="hour-text">${fullHourText}</span>`;
-
-                if (isDisabled) {
-                    btn.classList.add('kapali');
-                    btn.title = 'Saha Kilitli / Engelli Saat';
-                    countKapali++;
-                } else if (resArr.length > 0) {
-                    const r = resArr[0];
-                    const isAbone = r.type === 'abone';
-                    btn.classList.add(isAbone ? 'abone' : 'dolu');
-                    const payStatus = r.payment_status === 'odendi' ? '✅' : '⚠️';
-                    btn.title = `${r.reserverName || 'Rezervasyon'} | ${r.reserverPhone || ''} | ${payStatus}`;
-                    btn.onclick = () => showKontrolReservationDetail(r);
-                    countDolu++;
-                } else {
-                    btn.classList.add('bos');
-                    btn.title = 'Boş Saat - Hızlı Rezervasyon';
-                    btn.onclick = () => openKontrolQuickReserve(day.fullDate, slot);
-                    countBos++;
-                }
-
-                buttonsContainer.appendChild(btn);
-            });
-
-            pitchRow.appendChild(buttonsContainer);
-            dayCard.appendChild(pitchRow);
-        });
-
-        daysListContainer.appendChild(dayCard);
-    });
-
-    const sumDolu = document.getElementById('kontrolSumDolu');
-    const sumBos = document.getElementById('kontrolSumBos');
-    const sumKapali = document.getElementById('kontrolSumKapali');
-    if (sumDolu) sumDolu.textContent = countDolu;
-    if (sumBos) sumBos.textContent = countBos;
-    if (sumKapali) sumKapali.textContent = countKapali;
-}
-
-function showKontrolReservationDetail(r) {
-    const name = r.reserverName || r.user_name || '-';
-    const phone = r.reserverPhone || r.user_phone || '-';
-    const date = r.dateText || '-';
-    const hour = r.hourText || '-';
-    const type = r.type === 'abone' ? '📋 Abonelik' : '⚽ Normal';
-    const payStatus = r.payment_status === 'odendi' ? '✅ Ödendi' : '⚠️ Ödenmedi';
-    const price = r.reservation_price ? r.reservation_price + ' TL' : '-';
-    const pitch = r.pitchNumber ? `Saha ${r.pitchNumber}` : '-';
-
-    alert(`📋 REZERVASYON DETAYI\n\nAd Soyad: ${name}\nTelefon: ${phone}\nTarih: ${date}\nSaat: ${hour}\nSaha: ${pitch}\nTür: ${type}\nÖdeme: ${payStatus}\nFiyat: ${price}`);
-}
-
-function openKontrolQuickReserve(dateStr, hourSlot) {
-    switchBusinessTab('reservations');
-    const dateSelect = document.getElementById('businessGridDateSelect');
-    if (dateSelect) {
-        const [y, m, d] = dateStr.split('-');
-        const trDate = `${d}.${m}.${y}`;
-        for (let i = 0; i < dateSelect.options.length; i++) {
-            if (dateSelect.options[i].value === trDate || dateSelect.options[i].text.includes(trDate)) {
-                dateSelect.selectedIndex = i;
-                break;
-            }
-        }
-        if (typeof renderBusinessHoursGrid === 'function') renderBusinessHoursGrid();
-    }
-    showToast(`${hourSlot} saati için rezervasyon eklemek üzere Rezervasyonlar sekmesi açıldı.`, 'info');
-}
-
-window.addEventListener('resize', () => {
-    if (document.getElementById('tab-kontrol') && 
-        document.getElementById('tab-kontrol').style.display !== 'none' &&
-        kontrolScheduleData) {
-        renderKontrolGrid(kontrolScheduleData, kontrolScheduleData.monday, window.innerWidth < 768);
-    }
-});
-
-
 
 async function handleBusinessLogin() {
-    const keyInput = document.getElementById('businessKey');
-    const passInput = document.getElementById('businessPassword');
-
-    if (!keyInput || !passInput) return;
-
-    const key = keyInput.value.trim().toLowerCase();
-    const password = passInput.value;
+    const key = document.getElementById('businessKey').value.trim().toLowerCase();
+    const password = document.getElementById('businessPassword').value;
 
     if (!key || !password) {
         alert("Lütfen işletme adı ve şifreyi giriniz.");
         return;
     }
 
-    let data;
-    try {
-        const resp = await fetch('/api/business-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fieldKey: key, password })
-        });
-        data = await resp.json();
-        if (!data.success) {
-            alert(data.message || "Hatalı şifre!");
-            return;
-        }
-    } catch (e) {
-        alert("Sunucu hatası! Lütfen tekrar deneyin.");
+    const field = fieldsData[key];
+    if (!field) {
+        alert("İşletme bulunamadı! Lütfen doğru işletme adını giriniz.");
+        return;
+    }
+    if (field.password !== password) {
+        alert("Hatalı şifre!");
         return;
     }
 
     currentBusinessFieldKey = key;
     isBusinessLoggedIn = true;
-    const bizRememberEl = document.getElementById('businessRememberMe');
-    const bizRemember = bizRememberEl && bizRememberEl.checked;
-    if (bizRemember) {
-        localStorage.setItem('businessFieldKey', key);
-        localStorage.setItem('businessToken', data.token);
-        localStorage.setItem('businessRemember', 'true');
-    } else {
-        inMemoryBusinessFieldKey = key;
-        inMemoryBusinessToken = data.token;
-        localStorage.removeItem('businessFieldKey');
-        localStorage.removeItem('businessToken');
-        localStorage.removeItem('businessRemember');
-    }
-    passInput.value = '';
+    closeModal('businessLoginModal');
+    document.getElementById('businessPassword').value = "";
 
-    showBusinessUI();
+    document.getElementById('userAuthSection').style.display = 'none';
+    document.getElementById('businessAuthSection').style.display = 'none';
+    document.getElementById('businessLogoutSection').style.display = 'flex';
+    document.getElementById('welcomeText').style.display = 'none';
+
+    const customerContainer = document.getElementById('customerContainer');
+    if (customerContainer) customerContainer.style.display = 'none';
+
+    document.querySelector('main').classList.add('business-mode');
+    document.getElementById('businessPanel').style.display = 'block';
+    document.getElementById('businessPanelTitle').innerText = `${field.name.toLocaleUpperCase('tr-TR')} YÖNETİM PANELİ`;
+    document.getElementById('businessWelcomeText').innerText = `İŞLETME: ${field.name}`;
+
+    switchBusinessTab('stats');
+    await loadBusinessDashboard();
 }
 
 function handleBusinessLogout() {
     isBusinessLoggedIn = false;
     currentBusinessFieldKey = "";
-    inMemoryBusinessFieldKey = null;
-    inMemoryBusinessToken = null;
-    localStorage.removeItem('businessFieldKey');
-    localStorage.removeItem('businessToken');
-    localStorage.removeItem('businessRemember');
 
-    // Admin modunda işletme panelinden çıkış: admin paneline dön
-    if (isAdminLoggedIn && isAdminPage) {
-        document.querySelector('main').classList.remove('business-mode');
-        document.body.classList.remove('business-mode');
-        const adminPanel = document.getElementById('adminPanel');
-        if (adminPanel) adminPanel.style.display = 'block';
-        document.querySelector('main').classList.add('admin-mode');
-        document.body.classList.add('admin-mode');
-        switchAdminTab('fields');
-        return;
-    }
+    document.getElementById('userAuthSection').style.display = 'flex';
+    document.getElementById('businessAuthSection').style.display = 'flex';
+    document.getElementById('businessLogoutSection').style.display = 'none';
 
-    showBusinessLoginWrapper();
+    const customerContainer = document.getElementById('customerContainer');
+    if (customerContainer) customerContainer.style.display = 'block';
+
+    document.querySelector('main').classList.remove('business-mode');
+    document.getElementById('businessPanel').style.display = 'none';
+
     alert("İşletme panelinden çıkış yapıldı.");
     if (currentSelectedFieldKey) onDateOrFieldChange();
 }
@@ -957,7 +445,7 @@ async function loadBusinessDashboard() {
 
 async function loadBusinessStats() {
     try {
-        const response = await fetch(`/api/stats-content/${currentBusinessFieldKey}`, { headers: getAuthHeaders() });
+        const response = await fetch(`/api/stats-content/${currentBusinessFieldKey}`);
         const result = await response.json();
         if (result.success) {
             const data = result.data;
@@ -1035,7 +523,7 @@ async function saveBusinessFieldCount() {
     try {
         const response = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 isClosed: field.isClosed ? 1 : 0,
                 openingHour: field.openingHour,
@@ -1064,7 +552,7 @@ async function saveBusinessFieldCount() {
 }
 
 function loadPricingForSelectedPitch() {
-    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
+    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
     let pitchNum = 1;
     const pricingInputsZone = document.getElementById('pricingInputsZone');
     if (count === 2) {
@@ -1081,7 +569,7 @@ function loadPricingForSelectedPitch() {
 }
 
 async function savePricingSchedule() {
-    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
+    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) {
         pitchNum = parseInt(document.getElementById('pricingPitchSelect').value);
@@ -1094,7 +582,7 @@ async function savePricingSchedule() {
     try {
         const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 isClosed: pitch.isClosed || 0,
                 openingHour: pitch.openingHour || '09:00',
@@ -1111,13 +599,12 @@ async function savePricingSchedule() {
             if (existingPitch) { existingPitch.morningPrice = morningPrice; existingPitch.eveningPrice = eveningPrice; }
             else { pitchObjectsList.push({ fieldKey: currentBusinessFieldKey, pitchNumber: pitchNum, morningPrice, eveningPrice }); }
 
-            if (!fieldsData[currentBusinessFieldKey]) fieldsData[currentBusinessFieldKey] = {};
             const field = fieldsData[currentBusinessFieldKey];
             field.pricing = `${morningPrice}/${eveningPrice}`;
             if (pitchNum === 1) {
                 await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
                     method: 'PUT',
-                    headers: getAuthHeaders(),
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         isClosed: field.isClosed ? 1 : 0, openingHour: field.openingHour, closingHour: field.closingHour,
                         disabledHours: JSON.stringify(field.disabledHours), aboneHours: JSON.stringify(field.aboneHours),
@@ -1133,7 +620,7 @@ async function savePricingSchedule() {
 }
 
 async function loadHoursForSelectedPitch() {
-    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
+    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
     let pitchNum = 1;
     const hoursInputsZone = document.getElementById('hoursInputsZone');
     if (count === 2) {
@@ -1146,7 +633,7 @@ async function loadHoursForSelectedPitch() {
     if (daySelect) daySelect.value = 'all';
 
     try {
-        const dhResp = await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`, { headers: getAuthHeaders() });
+        const dhResp = await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`);
         const dhResult = await dhResp.json();
         if (dhResult.success) {
             currentPitchDailyHours = dhResult.data;
@@ -1206,7 +693,7 @@ function getSelectedAdminDayName() {
 }
 
 async function toggleWeekdayClosure() {
-    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
+    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) { 
         pitchNum = parseInt(document.getElementById('hoursPitchSelect').value); 
@@ -1236,7 +723,7 @@ async function toggleWeekdayClosure() {
 
     try {
         const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
-            method: 'PUT', headers: getAuthHeaders(),
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 isClosed: pitch.isClosed || 0, 
                 openingHour: pitch.openingHour || '09:00', 
@@ -1265,7 +752,7 @@ async function toggleWeekdayClosure() {
 
 function onAdminHoursDayChange() {
     const dayVal = document.getElementById('adminHoursDaySelect').value;
-    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
+    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) {
         pitchNum = parseInt(document.getElementById('hoursPitchSelect').value);
@@ -1395,7 +882,7 @@ function renderAdminHoursGrid(pitch) {
 }
 
 async function saveOperatingHours() {
-    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
+    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) { pitchNum = parseInt(document.getElementById('hoursPitchSelect').value); if (!pitchNum) { alert("Lütfen saha seçin!"); return; } }
     const openHour = document.getElementById('adminOpeningHour').value;
@@ -1406,7 +893,7 @@ async function saveOperatingHours() {
     try {
         if (dayVal === 'all') {
             const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
-                method: 'PUT', headers: getAuthHeaders(),
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ isClosed: pitch.isClosed || 0, openingHour: openHour, closingHour: closeHour, disabledHours: JSON.stringify(pitch.disabledHours || []), aboneHours: JSON.stringify(pitch.aboneHours || []), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
             });
             const result = await response.json();
@@ -1420,7 +907,7 @@ async function saveOperatingHours() {
         } else {
             const dayInt = parseInt(dayVal);
             const response = await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`, {
-                method: 'PUT', headers: getAuthHeaders(),
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     days: [{ dayOfWeek: dayInt, openingHour: openHour, closingHour: closeHour }]
                 })
@@ -1452,14 +939,14 @@ async function saveOperatingHours() {
 }
 
 async function toggleFieldClosure() {
-    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
+    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) { pitchNum = parseInt(document.getElementById('hoursPitchSelect').value); if (!pitchNum) { alert("Lütfen saha seçin!"); return; } }
     const isClosed = document.getElementById('fieldClosureToggle').checked ? 1 : 0;
     const pitch = pitchObjectsList.find(p => p.fieldKey === currentBusinessFieldKey && p.pitchNumber === pitchNum) || {};
     try {
         const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
-            method: 'PUT', headers: getAuthHeaders(),
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ isClosed, openingHour: pitch.openingHour || '09:00', closingHour: pitch.closingHour || '23:00', disabledHours: JSON.stringify(pitch.disabledHours || []), aboneHours: JSON.stringify(pitch.aboneHours || []), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
         });
         const result = await response.json();
@@ -1475,7 +962,7 @@ async function toggleFieldClosure() {
 // SAAT ENGEL İŞLEM KAYDEDİCİ (ABONE SEÇENEĞİ KALDIRILDI)
 async function saveHourAction() {
     const action = document.getElementById('hourActionSelect').value;
-    const count = parseInt((fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1);
+    const count = parseInt(fieldsData[currentBusinessFieldKey].pitchCount || 1);
     let pitchNum = 1;
     if (count === 2) { pitchNum = parseInt(document.getElementById('hoursPitchSelect').value); if (!pitchNum) { alert("Lütfen saha seçin!"); return; } }
 
@@ -1492,7 +979,7 @@ async function saveHourAction() {
 
     try {
         const response = await fetch(`/api/pitch-objects/${currentBusinessFieldKey}/${pitchNum}`, {
-            method: 'PUT', headers: getAuthHeaders(),
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ isClosed: pitch.isClosed || 0, openingHour: pitch.openingHour || '09:00', closingHour: pitch.closingHour || '23:00', disabledHours: JSON.stringify(pitch.disabledHours), aboneHours: JSON.stringify(pitch.aboneHours), morningPrice: pitch.morningPrice || 2500, eveningPrice: pitch.eveningPrice || 3000, closedDays: typeof pitch.closedDays === 'string' ? pitch.closedDays : JSON.stringify(pitch.closedDays || []) })
         });
         const result = await response.json();
@@ -1506,7 +993,7 @@ async function saveHourAction() {
 // =======================================================
 async function loadBusinessReservations() {
     try {
-        const response = await fetch(`/api/business-reservations/${currentBusinessFieldKey}`, { headers: getAuthHeaders() });
+        const response = await fetch(`/api/business-reservations/${currentBusinessFieldKey}`);
         const result = await response.json();
         if (result.success) {
             currentBusinessReservations = result.data;
@@ -1553,77 +1040,53 @@ function renderBusinessReservations() {
         else activeList.push(res);
     });
 
-    const pitchCount = (fieldsData[currentBusinessFieldKey] || {}).pitchCount || 1;
+    const pitchCount = fieldsData[currentBusinessFieldKey].pitchCount || 1;
 
     if (activeList.length === 0) {
-        activeContainer.innerHTML = '<p style="color: var(--text-muted); padding: 12px; text-align:center; font-size:0.85rem;">Aktif rezervasyon bulunmamaktadır.</p>';
+        activeContainer.innerHTML = '<p style="color: var(--text-muted);">Aktif rezervasyon bulunmamaktadır.</p>';
     } else {
-        activeContainer.innerHTML = activeList.map(res => {
-            const aboneBadge = res.type === 'abone' ? '<span class="abone-badge">ABONE</span>' : '';
-            return `
-            <div class="res-card" onclick="toggleResCard(this)" data-res-id="${res.id}">
-                <div class="res-card-header">
-                    <div class="res-card-info">
-                        <strong>${res.user_name}</strong> ${aboneBadge}
-                        <span class="res-card-meta">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} · ${res.dateText} · ${res.hourText}</span>
-                    </div>
-                    <span class="res-card-arrow">▼</span>
+        activeContainer.innerHTML = activeList.map(res => `
+            <div class="admin-res-item" style="${res.type === 'abone' ? 'border-left: 4px solid #f59e0b;' : ''}">
+                <div class="admin-res-info">
+                    <strong>${res.user_name}${res.type === 'abone' ? ' <span style="background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:700;">ABONE</span>' : ''}</strong><br>
+                    <small style="color: var(--text-muted);">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} | ${res.dateText} | ${res.hourText}</small>
                 </div>
-                <div class="res-card-body" style="display:none;">
-                    <div class="res-card-actions">
-                        ${pitchCount > 1 ? `
-                        <select id="newPitch_${res.id}" class="res-select">
-                            <option value="1" ${res.pitchNumber === 1 ? 'selected' : ''}>Saha 1</option>
-                            <option value="2" ${res.pitchNumber === 2 ? 'selected' : ''}>Saha 2</option>
-                        </select>
-                        ` : `<input type="hidden" id="newPitch_${res.id}" value="1">`}
-                        <select id="newDate_${res.id}" class="res-select">
-                            <option value="${res.dateText}">${res.dateText}</option>
-                            ${getNext7Days().map(day => `<option value="${day}">${day}</option>`).join('')}
-                        </select>
-                        <select id="newHour_${res.id}" class="res-select">
-                            <option value="${res.hourText}">${res.hourText}</option>
-                            ${masterHoursList.map(h => `<option value="${h}">${h}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="res-card-buttons">
-                        <button class="res-btn res-btn-postpone" onclick="event.stopPropagation();updateReservation(${res.id})">ERTELE</button>
-                        <button class="res-btn res-btn-cancel" onclick="event.stopPropagation();removeReservation(${res.id})">İPTAL</button>
-                    </div>
-                    <div class="res-card-hint">▼ Ertlemek veya iptal etmek için tıklayın</div>
-                </div>
-            </div>`;
-        }).join('');
-    }
-
-    if (pastList.length === 0) {
-        pastContainer.innerHTML = '<p style="color: var(--text-muted); padding: 12px; text-align:center; font-size:0.85rem;">Geçmiş rezervasyon bulunmamaktadır.</p>';
-    } else {
-        pastContainer.innerHTML = pastList.map(res => `
-            <div class="res-card res-card-past">
-                <div class="res-card-header">
-                    <div class="res-card-info">
-                        <strong>${res.user_name}</strong>
-                        <span class="res-card-meta">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} · ${res.dateText} · ${res.hourText} · GEÇMİŞ</span>
-                    </div>
-                </div>
-                <div class="res-card-body" style="display:none;">
-                    <div class="res-card-buttons">
-                        <button class="res-btn res-btn-cancel" onclick="event.stopPropagation();removeReservation(${res.id})">SİL</button>
-                    </div>
+                <div class="admin-res-actions" style="margin-top: 5px;">
+                    ${pitchCount > 1 ? `
+                    <select id="newPitch_${res.id}" class="admin-control-inline">
+                        <option value="1" ${res.pitchNumber === 1 ? 'selected' : ''}>Saha 1</option>
+                        <option value="2" ${res.pitchNumber === 2 ? 'selected' : ''}>Saha 2</option>
+                    </select>
+                    ` : `<input type="hidden" id="newPitch_${res.id}" value="1">`}
+                    <select id="newDate_${res.id}" class="admin-control-inline">
+                        <option value="${res.dateText}">Tarih: ${res.dateText}</option>
+                        ${getNext7Days().map(day => `<option value="${day}">${day}</option>`).join('')}
+                    </select>
+                    <select id="newHour_${res.id}" class="admin-control-inline">
+                        <option value="${res.hourText}">Saat: ${res.hourText}</option>
+                        ${masterHoursList.map(h => `<option value="${h}">${h}</option>`).join('')}
+                    </select>
+                    <button class="btn-danger-sm" style="background-color: var(--primary-green); color: #000;" onclick="updateReservation(${res.id})">ERTELE</button>
+                    <button class="btn-danger-sm" onclick="removeReservation(${res.id})">İPTAL</button>
                 </div>
             </div>
         `).join('');
     }
-}
 
-function toggleResCard(el) {
-    const body = el.querySelector('.res-card-body');
-    const arrow = el.querySelector('.res-card-arrow');
-    if (body) {
-        const isOpen = body.style.display !== 'none';
-        body.style.display = isOpen ? 'none' : 'block';
-        if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
+    if (pastList.length === 0) {
+        pastContainer.innerHTML = '<p style="color: var(--text-muted);">Geçmiş rezervasyon bulunmamaktadır.</p>';
+    } else {
+        pastContainer.innerHTML = pastList.map(res => `
+            <div class="admin-res-item" style="opacity: 0.85;">
+                <div class="admin-res-info">
+                    <strong>${res.user_name}${res.type === 'abone' ? ' <span style="background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:700;">ABONE</span>' : ''}</strong><br>
+                    <small style="color: var(--text-muted);">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} | ${res.dateText} | ${res.hourText} (GEÇMİŞ)</small>
+                </div>
+                <div class="admin-res-actions">
+                    <button class="btn-danger-sm" onclick="removeReservation(${res.id})">SİL</button>
+                </div>
+            </div>
+        `).join('');
     }
 }
 
@@ -1677,7 +1140,6 @@ function renderBusinessHoursGrid() {
     if (!field) { grid.innerHTML = ''; return; }
     const pitchCount = field.pitchCount || 1;
 
-    grid.className = 'business-hours-grid-compact';
     grid.innerHTML = '';
 
     const resForDate = currentBusinessReservations.filter(r => r.dateText === dateText);
@@ -1692,8 +1154,8 @@ function renderBusinessHoursGrid() {
 
     for (let p = 1; p <= pitchCount; p++) {
         const pitchLabel = document.createElement('div');
-        pitchLabel.style.cssText = 'grid-column: 1 / -1; font-size:0.75rem; font-weight:700; color:var(--neon-green); text-transform:uppercase; margin:6px 0 2px;';
-        pitchLabel.textContent = `SAHA ${p}`;
+        pitchLabel.style.cssText = 'grid-column: 1 / -1; font-size:0.85rem; font-weight:700; color:var(--neon-green); text-transform:uppercase; margin-top:8px;';
+        pitchLabel.textContent = `--- SAHA ${p} ---`;
         grid.appendChild(pitchLabel);
 
         const pitch = pitchObjectsList.find(po => po.fieldKey === currentBusinessFieldKey && po.pitchNumber === p) || field;
@@ -1725,8 +1187,10 @@ function renderBusinessHoursGrid() {
         });
 
         filteredHours.forEach(hour => {
-            const box = document.createElement('button');
-            box.classList.add('business-hour-box');
+            const btn = document.createElement('button');
+            btn.classList.add('hour-btn');
+            btn.dataset.hour = hour;
+            btn.dataset.pitch = p;
 
             const hStartBiz = parseInt(hour.split(':')[0]);
             let taken = filtered.find(r => r.pitchNumber === p && r.hourText === hour && r.status !== 'cancelled');
@@ -1735,22 +1199,23 @@ function renderBusinessHoursGrid() {
                 taken = currentBusinessReservations.find(r => r.dateText === nextDate && r.pitchNumber === p && r.hourText === hour && r.status !== 'cancelled');
             }
             if (taken) {
-                box.classList.add(taken.type === 'abone' ? 'abone' : 'booked');
-                box.textContent = hour;
-                box.title = `${taken.user_name} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.type === 'abone' ? ' | ABONE' : ''}`;
-                box.onclick = () => {
+                btn.classList.add('taken-business');
+                btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(${taken.user_name})</span>`;
+                btn.title = `${taken.user_name} | ${taken.user_phone || ''} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.type === 'abone' ? ' | ABONE' : ''}`;
+                btn.onclick = () => {
                     selectedBusinessGridResId = taken.id;
                     const info = document.getElementById('businessGridSelectedInfo');
                     if (info) {
                         info.style.display = 'block';
                         document.getElementById('bizGridSelName').textContent = `${taken.user_name}${taken.type === 'abone' ? ' (ABONE)' : ''}`;
-                        document.getElementById('bizGridSelDetail').textContent = `SAHA ${taken.pitchNumber} | ${taken.dateText} | ${taken.hourText} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.reservation_price ? ` | ${taken.reservation_price} TL` : ''}`;
+                        document.getElementById('bizGridSelDetail').textContent = `SAHA ${taken.pitchNumber} | ${taken.dateText} | ${taken.hourText} | ${taken.payment_status === 'odendi' ? '✅ ÖDENDİ' : '⚠️ ÖDENMEDİ'}${taken.reservation_price ? ` | ${taken.reservation_price} TL` : ''}`;
                     }
                 };
             } else {
-                box.textContent = hour;
+                btn.classList.add('business-empty');
+                btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(BOS)</span>`;
             }
-            grid.appendChild(box);
+            grid.appendChild(btn);
         });
     }
 }
@@ -1779,7 +1244,7 @@ async function updateReservation(id) {
     if (!confirm(`Rezervasyonu ${newDate} saat ${newHour} dilimine ertelemek istiyor musunuz?`)) return;
     try {
         const response = await fetch(`/api/reservations/${id}`, {
-            method: 'PUT', headers: getAuthHeaders(),
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dateText: newDate, hourText: newHour, pitchNumber: newPitch })
         });
         const result = await response.json();
@@ -1792,7 +1257,7 @@ async function removeReservation(id) {
     const confirmed = await showConfirmModal("Bu rezervasyonu silmek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`/api/reservations/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+        const response = await fetch(`/api/reservations/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
         const result = await response.json();
         if (result.success) { alert("Rezervasyon başarıyla iptal edildi!"); await loadBusinessReservations(); await loadBusinessStats(); await loadReservationsFromServer(); renderBusinessHoursGrid(); if (currentSelectedFieldKey) onDateOrFieldChange(); }
         else { alert("Hata: " + result.message); }
@@ -1902,7 +1367,7 @@ async function saveSubscription() {
     try {
         const response = await fetch('/api/subscriptions', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fieldKey: currentBusinessFieldKey, pitchNumber: pitchNum, dayOfWeek, hourText: hour, subscriberName: name, subscriberPhone: phone })
+            body: JSON.stringify({ fieldKey: currentBusinessFieldKey, pitchNumber: pitchNum, dayOfWeek, hourText: hour, subscriberName: name, subscriberPhone: phone, user_id: currentUser?.id || null })
         });
         const result = await response.json();
         if (result.success) {
@@ -2019,38 +1484,16 @@ async function initPitchSelector() {
             
             // Override static fieldsData with database values dynamically
             pitchObjectsList.forEach(pitch => {
-                if (pitch.pitchNumber === 1) {
-                    if (!fieldsData[pitch.fieldKey]) {
-                        fieldsData[pitch.fieldKey] = {
-                            name: pitch.name ? pitch.name.replace(/\s*-\s*SAHA\s*1/i, '') : pitch.fieldKey.toUpperCase(),
-                            address: pitch.address || '',
-                            coordinates: pitch.coordinates || '',
-                            phone: pitch.phone || '',
-                            isClosed: false,
-                            hasService: pitch.hasService || 'Servis: Yok',
-                            openingHour: pitch.openingHour || '09:00',
-                            closingHour: pitch.closingHour || '23:00',
-                            aboneHours: [],
-                            disabledHours: [],
-                            pitchCount: 1,
-                            pricing: '2500/3000',
-                            refreshments: pitch.refreshments || '',
-                            cleats: pitch.cleats || 'Krampon Kiralanmaz',
-                            shower: pitch.shower || 'Duş Yok',
-                            market: pitch.market || 'Market Yok'
-                        };
-                    } else {
-                        fieldsData[pitch.fieldKey].name = pitch.name ? pitch.name.replace(/\s*-\s*SAHA\s*1/i, '') : pitch.fieldKey.toUpperCase();
-                        fieldsData[pitch.fieldKey].phone = pitch.phone;
-                        fieldsData[pitch.fieldKey].hasService = pitch.hasService;
-                        if (pitch.coordinates) {
-                            fieldsData[pitch.fieldKey].coordinates = pitch.coordinates;
-                        }
-                        fieldsData[pitch.fieldKey].refreshments = pitch.refreshments || "";
-                        fieldsData[pitch.fieldKey].cleats = pitch.cleats || "Krampon Kiralanmaz";
-                        fieldsData[pitch.fieldKey].shower = pitch.shower || "Duş Yok";
-                        fieldsData[pitch.fieldKey].market = pitch.market || "Market Yok";
+                if (fieldsData[pitch.fieldKey] && pitch.pitchNumber === 1) {
+                    fieldsData[pitch.fieldKey].phone = pitch.phone;
+                    fieldsData[pitch.fieldKey].hasService = pitch.hasService;
+                    if (pitch.coordinates) {
+                        fieldsData[pitch.fieldKey].coordinates = pitch.coordinates;
                     }
+                    fieldsData[pitch.fieldKey].refreshments = pitch.refreshments || "";
+                    fieldsData[pitch.fieldKey].cleats = pitch.cleats || "Krampon Kiralanmaz";
+                    fieldsData[pitch.fieldKey].shower = pitch.shower || "Duş Yok";
+                    fieldsData[pitch.fieldKey].market = pitch.market || "Market Yok";
                 }
             });
         }
@@ -2063,30 +1506,7 @@ async function loadPitchSettingsFromDatabase() {
         const result = await response.json();
         if (result.success) {
             result.data.forEach(setting => {
-                const pitch1 = pitchObjectsList.find(p => p.fieldKey === setting.fieldKey && p.pitchNumber === 1);
-                const displayName = pitch1 && pitch1.name ? pitch1.name.replace(/\s*-\s*SAHA\s*1/i, '') : setting.fieldKey.toUpperCase();
-
-                if (!fieldsData[setting.fieldKey]) {
-                    fieldsData[setting.fieldKey] = {
-                        name: displayName,
-                        address: '',
-                        coordinates: '',
-                        phone: '',
-                        isClosed: setting.isClosed === 1,
-                        hasService: 'Servis: Yok',
-                        openingHour: setting.openingHour,
-                        closingHour: setting.closingHour,
-                        aboneHours: JSON.parse(setting.aboneHours || '[]'),
-                        disabledHours: JSON.parse(setting.disabledHours || '[]'),
-                        pitchCount: setting.field_count || 1,
-                        pricing: setting.pricing || '2500/3000',
-                        refreshments: '',
-                        cleats: 'Krampon Kiralanmaz',
-                        shower: 'Duş Yok',
-                        market: 'Market Yok'
-                    };
-                } else {
-                    fieldsData[setting.fieldKey].name = displayName;
+                if (fieldsData[setting.fieldKey]) {
                     fieldsData[setting.fieldKey].isClosed = setting.isClosed === 1;
                     fieldsData[setting.fieldKey].openingHour = setting.openingHour;
                     fieldsData[setting.fieldKey].closingHour = setting.closingHour;
@@ -2155,27 +1575,34 @@ function renderFieldsGrid() {
     const grid = document.getElementById('fieldsGrid');
     const isMobile = window.innerWidth <= 768;
 
-    grid.innerHTML = Object.keys(fieldsData).filter(key => !fieldsData[key].isClosed).map(key => {
+    grid.innerHTML = Object.keys(fieldsData).map(key => {
         const field = fieldsData[key];
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.coordinates)}`;
+
+        // Çift fiyat gösterimi
+        let priceHtml = '';
+        if (field.pitchCount >= 2) {
+            const pitch1 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 1);
+            const pitch2 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 2);
+            const p1Morning = pitch1 ? (pitch1.morningPrice || 2500) : 2500;
+            const p1Evening = pitch1 ? (pitch1.eveningPrice || 3000) : 3000;
+            const p2Morning = pitch2 ? (pitch2.morningPrice || 2500) : 2500;
+            const p2Evening = pitch2 ? (pitch2.eveningPrice || 3000) : 3000;
+            priceHtml = `
+                <div class="price-detail-line"><span class="pitch-label">SAHA 1)</span> ${p1Morning}/${p1Evening} TL</div>
+                <div class="price-detail-line"><span class="pitch-label">SAHA 2)</span> ${p2Morning}/${p2Evening} TL</div>
+            `;
+        } else {
+            const pitch1 = pitchObjectsList.find(p => p.fieldKey === key && p.pitchNumber === 1);
+            const p1Pricing = pitch1 ? `${pitch1.morningPrice || 2500}/${pitch1.eveningPrice || 3000}` : (field.pricing || '2500/3000');
+            priceHtml = `<div class="price-detail-line"><span class="pitch-label">SAHA 1)</span> ${p1Pricing} TL</div>`;
+        }
 
         const serviceStatus = (field.hasService || "Servis: Yok").toLowerCase().includes("var");
         const cleatsStatus = (field.cleats || "Krampon Kiralanmaz") === "Krampon Kiralanır";
         const showerStatus = (field.shower || "Duş Yok").toLowerCase().includes("var");
         const marketStatus = (field.market || "Market Yok").toLowerCase().includes("var");
         const refreshmentsText = field.refreshments ? `İKRAMLAR: ${field.refreshments.toLocaleUpperCase('tr-TR')}` : "";
-
-        const fieldPitches = pitchObjectsList.filter(p => p.fieldKey === key);
-        let fieldAvgRating = 0;
-        let fieldReviewCount = 0;
-        if (fieldPitches.length > 0) {
-            const totalRating = fieldPitches.reduce((sum, p) => sum + (parseFloat(p.average_rating) || 0), 0);
-            fieldAvgRating = totalRating / fieldPitches.length;
-            fieldReviewCount = fieldPitches.reduce((sum, p) => sum + (parseInt(p.review_count) || 0), 0);
-        }
-        const ratingHtml = fieldAvgRating > 0
-            ? `<span style="font-size:0.8rem; color:#fbbf24; font-weight:700; white-space:nowrap;">${fieldAvgRating.toFixed(1)} <span style="font-size:0.7rem;">★</span></span>`
-            : `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:600; white-space:nowrap;">— ★</span>`;
 
         // Make nice badges
         const serviceBadge = serviceStatus 
@@ -2202,22 +1629,22 @@ function renderFieldsGrid() {
             <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
                 ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
                 <div class="field-card-header">
-                    <h3>${field.name} ${ratingHtml}</h3>
+                    <h3>${field.name}</h3>
                 </div>
-                <div class="mcard-sep"></div>
-                <div class="pitch-badges-row">
-                    ${serviceBadge}
-                    ${cleatsBadge}
-                    ${showerBadge}
-                    ${marketBadge}
-                </div>
-                ${refreshmentsText ? `<div class="mcard-sep"></div><div class="refreshments-display">${refreshmentsText}</div>` : ''}
-                <div class="mcard-sep"></div>
                 <div class="field-card-meta">
                     <a href="tel:${field.phone}" class="phone-link" onclick="event.stopPropagation();">${field.phone}</a>
                     <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
                 </div>
-                <div class="mcard-sep"></div>
+                <div class="field-card-collapse">
+                    <div class="pitch-badges-row">
+                        ${serviceBadge}
+                        ${cleatsBadge}
+                        ${showerBadge}
+                        ${marketBadge}
+                    </div>
+                    ${refreshmentsText ? `<div class="refreshments-display">${refreshmentsText}</div>` : ''}
+                    <div class="price-tag">${priceHtml}</div>
+                </div>
                 <div class="field-comments-section" onclick="event.stopPropagation()">
                     <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
                         YORUMLAR VE DEĞERLENDİRMELER 💬
@@ -2236,10 +1663,9 @@ function renderFieldsGrid() {
             return `
             <div class="field-card ${isBlacklisted ? 'banned-card' : ''}" id="card-${key}" onclick="${cardClickHandler}" style="${isBlacklisted ? 'cursor: not-allowed; opacity: 0.7; border-color: var(--danger-red);' : ''}">
                 ${isBlacklisted ? '<div style="background: var(--danger-red); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; text-align: center; margin-bottom: 10px; letter-spacing: 1px;">🚫 BANLANILDI</div>' : ''}
-                <div class="field-photos-thumbnails" id="field-photos-thumbnails-${key}" style="display:flex; gap:6px; overflow-x:auto; padding:6px 0; margin-bottom:6px;"></div>
                 <div class="field-info-row">
                     <div class="field-main-details">
-                        <h3>${field.name} ${ratingHtml}</h3>
+                        <h3>${field.name}</h3>
                         <div class="pitch-badges-row">
                             ${serviceBadge}
                             ${cleatsBadge}
@@ -2251,6 +1677,7 @@ function renderFieldsGrid() {
                     <div class="field-actions">
                         <a href="tel:${field.phone}" class="phone-link" onclick="event.stopPropagation();">${field.phone}</a>
                         <a href="${mapUrl}" target="_blank" class="map-link" onclick="event.stopPropagation();">HARİTADA GÖSTER</a>
+                        <div class="price-tag">${priceHtml}</div>
                     </div>
                 </div>
                 <div class="card-comments-toggle" onclick="toggleFieldCardReviews('${key}', event)">
@@ -2266,154 +1693,6 @@ function renderFieldsGrid() {
             </div>`;
         }
     }).join('');
-
-    Object.keys(fieldsData).forEach(key => {
-        loadFieldPhotos(key);
-    });
-}
-
-// =======================================================
-// SAHA FOTOĞRAFLARI YÜZEY / GALERİ
-// =======================================================
-
-// Fotoğrafları yükle ve thumbnail olarak göster
-async function loadFieldPhotos(fieldKey) {
-    const container = document.getElementById(`field-photos-thumbnails-${fieldKey}`);
-    if (!container) return;
-    try {
-        const response = await fetch(`/api/field-photos/${fieldKey}`);
-        const result = await response.json();
-        if (result.success && result.data.length > 0) {
-            container.innerHTML = result.data.map(p =>
-                `<img src="${p.url}" alt="${p.caption || ''}" style="width:80px;height:60px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation();showPhotoGallery('${fieldKey}', ${p.id})">`
-            ).join('');
-        } else {
-            container.innerHTML = '';
-        }
-    } catch(e) { console.error('Fotoğraf yükleme hatası:', e); }
-}
-
-// İşletme panelinde fotoğraf yükle
-async function uploadFieldPhoto() {
-    const fileInput = document.getElementById('fieldPhotoInput');
-    const captionInput = document.getElementById('fieldPhotoCaption');
-    const file = fileInput?.files?.[0];
-    if (!file) { alert('Lütfen bir fotoğraf seçin!'); return; }
-    if (!currentBusinessFieldKey) { alert('Önce bir sahaya giriş yapın!'); return; }
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const imageData = e.target.result;
-        try {
-            const response = await fetch('/api/field-photos/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fieldKey: currentBusinessFieldKey, imageData, caption: captionInput?.value || '' })
-            });
-            const result = await response.json();
-            if (result.success) {
-                alert('Fotoğraf yüklendi!');
-                fileInput.value = '';
-                if (captionInput) captionInput.value = '';
-                loadBusinessFieldPhotos();
-                renderFieldsGrid();
-            } else {
-                alert('Hata: ' + (result.message || 'Yüklenemedi'));
-            }
-        } catch(err) { alert('Bağlantı hatası!'); }
-    };
-    reader.readAsDataURL(file);
-}
-
-// İşletme panelinde fotoğrafları listele
-async function loadBusinessFieldPhotos() {
-    const container = document.getElementById('fieldPhotoGallery');
-    if (!container) return;
-    try {
-        const response = await fetch(`/api/field-photos/${currentBusinessFieldKey}`);
-        const result = await response.json();
-        if (result.success && result.data.length > 0) {
-            container.innerHTML = result.data.map(p =>
-                `<div style="position:relative;">
-                    <img src="${p.url}" alt="${p.caption || ''}" style="width:100%;height:90px;object-fit:cover;border-radius:6px;">
-                    ${p.caption ? `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${p.caption}</div>` : ''}
-                    <button style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:14px;cursor:pointer;line-height:1;padding:0;" onclick="deleteFieldPhoto(${p.id})">×</button>
-                </div>`
-            ).join('');
-        } else {
-            container.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Henüz fotoğraf yüklenmemiş.</p>';
-        }
-    } catch(e) { console.error(e); }
-}
-
-async function deleteFieldPhoto(id) {
-    if (!await showConfirmModal('Bu fotoğrafı silmek istediğinize emin misiniz?')) return;
-    try {
-        const response = await fetch(`/api/field-photos/${id}`, { method: 'DELETE' });
-        const result = await response.json();
-        if (result.success) {
-            loadBusinessFieldPhotos();
-            renderFieldsGrid();
-        } else { alert('Silme hatası!'); }
-    } catch(e) { alert('Bağlantı hatası!'); }
-}
-
-// Tam ekran galeri gösterimi
-function showPhotoGallery(fieldKey, startId) {
-    fetch(`/api/field-photos/${fieldKey}`).then(r => r.json()).then(result => {
-        if (!result.success || !result.data.length) return;
-        const photos = result.data;
-        let currentIndex = photos.findIndex(p => p.id === startId);
-        if (currentIndex === -1) currentIndex = 0;
-
-        const overlay = document.createElement('div');
-        overlay.id = 'photo-gallery-overlay';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
-        document.body.appendChild(overlay);
-
-        const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '×';
-        closeBtn.style.cssText = 'position:absolute;top:20px;right:30px;background:transparent;border:none;color:#fff;font-size:40px;cursor:pointer;z-index:1;';
-        closeBtn.onclick = () => overlay.remove();
-        overlay.appendChild(closeBtn);
-
-        const img = document.createElement('img');
-        img.style.cssText = 'max-width:90vw;max-height:80vh;border-radius:8px;object-fit:contain;';
-
-        const caption = document.createElement('p');
-        caption.style.cssText = 'color:#aaa;margin-top:12px;font-size:0.9rem;';
-
-        const navDiv = document.createElement('div');
-        navDiv.style.cssText = 'margin-top:15px;display:flex;gap:20px;';
-
-        const prevBtn = document.createElement('button');
-        prevBtn.textContent = '← ÖNCEKİ';
-        prevBtn.style.cssText = 'background:var(--primary-green);color:#000;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;';
-        prevBtn.onclick = () => {
-            currentIndex = (currentIndex - 1 + photos.length) % photos.length;
-            img.src = photos[currentIndex].url;
-            caption.textContent = photos[currentIndex].caption || '';
-        };
-        navDiv.appendChild(prevBtn);
-
-        const nextBtn = document.createElement('button');
-        nextBtn.textContent = 'SONRAKİ →';
-        nextBtn.style.cssText = 'background:var(--primary-green);color:#000;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;';
-        nextBtn.onclick = () => {
-            currentIndex = (currentIndex + 1) % photos.length;
-            img.src = photos[currentIndex].url;
-            caption.textContent = photos[currentIndex].caption || '';
-        };
-        navDiv.appendChild(nextBtn);
-
-        overlay.appendChild(img);
-        overlay.appendChild(caption);
-        if (photos.length > 1) overlay.appendChild(navDiv);
-
-        img.src = photos[currentIndex].url;
-        caption.textContent = photos[currentIndex].caption || '';
-
-        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    }).catch(e => console.error(e));
 }
 
 // =======================================================
@@ -2470,7 +1749,7 @@ document.addEventListener('click', function(e) {
 // =======================================================
 function selectField(key) {
     if (currentUser && userBlacklistedFields.includes(key)) {
-        alert("Bu hal? saha taraf?ndan engellendi?iniz i?in işlem yapamazs?n?z!");
+        alert("Bu hal� saha taraf�ndan engellendi�iniz i�in i�lem yapamazs�n�z!");
         return;
     }
     currentSelectedFieldKey = key;
@@ -2482,17 +1761,19 @@ function selectField(key) {
     const bookingPanel = document.getElementById('bookingPanel');
     bookingPanel.style.display = 'block';
     
-    // Mobil i?in accordion etkisi (Saha kart?n?n alt?na ta??)
+    // Mobil i�in accordion etkisi (Saha kart�n�n alt�na ta��)
     if (window.innerWidth <= 768 && card) {
         const panel = document.getElementById('customerBookingPanel');
         panel.classList.add('mobile-open');
-        panel.style.display = '';
         card.parentNode.insertBefore(panel, card.nextSibling);
     } else {
         const layout = document.getElementById('customerBookingGridLayout');
         const panel = document.getElementById('customerBookingPanel');
         layout.appendChild(panel);
     }
+
+    // Saha yorumlar�n� y�kle
+    loadFieldReviews(key);
 
     const field = fieldsData[key];
     const pitchCount = field.pitchCount || 1;
@@ -2700,14 +1981,7 @@ async function completeBooking() {
         alert("Lütfen giriş yapın ve saha seçin."); return;
     }
     const hour = currentSelectedHourBtn.dataset.hour;
-    let dateText = document.getElementById('datePicker').value;
-
-    // Gece saatleri (00:00-05:59) aslında bir sonraki güne ait
-    const slotStartH = parseInt(hour.split(':')[0]);
-    if (slotStartH < 6) {
-        const nextDay = getNextCalendarDayText(dateText);
-        if (nextDay) dateText = nextDay;
-    }
+    const dateText = document.getElementById('datePicker').value;
 
     // Aynı gün en fazla 3 (iptal dahil sunucu tarafında kontrol edilir), toplamda en fazla 2 aktif rezervasyon
     // NOT: Günlük limit kontrolü sunucu tarafında iptal edilenler dahil yapılır.
@@ -2766,7 +2040,6 @@ async function completeBooking() {
         hourText: hour, 
         user_name: loggedInUser,
         user_id: currentUser.id,
-        user_phone: currentUser.phone,
         reservation_price: price,
         turnstileToken: turnstileToken
     };
@@ -2788,7 +2061,7 @@ async function executePendingBooking() {
 
     try {
         const response = await fetch('/api/reservations', {
-            method: 'POST', headers: getAuthHeaders(),
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
         const result = await response.json();
@@ -2875,18 +2148,16 @@ async function createForumPost() {
     const hour = document.getElementById('forumHour').value;
     const pos = document.getElementById('forumPosition').value;
     const payment = document.getElementById('forumPayment').value;
-    const phone = document.getElementById('forumPhone')?.value?.trim() || null;
     const msg = document.getElementById('forumMessage').value.trim() || "EKİP TAMAMLANIYOR.";
 
     try {
         const response = await fetch('/api/forum', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, phone, msg, user_id: currentUser.id })
+            body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, msg, user_id: currentUser.id })
         });
         const result = await response.json();
         if (result.success) {
             alert("İlanınız başarıyla yayınlandı!");
-            if (document.getElementById('forumPhone')) document.getElementById('forumPhone').value = "";
             document.getElementById('forumMessage').value = "";
             await loadForumPostsFromServer();
         } else { alert("Hata: " + result.message); }
@@ -2911,15 +2182,15 @@ function renderForumWall() {
 
         container.innerHTML = activePosts.map(post => {
     const isOwner = currentUser && post.user_id && post.user_id === currentUser.id;
-    const foundBadge = post.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLAŞMA SAĞLANDI</div>' : '';
+    const foundBadge = post.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLA�MA SA�LANDI</div>' : '';
     return `
     <div class="post-card" id="forum-post-${post.id}" style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; padding: 12px;">
-        <!-- Tarih (Sol ?st) -->
+        <!-- Tarih (Sol �st) -->
         <div style="grid-column: 1; grid-row: 1; font-size: 0.85rem; color: var(--text-muted);">
             ${post.dateText} - ${post.hourText}
         </div>
         
-        <!-- Aran?lan Mevki (Sa? ?st) -->
+        <!-- Aran�lan Mevki (Sa� �st) -->
         <div style="grid-column: 2; grid-row: 1; text-align: right;">
             <span class="post-pos-badge" style="font-size: 0.75rem; padding: 2px 6px;">ARANAN: ${post.position}</span>
         </div>
@@ -2930,7 +2201,7 @@ function renderForumWall() {
             <div style="font-style: italic;">"${(post.msg || '').toLocaleUpperCase('tr-TR')}"</div>
         </div>
         
-        <!-- Butonlar (Sa? Alt) -->
+        <!-- Butonlar (Sa� Alt) -->
         <div style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 5px;">
             ${foundBadge}
             ${isOwner && post.status !== 'bulundu' ? '<button class="action-btn" style="padding:4px 12px;font-size:0.75rem;background:#f59e0b;color:#000;white-space:nowrap;border-radius:4px;border:none;cursor:pointer;" onclick="markForumFound(${post.id})">BULUNDU</button>' : ''}
@@ -2939,13 +2210,13 @@ function renderForumWall() {
         <!-- Yorumlar -->
         <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
             <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('forum', ${post.id})">
-                İLETİŞİM / YORUMLAR
+                �LET���M / YORUMLAR
             </div>
             <div id="forum-comments-forum-${post.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                 <div id="forum-comments-list-forum-${post.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                 <div style="display:flex;gap:5px;align-items:center;">
-                    <input type="text" id="forum-comment-text-${post.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
-                    <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('forum', ${post.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
+                    <input type="text" id="forum-comment-text-${post.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz�l�r...' : 'Giri� yap�n...'}" ${loggedInUser ? '' : 'disabled'}>
+                    <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('forum', ${post.id})" ${loggedInUser ? '' : 'disabled'}>G�NDER</button>
                 </div>
             </div>
         </div>
@@ -3090,7 +2361,6 @@ async function createMatchSeeker() {
     const height = document.getElementById('matchHeight').value.trim();
     const weight = document.getElementById('matchWeight').value.trim();
     const position = document.getElementById('matchPosition').value;
-    const phone = document.getElementById('matchPhone').value.trim() || null;
     const requestedFee = document.getElementById('matchFee').value;
     const msg = document.getElementById('matchMsg').value.trim();
 
@@ -3107,7 +2377,7 @@ async function createMatchSeeker() {
     try {
         const response = await fetch('/api/match-seekers', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerName, age: parseInt(age), height: height ? parseInt(height) : null, weight: weight ? parseInt(weight) : null, position, phone, availableHours: JSON.stringify(availableHours), availableDates: JSON.stringify(availableDates), requestedFee, msg, user_id: currentUser.id })
+            body: JSON.stringify({ playerName, age: parseInt(age), height: height ? parseInt(height) : null, weight: weight ? parseInt(weight) : null, position, availableHours: JSON.stringify(availableHours), availableDates: JSON.stringify(availableDates), requestedFee, msg, user_id: currentUser.id })
         });
         const result = await response.json();
         if (result.success) {
@@ -3149,30 +2419,7 @@ async function loadMatchSeekers() {
         const result = await response.json();
 
         if (result.success) {
-            let seekers = result.data;
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-
-            seekers = seekers.filter(s => {
-                if (s.status === 'suresi_gecti' || s.status === 'bulundu') return false;
-                
-                // availableDates kontrolü
-                try {
-                    const dates = JSON.parse(s.availableDates || '[]');
-                    if (dates.length > 0) {
-                        const allPast = dates.every(d => {
-                            const pDate = parseTurkishDateString(d);
-                            if (!pDate) return false;
-                            pDate.setHours(23, 59, 59, 999); // günün sonu
-                            return pDate < todayStart;
-                        });
-                        if (allPast) return false;
-                    }
-                } catch(e) {
-                    console.error("Match seeker date filter error:", e);
-                }
-                return true;
-            });
+            const seekers = result.data;
             if (seekers.length === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Filtrelere uygun ilan bulunamadı.</p>';
                 return;
@@ -3188,7 +2435,7 @@ async function loadMatchSeekers() {
         const reviewCount = parseInt(s.reviewCount) || 0;
         const ratingHtml = reviewCount > 0 ? `<span style="color:#fbbf24; font-weight:700; font-size:0.75rem;">? ${avgRating.toFixed(1)} (${reviewCount} Oy)</span>` : `<span style="color:var(--text-muted); font-size:0.7rem;">? Yeni Oyuncu</span>`;
         const isOwner = currentUser && s.user_id && s.user_id === currentUser.id;
-        const foundBadge = s.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLAŞMA SAĞLANDI</div>' : '';
+        const foundBadge = s.status === 'bulundu' ? '<div style="background:#10b981;color:#000;padding:4px 8px;border-radius:4px;font-weight:700;font-size:0.75rem;text-align:center;white-space:nowrap;">ANLA�MA SA�LANDI</div>' : '';
         const posClass = s.position.replace(/\s+/g, '-');
         
         return `
@@ -3206,9 +2453,9 @@ async function loadMatchSeekers() {
             
             <!-- Bottom Left: Details -->
             <div style="grid-column: 1; grid-row: 2; font-size: 0.8rem; display: flex; flex-direction: column; gap: 4px;">
-                <div style="font-weight:bold;">${s.playerName} <span style="color:var(--text-muted); font-weight:normal; font-size:0.75rem;">(${s.age} Yaş${s.height ? `, ${s.height}cm` : ''}${s.weight ? `, ${s.weight}kg` : ''})</span></div>
+                <div style="font-weight:bold;">${s.playerName} <span style="color:var(--text-muted); font-weight:normal; font-size:0.75rem;">(${s.age} Ya�${s.height ? `, ${s.height}cm` : ''}${s.weight ? `, ${s.weight}kg` : ''})</span></div>
                 ${ratingHtml}
-                <div style="color:var(--neon-green); font-size:0.75rem;">${feeText ? 'ÜCRET: ' + feeText : 'ÜCRETSİZ'}</div>
+                <div style="color:var(--neon-green); font-size:0.75rem;">${feeText ? '�CRET: ' + feeText : '�CRETS�Z'}</div>
                 ${s.msg ? `<div style="font-style:italic; font-size:0.75rem;">"${s.msg.toLocaleUpperCase('tr-TR')}"</div>` : ''}
             </div>
             
@@ -3216,17 +2463,17 @@ async function loadMatchSeekers() {
             <div style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 5px;">
                 ${foundBadge}
                 ${isOwner && s.status !== 'bulundu' ? '<button class="action-btn" style="padding:4px 12px;font-size:0.75rem;background:#f59e0b;color:#000;white-space:nowrap;border-radius:4px;border:none;cursor:pointer;" onclick="markMatchFound(' + s.id + ')">BULUNDU</button>' : ''}
-                <button class="profile-btn" style="padding:4px 12px;font-size:0.75rem;border-radius:4px;" onclick="openPlayerProfile('${s.phone || ''}', '${s.playerName.replace(/'/g, "\\'")}', ${s.age}, '${s.position}')">PROFİL</button>
+                <button class="profile-btn" style="padding:4px 12px;font-size:0.75rem;border-radius:4px;" onclick="openPlayerProfile(${s.user_id || 0}, '${s.playerName.replace(/'/g, "\\'")}', ${s.age}, '${s.position}')">PROF�L</button>
             </div>
             
             <!-- Comments -->
             <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
-                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('match_seeker', ${s.id})">İLETİŞİM / YORUMLAR</div>
+                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('match_seeker', ${s.id})">�LET���M / YORUMLAR</div>
                 <div id="forum-comments-match_seeker-${s.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                     <div id="forum-comments-list-match_seeker-${s.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                     <div style="display:flex;gap:5px;align-items:center;">
-                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
-                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('match_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
+                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz�l�r...' : 'Giri� yap�n...'}" ${loggedInUser ? '' : 'disabled'}>
+                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('match_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>G�NDER</button>
                     </div>
                 </div>
             </div>
@@ -3249,15 +2496,7 @@ async function loadTeamSeekers() {
         const result = await response.json();
 
         if (result.success) {
-            let seekers = result.data;
-            const limitDate = new Date();
-            limitDate.setDate(limitDate.getDate() - 30); // 30 günden eski olmasın
-
-            seekers = seekers.filter(s => {
-                if (s.status === 'suresi_gecti' || s.status === 'bulundu') return false;
-                const created = new Date(s.created_at);
-                return created >= limitDate;
-            });
+            const seekers = result.data;
             container.innerHTML = seekers.map(s => {
         const isOwner = loggedInUser && currentUser && parseInt(s.user_id) === parseInt(currentUser.id);
         let days = []; try { days = JSON.parse(s.availableDays || '[]'); } catch(e) { days = []; }
@@ -3296,12 +2535,12 @@ async function loadTeamSeekers() {
             
             <!-- Comments -->
             <div style="grid-column: 1 / -1; grid-row: 3; margin-top: 5px;">
-                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('team_seeker', ${s.id})">İLETİŞİM / YORUMLAR</div>
+                <div class="card-comments-toggle" style="font-size: 0.8rem; padding: 6px;" onclick="toggleForumComments('team_seeker', ${s.id})">�LET���M / YORUMLAR</div>
                 <div id="forum-comments-team_seeker-${s.id}" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
                     <div id="forum-comments-list-team_seeker-${s.id}" style="max-height:150px;overflow-y:auto;margin-bottom:8px;font-size:0.8rem;"></div>
                     <div style="display:flex;gap:5px;align-items:center;">
-                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yazılır...' : 'Giriş yapın...'}" ${loggedInUser ? '' : 'disabled'}>
-                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('team_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>GÖNDER</button>
+                        <input type="text" id="forum-comment-text-${s.id}" class="form-control" style="flex:1; padding: 6px; font-size: 0.8rem;" placeholder="${loggedInUser ? 'Buradan yaz�l�r...' : 'Giri� yap�n...'}" ${loggedInUser ? '' : 'disabled'}>
+                        <button style="padding:4px 8px; font-size:0.7rem; font-weight:700; border:none; border-radius:4px; background:var(--primary-green); color:#000; cursor:pointer;" onclick="submitForumComment('team_seeker', ${s.id})" ${loggedInUser ? '' : 'disabled'}>G�NDER</button>
                     </div>
                 </div>
             </div>
@@ -3336,23 +2575,18 @@ async function markTeamFound(id) {
 // =======================================================
 // OYUNCU PUANLAMA & SEKME / OAUTH YARDIMCILARI
 // =======================================================
-let currentActiveProfilePhone = "";
+let currentActiveProfileId = null;
 
 function updateLoginUIVisibility() {
     const playersLock = document.getElementById('playersFormLock');
     const matchesLock = document.getElementById('matchesFormLock');
     const teamsLock = document.getElementById('teamsFormLock');
-    const userAuthSection = document.getElementById('userAuthSection');
-    const businessAuthSection = document.getElementById('businessAuthSection');
-    const userLogoutSection = document.getElementById('userLogoutSection');
-    const welcomeText = document.getElementById('welcomeText');
 
     if (loggedInUser) {
-        document.body.classList.add('logged-in');
-        if (userAuthSection) userAuthSection.style.display = 'none';
-        if (businessAuthSection) businessAuthSection.style.display = 'none';
-        if (userLogoutSection) userLogoutSection.style.display = 'flex';
-        if (welcomeText) welcomeText.innerText = `HOŞ GELDİN: ${loggedInUser}`;
+        document.getElementById('userAuthSection').style.display = 'none';
+        document.getElementById('businessAuthSection').style.display = 'none';
+        document.getElementById('userLogoutSection').style.display = 'flex';
+        document.getElementById('welcomeText').innerText = `HOŞ GELDİN: ${loggedInUser}`;
         
         if (playersLock) playersLock.style.display = 'none';
         if (matchesLock) matchesLock.style.display = 'none';
@@ -3363,11 +2597,10 @@ function updateLoginUIVisibility() {
         if (addRev) addRev.style.display = 'block';
         if (authAlert) authAlert.style.display = 'none';
     } else {
-        document.body.classList.remove('logged-in');
-        if (userAuthSection) userAuthSection.style.display = 'flex';
-        if (businessAuthSection) businessAuthSection.style.display = 'flex';
-        if (userLogoutSection) userLogoutSection.style.display = 'none';
-        if (welcomeText) welcomeText.innerText = '';
+        document.getElementById('userAuthSection').style.display = 'flex';
+        document.getElementById('businessAuthSection').style.display = 'flex';
+        document.getElementById('userLogoutSection').style.display = 'none';
+        document.getElementById('welcomeText').innerText = "";
         
         if (playersLock) playersLock.style.display = 'flex';
         if (matchesLock) matchesLock.style.display = 'flex';
@@ -3379,6 +2612,34 @@ function updateLoginUIVisibility() {
         if (authAlert) authAlert.style.display = 'block';
     }
 }
+
+function openOAuth(provider) {
+    const width = 500;
+    const height = 600;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+    const url = provider === 'google' ? 'google_login.html' : 'apple_login.html';
+    window.open(url, `${provider} Login`, `width=${width},height=${height},top=${top},left=${left}`);
+}
+
+window.addEventListener('message', async function(event) {
+    if (event.data && event.data.type === 'oauth-success') {
+        const user = event.data.user;
+        currentUser = user;
+        loggedInUser = user.name.toLocaleUpperCase('tr-TR');
+        
+        await loadUserBlacklist();
+        renderFieldsGrid();
+        
+        closeModal('loginModal');
+        closeModal('registerModal');
+        
+        updateLoginUIVisibility();
+        
+        if (currentSelectedFieldKey) onDateOrFieldChange();
+        fillFormsFromProfile();
+    }
+});
 
 function switchCustomerTab(tabName) {
     document.querySelectorAll('.customer-tab-content').forEach(zone => {
@@ -3398,7 +2659,7 @@ function switchCustomerTab(tabName) {
                 form.style.display = 'none';
                 form.classList.remove('anim-slide-fade-in', 'anim-slide-fade-out');
                 const btn = form.nextElementSibling?.querySelector('.mobile-create-btn');
-                if (btn) btn.innerText = '+ ?lan Ver';
+                if (btn) btn.innerText = '+ �lan Ver';
             }
         });
     }
@@ -3415,12 +2676,12 @@ function selectRatingStar(val) {
     document.getElementById('reviewRatingInput').value = val;
 }
 
-async function openPlayerProfile(phone, name, age, position) {
-    currentActiveProfilePhone = phone;
+async function openPlayerProfile(playerId, name, age, position) {
+    currentActiveProfileId = playerId;
     document.getElementById('profilePlayerName').innerText = name.toLocaleUpperCase('tr-TR');
     document.getElementById('profilePlayerSubText').innerText = `${age} YAŞ | MEVKİ: ${position}`;
     
-    await loadPlayerReviews(phone);
+    if (playerId) await loadPlayerReviews(playerId);
     
     selectRatingStar(5);
     document.getElementById('reviewCommentInput').value = "";
@@ -3430,12 +2691,12 @@ async function openPlayerProfile(phone, name, age, position) {
     openModal('playerProfileModal');
 }
 
-async function loadPlayerReviews(phone) {
+async function loadPlayerReviews(playerId) {
     const reviewsContainer = document.getElementById('playerReviewsContainer');
     if (!reviewsContainer) return;
     
     try {
-        const response = await fetch(`/api/player-reviews/${phone}`);
+        const response = await fetch(`/api/player-reviews/${playerId}`);
         const result = await response.json();
         
         if (result.success) {
@@ -3469,14 +2730,14 @@ async function submitPlayerReview() {
         alert("Puanlama yapmak için giriş yapmalısınız!");
         return;
     }
-    if (!currentActiveProfilePhone) return;
+    if (!currentActiveProfileId) return;
 
     try {
         const response = await fetch('/api/player-reviews', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                playerPhone: currentActiveProfilePhone,
+                player_id: currentActiveProfileId,
                 reviewerName: loggedInUser,
                 rating: parseInt(rating),
                 comment: comment || 'OYUNCUYU DEĞERLENDİRDİ.'
@@ -3485,7 +2746,7 @@ async function submitPlayerReview() {
         const result = await response.json();
         if (result.success) {
             alert("Değerlendirmeniz başarıyla yayınlandı!");
-            await loadPlayerReviews(currentActiveProfilePhone);
+            await loadPlayerReviews(currentActiveProfileId);
             await loadMatchSeekers();
         } else {
             alert("Hata: " + result.message);
@@ -3657,7 +2918,7 @@ function parseReservationDateTime(dateText, hourText) {
     const resDate = parseTurkishDateString(dateText);
     if (!resDate) return null;
     
-    const hourPart = hourText.split(' - ')[1] || hourText.split(' - ')[0];
+    const hourPart = hourText.split(' - ')[0]; // "19:00"
     const [h, m] = hourPart.split(':').map(Number);
     resDate.setHours(h, m, 0, 0);
     
@@ -3680,9 +2941,9 @@ async function loadProfileReservations() {
     
     // Fetch subscriptions for this user
     let userSubscriptions = [];
-    if (currentUser.phone) {
+    if (currentUser.id) {
         try {
-            const subResp = await fetch(`/api/subscriptions/by-phone/${encodeURIComponent(currentUser.phone)}`);
+            const subResp = await fetch(`/api/subscriptions/by-user/${currentUser.id}`);
             const subResult = await subResp.json();
             if (subResult.success) userSubscriptions = subResult.data;
         } catch (e) { console.error("Abonelikler çekilemedi:", e); }
@@ -3828,7 +3089,7 @@ async function loadProfileReviews() {
     if (!reviewsContainer || !currentUser) return;
     
     try {
-        const response = await fetch(`/api/player-reviews/${currentUser.phone}`);
+        const response = await fetch(`/api/player-reviews/${currentUser.id}`);
         const result = await response.json();
         
         if (result.success) {
@@ -3863,24 +3124,18 @@ async function saveUserProfile() {
     const age = document.getElementById('profileAgeInput').value.trim();
     const height = document.getElementById('profileHeightInput').value.trim();
     const weight = document.getElementById('profileWeightInput').value.trim();
-    const position = document.getElementById('profilePositionInput') ? document.getElementById('profilePositionInput').value : '';
-    const experience = document.getElementById('profileExperienceInput') ? document.getElementById('profileExperienceInput').value : '';
+    const position = document.getElementById('profilePositionInput').value;
+    const experience = document.getElementById('profileExperienceInput').value;
     
     if (!name || !phone) {
         alert("Ad Soyad ve Telefon alanları zorunludur!");
         return;
     }
     
-    const phoneClean = phone.replace(/\D/g, '');
-    if (!phoneClean.startsWith('05') || phoneClean.length !== 11) {
-        alert("Telefon numarası 05 ile başlamalı ve tam 11 rakam olmalıdır! (Örn: 05XXXXXXXXX)");
-        return;
-    }
-    
     const updateData = {
         id: currentUser.id,
         name,
-        phone: phoneClean,
+        phone,
         age: age ? parseInt(age) : null,
         height: height ? parseInt(height) : null,
         weight: weight ? parseInt(weight) : null,
@@ -4101,18 +3356,17 @@ async function saveAllBusinessSettings() {
     
     try {
         // 1. Saha Sayısını Kaydet
-        if (!fieldsData[currentBusinessFieldKey]) fieldsData[currentBusinessFieldKey] = {};
         const field = fieldsData[currentBusinessFieldKey];
         const resSettings = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 isClosed: field.isClosed ? 1 : 0,
-                openingHour: field.openingHour || '09:00',
-                closingHour: field.closingHour || '23:00',
-                disabledHours: JSON.stringify(field.disabledHours || []),
-                aboneHours: JSON.stringify(field.aboneHours || []),
-                pricing: field.pricing || '2500/3000',
+                openingHour: field.openingHour,
+                closingHour: field.closingHour,
+                disabledHours: JSON.stringify(field.disabledHours),
+                aboneHours: JSON.stringify(field.aboneHours),
+                pricing: field.pricing,
                 field_count: count
             })
         });
@@ -4126,14 +3380,13 @@ async function saveAllBusinessSettings() {
         // 2. İletişim, Servis ve Konum Ayarlarını Kaydet
         const response = await fetch(`/api/business-profile/${currentBusinessFieldKey}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone, hasService, coordinates, refreshments, cleats, shower, market })
         });
         const result = await response.json();
         
         if (result.success) {
             // Lokal fieldsData güncelle
-            if (!fieldsData[currentBusinessFieldKey]) fieldsData[currentBusinessFieldKey] = {};
             fieldsData[currentBusinessFieldKey].pitchCount = count;
             fieldsData[currentBusinessFieldKey].phone = phone;
             fieldsData[currentBusinessFieldKey].hasService = hasService;
@@ -4205,8 +3458,7 @@ async function cancelMyReservation(id) {
     if (!confirmed) return;
     try {
         const response = await fetch(`/api/reservations/${id}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
+            method: 'DELETE'
         });
         const result = await response.json();
         if (result.success) {
@@ -4258,7 +3510,7 @@ async function loadBusinessDebts(filter = 'all') {
     if (!container) return;
 
     try {
-        const response = await fetch(`/api/business-debts/${currentBusinessFieldKey}?filter=${filter}`, { headers: getAuthHeaders() });
+        const response = await fetch(`/api/business-debts/${currentBusinessFieldKey}?filter=${filter}`);
         const result = await response.json();
         if (result.success) {
             let debts = result.data;
@@ -4342,7 +3594,7 @@ async function togglePaymentStatus(id, newStatus, currentFilter) {
     try {
         const response = await fetch(`/api/reservations/${id}/payment`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ payment_status: newStatus })
         });
         const result = await response.json();
@@ -4561,30 +3813,268 @@ async function submitFieldCardComment(fieldKey, event) {
 // ENTEGRASYON, OTP, YORUM VE KARALİSTE DESTEKLERİ
 // =======================================================
 
+// OTP DOĞRULAMA GÖNDERİMİ
+async function submitOTPVerification() {
+    const userId = document.getElementById('otpUserId').value;
+    const email = document.getElementById('otpEmail').value;
+    const otpCode = document.getElementById('otpCodeInput').value.trim();
+
+    if (!otpCode) {
+        alert("Lütfen 6 haneli doğrulama kodunu girin!");
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/auth/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, email, otpCode })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            currentUser = result.user;
+            loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
+            await loadUserBlacklist();
+            renderFieldsGrid();
+            updateLoginUIVisibility();
+            closeModal('otpVerificationModal');
+            document.getElementById('otpCodeInput').value = "";
+            alert(result.message);
+            if (currentSelectedFieldKey) onDateOrFieldChange();
+            fillFormsFromProfile();
+        } else {
+            alert("Doğrulama Hatası: " + result.message);
+        }
+    } catch (error) {
+        console.error("OTP Verification Error:", error);
+        alert("Bağlantı hatası oluştu!");
+    }
+}
+
+// SOSYAL GİRİŞ PROFİL TAMAMLAMA
+async function submitCompleteProfile() {
+    const userId = document.getElementById('completeProfileUserId').value;
+    const phone = document.getElementById('completeProfilePhone').value.trim();
+
+    if (!phone) {
+        alert("Lütfen telefon numaranızı girin!");
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/auth/complete-profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, phone })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            currentUser = result.user;
+            loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
+            await loadUserBlacklist();
+            renderFieldsGrid();
+            updateLoginUIVisibility();
+            closeModal('socialCompleteProfileModal');
+            document.getElementById('completeProfilePhone').value = "";
+            alert(result.message);
+            if (currentSelectedFieldKey) onDateOrFieldChange();
+            fillFormsFromProfile();
+        } else {
+            alert("Profil Tamamlama Hatası: " + result.message);
+        }
+    } catch (error) {
+        console.error("Complete Profile Error:", error);
+        alert("Bağlantı hatası oluştu!");
+    }
+}
+
+// OAUTH PENCERESİ AÇMA
+function openOAuth(provider) {
+    if (provider === 'google') {
+        window.location.href = '/api/auth/google';
+    } else if (provider === 'apple') {
+        window.location.href = '/api/auth/apple/callback?code=mock_apple_code';
+    }
+}
+
 // TURNSTILE DESTEĞİ
 let latestTurnstileToken = "";
 let turnstileScriptLoaded = false;
 function loadTurnstileScript() {
     return new Promise((resolve) => {
         if (window.turnstile) { turnstileScriptLoaded = true; resolve(); return; }
-        const interval = setInterval(() => {
-            if (window.turnstile) {
-                clearInterval(interval);
-                turnstileScriptLoaded = true;
-                resolve();
-            }
-        }, 50);
-        setTimeout(() => {
-            clearInterval(interval);
-            resolve();
-        }, 3000);
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => { turnstileScriptLoaded = true; resolve(); };
+        document.head.appendChild(script);
     });
 }
 function onTurnstileSuccess(token) {
     latestTurnstileToken = token;
 }
 
+// MÜŞTERİ PANELİ SAHA YORUMLARINI YÜKLE
+async function loadFieldReviews(fieldKey) {
+    const listContainer = document.getElementById('fieldReviewsList');
+    if (!listContainer) return;
+    
+    document.getElementById('fieldReviewsSection').style.display = 'block';
 
+    try {
+        const response = await fetch(`/api/reviews/${fieldKey}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            // Check if the user has a reviewable reservation
+            let reviewableRes = null;
+            if (currentUser && userReservations) {
+                const now = new Date();
+                const fieldReservations = userReservations.filter(r => r.fieldKey === fieldKey && r.user_id === currentUser.id);
+                for (const r of fieldReservations) {
+                    const playDate = getActualPlayDate(r.dateText, r.hourText);
+                    if (!playDate) continue;
+                    const hourPart = r.hourText.split(' - ')[1] || '23:59';
+                    const [h, m] = hourPart.split(':').map(Number);
+                    playDate.setHours(h, m, 0, 0);
+                    
+                    const ageInMs = now.getTime() - playDate.getTime();
+                    const ageInDays = ageInMs / (1000 * 60 * 60 * 24);
+                    
+                    if (playDate.getTime() <= now.getTime() && ageInDays <= 7) {
+                        const alreadyReviewed = result.data.some(rev => rev.reservation_id === r.id);
+                        if (!alreadyReviewed) {
+                            reviewableRes = r;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            const formContainer = document.getElementById('addReviewFormContainer');
+            if (reviewableRes) {
+                document.getElementById('reviewResId').value = reviewableRes.id;
+                formContainer.style.display = 'block';
+            } else {
+                formContainer.style.display = 'none';
+            }
+
+            if (result.data.length === 0) {
+                listContainer.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Henüz bu sahaya yorum yapılmamış.</p>';
+                return;
+            }
+
+            // Averages
+            let sumTurf = 0, sumLight = 0, sumFac = 0, sumServ = 0;
+            result.data.forEach(rev => {
+                sumTurf += rev.rating_turf;
+                sumLight += rev.rating_lighting;
+                sumFac += rev.rating_facilities;
+                sumServ += rev.rating_service;
+            });
+            const count = result.data.length;
+            const avgTurf = (sumTurf / count).toFixed(1);
+            const avgLight = (sumLight / count).toFixed(1);
+            const avgFac = (sumFac / count).toFixed(1);
+            const avgServ = (sumServ / count).toFixed(1);
+            const overallAvg = ((sumTurf + sumLight + sumFac + sumServ) / (count * 4)).toFixed(1);
+
+            const summaryHtml = `
+                <div class="reviews-summary-row">
+                    <div>
+                        <div class="review-average-big">${overallAvg} ⭐</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">${count} DEĞERLENDİRME</div>
+                    </div>
+                    <div class="reviews-grid-details" style="flex: 1; max-width: 300px; margin-left: 20px;">
+                        <div class="review-sub-rating-item"><span>ZEMİN:</span> <span>${avgTurf} ⭐</span></div>
+                        <div class="review-sub-rating-item"><span>IŞIK:</span> <span>${avgLight} ⭐</span></div>
+                        <div class="review-sub-rating-item"><span>TESİS:</span> <span>${avgFac} ⭐</span></div>
+                        <div class="review-sub-rating-item"><span>HİZMET:</span> <span>${avgServ} ⭐</span></div>
+                    </div>
+                </div>
+            `;
+
+            const reviewsHtml = result.data.map(rev => {
+                const dateStr = new Date(rev.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+                const rating = ((rev.rating_turf + rev.rating_lighting + rev.rating_facilities + rev.rating_service) / 4).toFixed(1);
+                
+                let ownerReplyHtml = '';
+                if (rev.owner_reply) {
+                    ownerReplyHtml = `
+                        <div class="review-owner-reply">
+                            <div class="review-owner-reply-title">İŞLETME YANITI:</div>
+                            <div class="review-owner-reply-text">${rev.owner_reply}</div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="review-comment-card">
+                        <div class="review-comment-header">
+                            <span class="review-comment-user">${rev.userName} <span class="review-star-badge">${rating} ⭐</span></span>
+                            <span class="review-comment-date">${dateStr}</span>
+                        </div>
+                        <div class="review-comment-text">"${rev.comment || 'Puan verildi.'}"</div>
+                        ${ownerReplyHtml}
+                    </div>
+                `;
+            }).join('');
+
+            listContainer.innerHTML = summaryHtml + reviewsHtml;
+        }
+    } catch (error) {
+        console.error("Reviews load error:", error);
+    }
+}
+
+// MÜŞTERİ YORUM GÖNDERME
+async function submitFieldReview() {
+    if (!loggedInUser || !currentUser) {
+        alert("Yorum yapabilmek için lütfen giriş yapınız!");
+        return;
+    }
+    const resId = document.getElementById('reviewResId').value;
+    const ratingTurf = document.getElementById('ratingTurf').value;
+    const ratingLighting = document.getElementById('ratingLighting').value;
+    const ratingFacilities = document.getElementById('ratingFacilities').value;
+    const ratingService = document.getElementById('ratingService').value;
+    const comment = document.getElementById('reviewCommentText').value.trim();
+    const isAnonymous = document.getElementById('reviewIsAnonymous').checked;
+
+    if (!resId) return;
+
+    try {
+        const response = await fetch('/api/reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: currentUser.id,
+                reservation_id: resId,
+                rating_turf: parseInt(ratingTurf),
+                rating_lighting: parseInt(ratingLighting),
+                rating_facilities: parseInt(ratingFacilities),
+                rating_service: parseInt(ratingService),
+                comment,
+                is_anonymous: isAnonymous ? 1 : 0
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            document.getElementById('reviewCommentText').value = "";
+            document.getElementById('reviewIsAnonymous').checked = false;
+            await loadFieldReviews(currentSelectedFieldKey);
+        } else {
+            alert("Hata: " + result.message);
+        }
+    } catch (error) {
+        console.error("Yorum gönderme hatası:", error);
+        alert("Sunucuya bağlanılamadı!");
+    }
+}
 
 // İŞLETME YORUM YÖNETİMİ
 let currentBusinessCommentFilter = 'all';
@@ -4706,988 +4196,6 @@ async function submitOwnerReply(id) {
     }
 }
 
-async function loadUserBlacklist() {
-    if (!currentUser || !currentUser.phone) {
-        userBlacklistedFields = [];
-        return;
-    }
-    try {
-        const response = await fetch(`/api/blacklists/by-phone/${encodeURIComponent(currentUser.phone)}`);
-        const result = await response.json();
-        if (result.success) {
-            userBlacklistedFields = result.data;
-        }
-    } catch (error) {
-        console.error("Kara liste sorgulama hatası:", error);
-    }
-}
-
-
-// =======================================================
-// SÜPER YÖNETİCİ PANELİ
-// =======================================================
-
-function showAdminLoginWrapper() {
-    document.body.classList.remove('logged-in');
-    const loginWrapper = document.getElementById('adminLoginWrapper');
-    if (loginWrapper) loginWrapper.style.display = 'flex';
-    const panel = document.getElementById('adminPanel');
-    if (panel) panel.style.display = 'none';
-    const logoutSec = document.getElementById('adminLogoutSection');
-    if (logoutSec) logoutSec.style.display = 'none';
-    const burger = document.getElementById('mobileHamburgerBtn');
-    if (burger) burger.style.display = 'none';
-}
-
-function showAdminUI() {
-    document.body.classList.add('logged-in');
-    const loginWrapper = document.getElementById('adminLoginWrapper');
-    if (loginWrapper) loginWrapper.style.display = 'none';
-    const panel = document.getElementById('adminPanel');
-    if (panel) panel.style.display = 'block';
-    const logoutSec = document.getElementById('adminLogoutSection');
-    if (logoutSec) logoutSec.style.display = 'flex';
-    const burger = document.getElementById('mobileHamburgerBtn');
-    if (burger) burger.style.display = 'block';
-
-    const welcome = document.getElementById('adminWelcomeText');
-    if (welcome && adminData) welcome.textContent = `🛡️ ${adminData.display_name}`;
-
-    switchAdminTab('dashboard');
-}
-
-function handleAdminLogin() {
-    const usernameEl = document.getElementById('adminUsername');
-    const passwordEl = document.getElementById('adminPassword');
-    if (!usernameEl || !passwordEl) return;
-
-    const username = usernameEl.value.trim();
-    const password = passwordEl.value.trim();
-    const errorEl = document.getElementById('adminLoginError');
-    const loginBtn = document.getElementById('adminLoginBtn');
-    
-    if (!username || !password) { 
-        if (errorEl) { errorEl.textContent = 'Kullanıcı adı ve şifre girin!'; errorEl.style.display = 'block'; } 
-        return; 
-    }
-    if (errorEl) errorEl.style.display = 'none';
-    if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'GİRİŞ YAPILIYOR...'; }
-    
-    fetch('/api/admin/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    })
-    .then(r => { if (!r.ok) return r.text().then(t => { throw new Error(t); }); return r.json(); })
-    .then(data => {
-        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'GİRİŞ YAP'; }
-        if (!data.success) { 
-            if (errorEl) { errorEl.textContent = data.message; errorEl.style.display = 'block'; } 
-            return; 
-        }
-        isAdminLoggedIn = true;
-        adminToken = data.token;
-        adminData = data.admin;
-        localStorage.setItem('adminToken', data.token);
-        localStorage.setItem('adminData', JSON.stringify(data.admin));
-        const rememberChecked = document.getElementById('adminRememberMe')?.checked || false;
-        if (rememberChecked) {
-            localStorage.setItem('adminRemember', 'true');
-        } else {
-            localStorage.removeItem('adminRemember');
-        }
-        passwordEl.value = "";
-        showAdminUI();
-    })
-    .catch((err) => {
-        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'GİRİŞ YAP'; }
-        let msg = 'Sunucu hatası!';
-        try { const e = JSON.parse(err.message); if (e.message) msg = e.message; } catch(e) { msg = err.message || 'Sunucu hatası!'; }
-        if (errorEl) { errorEl.textContent = msg; errorEl.style.display = 'block'; }
-    });
-}
-
-function handleAdminLogout() {
-    isAdminLoggedIn = false;
-    adminToken = null;
-    adminData = null;
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminData');
-    localStorage.removeItem('adminRemember');
-    showAdminLoginWrapper();
-}
-
-function openAdminPanel() {
-    showAdminUI();
-}
-
-function exitAdminPanel() {
-    handleAdminLogout();
-}
-
-function getAdminHeaders() {
-    return { 'Content-Type': 'application/json', 'x-admin-token': adminToken || '' };
-}
-
-function switchAdminTab(tab) {
-    const tabs = ['dashboard', 'fields', 'users', 'activity', 'blacklist', 'announcements', 'revenue', 'ads', 'addfield'];
-    tabs.forEach(t => {
-        const el = document.getElementById('admin' + t.charAt(0).toUpperCase() + t.slice(1));
-        if (el) el.style.display = t === tab ? 'block' : 'none';
-    });
-
-    const tabMap = {
-        'dashboard': 'dashboard',
-        'fields': 'sahalar',
-        'users': 'kullanıcılar',
-        'activity': 'aktivite',
-        'blacklist': 'kara liste',
-        'announcements': 'duyurular',
-        'revenue': 'gelir',
-        'ads': 'ilan yönetimi',
-        'addfield': 'saha ekle'
-    };
-
-    document.querySelectorAll('#adminPanel .admin-tabs .tab-btn').forEach(btn => {
-        const btnText = btn.textContent.trim().toLowerCase();
-        const expected = tabMap[tab];
-        btn.classList.toggle('active', expected && btnText.includes(expected));
-    });
-
-    // Sidebar active tabs highlight support
-    document.querySelectorAll('#adminMenuTabsContainer .nav-btn').forEach(btn => {
-        const btnText = btn.textContent.trim().toLowerCase();
-        const expected = tabMap[tab];
-        btn.classList.toggle('active', expected && btnText.includes(expected));
-    });
-
-    if (tab === 'dashboard') loadAdminDashboard();
-    if (tab === 'fields') renderAdminFields();
-    if (tab === 'users') renderAdminUsers();
-    if (tab === 'activity') renderAdminActivity();
-    if (tab === 'blacklist') loadAdminGlobalBlacklist();
-    if (tab === 'announcements') loadAdminAnnouncements();
-    if (tab === 'revenue') renderAdminRevenue();
-    if (tab === 'ads') renderAdminAds();
-    if (tab === 'addfield') initAddFieldPanel();
-}
-
-function loadAdminDashboard() {
-    fetch('/api/admin/dashboard', { headers: getAdminHeaders() })
-    .then(r => r.json())
-    .then(data => {
-        if (!data.success) return;
-        
-        // Temel Statlar
-        document.getElementById('adminStatPitches').textContent = data.data.totalPitches || 0;
-        document.getElementById('adminStatActive').textContent = data.data.activePitches || 0;
-        document.getElementById('adminStatUsers').textContent = data.data.totalUsers || 0;
-        
-        const breakDown = data.data.reservationsBreakdown || {};
-        document.getElementById('adminStatReservations').textContent = breakDown.today || 0;
-        
-        // Rezervasyon Detayları
-        document.getElementById('rStatToday').textContent = breakDown.today || 0;
-        document.getElementById('rStatWeekly').textContent = breakDown.weekly || 0;
-        document.getElementById('rStatMonthly').textContent = breakDown.monthly || 0;
-        document.getElementById('rStatTotal').textContent = breakDown.total || 0;
-        
-        // En Aktif Sahalar
-        const activeFieldsList = document.getElementById('adminActivePitchesList');
-        if (activeFieldsList) {
-            const activeFields = data.data.activeFields || [];
-            if (activeFields.length === 0) {
-                activeFieldsList.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:10px;">Rezervasyon kaydı bulunmuyor.</div>';
-            } else {
-                const maxCount = Math.max(...activeFields.map(f => f.count), 1);
-                activeFieldsList.innerHTML = activeFields.map(f => {
-                    const percentage = Math.round((f.count / maxCount) * 100);
-                    return `
-                    <div style="margin-bottom:8px;">
-                        <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#e2e8f0;margin-bottom:4px;">
-                            <span>${f.field_name || f.fieldKey}</span>
-                            <strong>${f.count} Rezervasyon</strong>
-                        </div>
-                        <div style="background:rgba(255,255,255,0.05);height:8px;border-radius:4px;overflow:hidden;">
-                            <div style="background:var(--primary-green);width:${percentage}%;height:100%;border-radius:4px;transition:width 0.5s ease;"></div>
-                        </div>
-                    </div>`;
-                }).join('');
-            }
-        }
-        
-        // Top Üyeler
-        const topUsersList = document.getElementById('adminTopUsersList');
-        if (topUsersList) {
-            const topUsers = data.data.topUsers || [];
-            if (topUsers.length === 0) {
-                topUsersList.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:10px;">Rezervasyon yapan üye bulunmuyor.</div>';
-            } else {
-                topUsersList.innerHTML = topUsers.map((u, i) => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.8rem;">
-                    <div>
-                        <span style="color:#fbbf24;font-weight:bold;margin-right:6px;">#${i+1}</span>
-                        <span style="color:#fff;">${u.user_name}</span><br>
-                        <small style="color:var(--text-muted);">${u.user_phone}</small>
-                    </div>
-                    <div style="text-align:right;">
-                        <strong style="color:var(--primary-green);">${u.count} Maç</strong><br>
-                        <small style="color:var(--text-muted);">${u.spend || 0} TL</small>
-                    </div>
-                </div>`).join('');
-            }
-        }
-        
-        // 30 Günlük Rezervasyon Trendi (CSS Bar Grafik)
-        const trendChart = document.getElementById('adminTrendChart');
-        if (trendChart) {
-            const trend = data.data.trendStats || [];
-            if (trend.length === 0) {
-                trendChart.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:40px;text-align:center;width:100%;">Son 30 güne ait rezervasyon trend verisi bulunmuyor.</div>';
-            } else {
-                const maxTrendCount = Math.max(...trend.map(t => t.count), 1);
-                trendChart.innerHTML = trend.map(t => {
-                    const heightPercent = Math.max((t.count / maxTrendCount) * 100, 5); // en az 5% yükseklik olsun
-                    const dateFormatted = t.date.split('-').slice(1,3).reverse().join('/'); // DD/MM
-                    return `
-                    <div class="trend-bar-wrapper" style="flex:1;display:flex;flex-direction:column;align-items:center;min-width:24px;cursor:pointer;" title="${t.date}: ${t.count} Rezervasyon">
-                        <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:4px;font-weight:bold;">${t.count}</div>
-                        <div style="background:rgba(139,92,246,0.15);width:100%;height:120px;display:flex;align-items:flex-end;border-radius:4px;overflow:hidden;">
-                            <div style="background:#8b5cf6;width:100%;height:${heightPercent}%;border-radius:4px 4px 0 0;transition:height 0.5s ease;"></div>
-                        </div>
-                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:6px;transform:rotate(-45deg);transform-origin:top left;white-space:nowrap;padding-left:4px;">${dateFormatted}</div>
-                    </div>`;
-                }).join('');
-            }
-        }
-    });
-}
-
-// --- SAHA YÖNETİMİ ---
-async function renderAdminFields() {
-    const container = document.getElementById('adminFieldList');
-    const deletedContainer = document.getElementById('adminDeletedFieldList');
-    if (!container) return;
-
-    // Populating dropdowns for opening/closing hour in "afOpening" and "afClosing" if empty
-    const afOpening = document.getElementById('afOpening');
-    const afClosing = document.getElementById('afClosing');
-    if (afOpening && afOpening.innerHTML === "") {
-        masterHoursList.forEach(h => {
-            const prefix = h.split(' - ')[0];
-            let opt1 = document.createElement('option'); opt1.value = prefix; opt1.text = prefix;
-            let opt2 = document.createElement('option'); opt2.value = prefix; opt2.text = prefix;
-            afOpening.appendChild(opt1); afClosing.appendChild(opt2);
-        });
-        afOpening.value = '09:00';
-        afClosing.value = '23:00';
-    }
-
-    // Register phone mask for Add Field
-    const afPhone = document.getElementById('afPhone');
-    if (afPhone && !afPhone.dataset.masked) {
-        afPhone.addEventListener('input', (e) => {
-            let v = e.target.value.replace(/\D/g, '');
-            if (v.startsWith('0')) v = v.substring(1);
-            if (v.length > 10) v = v.substring(0, 10);
-            e.target.value = v ? '0' + v : '';
-        });
-        afPhone.dataset.masked = 'true';
-    }
-
-    const search = (document.getElementById('adminFieldSearch').value || '').toLowerCase();
-
-    try {
-        // Fetch active fields
-        const res = await fetch('/api/admin/fields', { headers: getAdminHeaders() });
-        const result = await res.json();
-        if (result.success) {
-            const fields = result.data.filter(f => (f.name || f.fieldKey).toLowerCase().includes(search));
-            if (fields.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Saha bulunamadı.</div>';
-            } else {
-                container.innerHTML = fields.map(f => {
-                    const isClosed = f.isClosed === 1;
-                    return `<div class="admin-field-card${isClosed ? ' passive' : ''}">
-                        <div class="field-info">
-                            <div class="field-name">${f.name || f.fieldKey.toUpperCase()}</div>
-                            <div class="field-meta">${f.address || ''} · ${f.phone || ''} · ${f.pitch_count || 1} saha · ${isClosed ? '<span style="color:#ef4444;">PASİF (GİZLİ)</span>' : '<span style="color:#34d399;">AKTİF (GÖRÜNÜR)</span>'}</div>
-                        </div>
-                        <div class="field-actions">
-                            <button class="btn-enter" onclick="adminEnterFieldPanel('${f.fieldKey}', '${(f.name || f.fieldKey).replace(/'/g, "\\'")}')">PANEL</button>
-                            <button class="btn-visibility" onclick="adminToggleFieldVisibility('${f.fieldKey}')">${isClosed ? 'GÖSTER' : 'GİZLE'}</button>
-                            <button class="btn-delete" onclick="adminDeleteField('${f.fieldKey}')">SİL</button>
-                        </div>
-                    </div>`;
-                }).join('');
-            }
-        }
-
-        // Fetch deleted fields
-        const delRes = await fetch('/api/admin/deleted-fields', { headers: getAdminHeaders() });
-        const delResult = await delRes.json();
-        if (delResult.success) {
-            const delFields = delResult.data.filter(f => (f.name || f.fieldKey).toLowerCase().includes(search));
-            if (delFields.length === 0) {
-                if (deletedContainer) deletedContainer.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Silinen saha geçmişi temiz.</div>';
-            } else {
-                deletedContainer.innerHTML = delFields.map(f => {
-                    return `<div class="admin-field-card passive" style="border-color: rgba(239, 68, 68, 0.3);">
-                        <div class="field-info">
-                            <div class="field-name" style="text-decoration: line-through; color: var(--text-muted);">${f.name || f.fieldKey.toUpperCase()}</div>
-                            <div class="field-meta">${f.address || ''} · ${f.phone || ''} · ${f.pitch_count || 1} saha · <span style="color:#ef4444;">SİLİNDİ</span></div>
-                        </div>
-                        <div class="field-actions">
-                            <button class="action-btn" style="background:#10b981; color:#000; border-color:#10b981; font-size: 0.8rem; padding: 6px 12px; font-weight:800;" onclick="adminRestoreField('${f.fieldKey}')">GERİ GETİR</button>
-                        </div>
-                    </div>`;
-                }).join('');
-            }
-        }
-    } catch (error) {
-        console.error("Saha verileri çekilemedi:", error);
-    }
-}
-
-function adminToggleFieldVisibility(key) {
-    fetch(`/api/admin/fields/${key}/visibility`, { method: 'PUT', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) { 
-            renderAdminFields(); 
-            showToast(d.message, 'info'); 
-        } else {
-            showToast(d.message, 'error');
-        }
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-async function adminDeleteField(key) {
-    const confirmed = await showConfirmModal(`Saha silmek istediğinize emin misiniz? Bu sahayı daha sonra "Silinen Sahalar" geçmişinden geri getirebilirsiniz.`);
-    if (!confirmed) return;
-    fetch(`/api/admin/fields/${key}`, { method: 'DELETE', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) { 
-            renderAdminFields(); 
-            showToast(d.message, 'info'); 
-        } else {
-            showToast(d.message, 'error');
-        }
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-async function adminRestoreField(key) {
-    const confirmed = await showConfirmModal(`Bu sahayı geri yüklemek istediğinize emin misiniz?`);
-    if (!confirmed) return;
-    fetch(`/api/admin/fields/${key}/restore`, { method: 'POST', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) { 
-            renderAdminFields(); 
-            showToast(d.message, 'info'); 
-        } else {
-            showToast(d.message, 'error');
-        }
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-function initAddFieldPanel() {
-    // Populate hour dropdowns if empty
-    ['afOpening', 'afClosing'].forEach(id => {
-        const sel = document.getElementById(id);
-        if (sel && sel.innerHTML === '') {
-            masterHoursList.forEach(h => {
-                const prefix = h.split(' - ')[0];
-                const opt = document.createElement('option');
-                opt.value = prefix; opt.text = prefix;
-                sel.appendChild(opt);
-            });
-            if (id === 'afOpening') sel.value = '09:00';
-            if (id === 'afClosing') sel.value = '23:00';
-        }
-    });
-    // Auto-sync afKey to afBusinessUsername
-    const afKeyEl = document.getElementById('afKey');
-    const afUserEl = document.getElementById('afBusinessUsername');
-    if (afKeyEl && afUserEl && !afKeyEl.dataset.syncBound) {
-        afKeyEl.addEventListener('input', () => {
-            afUserEl.value = afKeyEl.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-        });
-        afKeyEl.dataset.syncBound = 'true';
-    }
-    // Phone mask for new panel
-    const afPhone = document.getElementById('afPhone');
-    if (afPhone && !afPhone.dataset.masked) {
-        applyPhoneMask(afPhone);
-        afPhone.dataset.masked = 'true';
-    }
-}
-
-function submitAddField() {
-    const afKeyVal = (document.getElementById('afKey').value || '').trim();
-    const afNameVal = (document.getElementById('afName').value || '').trim();
-    const afPhoneVal = (document.getElementById('afPhone').value || '').trim();
-    const afPassVal = (document.getElementById('afBusinessPassword') ? document.getElementById('afBusinessPassword').value : '');
-    const phoneClean = afPhoneVal.replace(/[^0-9]/g, '');
-
-    if (!afKeyVal || !afNameVal) { showToast('Saha anahtarı ve adı zorunludur!', 'error'); return; }
-    if (!phoneClean || !phoneClean.startsWith('05') || phoneClean.length !== 11) {
-        showToast('Telefon numarası 05 ile başlamalı ve tam 11 hane olmalıdır!', 'error');
-        return;
-    }
-    if (!afPassVal || afPassVal.length < 6) {
-        showToast('İşletme şifresi en az 6 karakter olmalıdır!', 'error');
-        return;
-    }
-
-    const data = {
-        fieldKey: afKeyVal,
-        name: afNameVal,
-        address: (document.getElementById('afAddress').value || '').trim(),
-        phone: phoneClean,
-        openingHour: document.getElementById('afOpening').value || '09:00',
-        closingHour: document.getElementById('afClosing').value || '23:00',
-        pitchCount: parseInt(document.getElementById('afPitchCount').value) || 1,
-        morningPrice: parseInt(document.getElementById('afMorningPrice').value) || 2500,
-        eveningPrice: parseInt(document.getElementById('afEveningPrice').value) || 3000,
-        businessPassword: afPassVal
-    };
-    fetch('/api/admin/fields', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify(data) })
-    .then(r => r.json()).then(d => {
-        if (d.success) {
-            showToast(d.message, 'info');
-            // Reset form
-            ['afKey','afName','afAddress','afPhone','afPitchCount'].forEach(id => { const el = document.getElementById(id); if(el) el.value = id === 'afPitchCount' ? '1' : ''; });
-            if (document.getElementById('afBusinessPassword')) document.getElementById('afBusinessPassword').value = '';
-            if (document.getElementById('afBusinessUsername')) document.getElementById('afBusinessUsername').value = '';
-            if (document.getElementById('afMorningPrice')) document.getElementById('afMorningPrice').value = '2500';
-            if (document.getElementById('afEveningPrice')) document.getElementById('afEveningPrice').value = '3000';
-            
-            // Reload pitch data dynamically
-            initPitchSelector().then(() => {
-                loadPitchSettingsFromDatabase().then(() => {
-                    renderFieldsGrid();
-                });
-            });
-
-            switchAdminTab('fields');
-        } else showToast(d.message, 'error');
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-function adminEnterFieldPanel(key, name) {
-    localStorage.setItem('businessFieldKey', key);
-    localStorage.setItem('adminImpersonateField', JSON.stringify({ key, name: name || key }));
-    adminLogAction('field_access', 'field', name || key, `${name || key} paneline admin erişimi`);
-    window.location.href = '/isletme';
-}
-
-function adminReturnFromFieldPanel() {
-    localStorage.removeItem('businessFieldKey');
-    localStorage.removeItem('businessToken');
-    localStorage.removeItem('adminImpersonateField');
-    window.location.href = '/yonetici';
-}
-
-// --- KULLANICI YÖNETİMİ ---
-function renderAdminUsers() {
-    const container = document.getElementById('adminUserList');
-    const search = document.getElementById('adminUserSearch').value.trim();
-    const status = document.getElementById('adminUserStatusFilter').value;
-    const sortBy = document.getElementById('adminUserSortBy').value;
-    const startDate = document.getElementById('adminUserStartDate').value;
-    const endDate = document.getElementById('adminUserEndDate').value;
-    const suspicious = document.getElementById('adminUserSuspicious').checked;
-    
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (status) params.set('status', status);
-    if (sortBy) params.set('sortBy', sortBy);
-    if (startDate) params.set('startDate', startDate);
-    if (endDate) params.set('endDate', endDate);
-    if (suspicious) params.set('suspicious', 'true');
-    
-    fetch(`/api/admin/users?${params}`, { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        if (!data.success || !data.data || data.data.length === 0) { 
-            container.innerHTML = '<div style="color:var(--text-muted);padding:20px;">Kullanıcı bulunamadı.</div>'; 
-            return; 
-        }
-        container.innerHTML = data.data.map(u => {
-            const statusClass = u.status === 'globally_banned' ? 'globally_banned' : (u.status === 'banned' ? 'banned' : 'active');
-            const statusLabel = u.status === 'globally_banned' ? 'GLOBAL BAN' : (u.status === 'banned' ? 'BANLI' : 'AKTİF');
-            
-            // Rozet mantığı
-            let badgeHtml = '';
-            if (u.blacklist_count >= 3) {
-                badgeHtml += `<span class="user-status banned" style="margin-right:5px;background:#ef4444;border-color:#ef4444;">⚠️ YASAK EŞİĞİ</span>`;
-            }
-            if (u.cancelled_reservations_30_days >= 3) {
-                badgeHtml += `<span class="user-status banned" style="margin-right:5px;background:#f59e0b;border-color:#f59e0b;">⚠️ ÇOK SIK İPTAL</span>`;
-            }
-            
-            return `
-            <div class="admin-user-row-wrapper" style="border: 1px solid rgba(255,255,255,0.05); border-radius:10px; margin-bottom:10px; background: rgba(30,41,59,0.3); overflow:hidden;">
-                <div class="admin-user-row" onclick="toggleAdminUserDetailInline(${u.id})" style="display:flex; justify-content:space-between; align-items:center; padding:15px; cursor:pointer; transition:background 0.2s ease;">
-                    <div class="user-info">
-                        <div class="user-name" style="font-weight:700; color:#fff;">${u.name}</div>
-                        <div class="user-meta" style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">${u.phone || ''} · ${u.email || ''} · ${u.age ? u.age + ' yaş' : ''} · Rezervasyon: ${u.total_reservations || 0}</div>
-                    </div>
-                    <div style="display:flex;align-items:center;">
-                        ${badgeHtml}
-                        <span class="user-status ${statusClass}">${statusLabel}</span>
-                    </div>
-                </div>
-                <div class="admin-user-detail-inline" id="user-detail-${u.id}" style="display:none; background:rgba(15,23,42,0.6); border-top:1px solid rgba(255,255,255,0.05); padding:20px;"></div>
-            </div>`;
-        }).join('');
-    }).catch(() => container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
-}
-
-function toggleAdminUserDetailInline(id) {
-    const detailEl = document.getElementById(`user-detail-${id}`);
-    if (!detailEl) return;
-    
-    if (detailEl.style.display === 'block') {
-        detailEl.style.display = 'none';
-        return;
-    }
-    
-    // Close other expanded rows
-    document.querySelectorAll('.admin-user-detail-inline').forEach(el => {
-        if (el.id !== `user-detail-${id}`) el.style.display = 'none';
-    });
-    
-    detailEl.style.display = 'block';
-    
-    if (detailEl.innerHTML === "" || detailEl.innerHTML.includes('Yükleniyor')) {
-        detailEl.innerHTML = '<div style="text-align:center;padding:15px;color:var(--text-muted);">Yükleniyor...</div>';
-        fetch(`/api/admin/users/${id}`, { headers: getAdminHeaders() })
-        .then(r => r.json()).then(data => {
-            if (!data.success || !data.data.user) { 
-                detailEl.innerHTML = '<div style="color:var(--danger-red);padding:10px;">Kullanıcı bulunamadı!</div>'; 
-                return; 
-            }
-            const u = data.data.user;
-            detailEl.innerHTML = `
-                <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:15px;">
-                    <button class="action-btn" onclick="adminToggleUserBanInline(event, ${u.id})" style="padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px; background:${u.status === 'banned' || u.status === 'globally_banned' ? 'rgba(16,185,129,0.15);border-color:#10b981;color:#34d399' : 'rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171'}; cursor:pointer;">${u.status === 'banned' || u.status === 'globally_banned' ? 'BAN KALDIR' : 'BANLA'}</button>
-                    <button class="action-btn" onclick="adminDeleteUserInline(event, ${u.id}, '${u.name}')" style="padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px; background:rgba(239,68,68,0.15); border-color:#ef4444; color:#f87171; cursor:pointer;">SİL</button>
-                </div>
-                <div class="detail-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:12px; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:12px; border-radius:8px;">
-                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Telefon</label><span style="font-size:0.85rem; color:#fff;">${u.phone || '-'}</span></div>
-                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">E-posta</label><span style="font-size:0.85rem; color:#fff; word-break:break-all;">${u.email || '-'}</span></div>
-                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Yaş</label><span style="font-size:0.85rem; color:#fff;">${u.age || '-'}</span></div>
-                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Boy</label><span style="font-size:0.85rem; color:#fff;">${u.height || '-'} cm</span></div>
-                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Kilo</label><span style="font-size:0.85rem; color:#fff;">${u.weight || '-'} kg</span></div>
-                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Mevki</label><span style="font-size:0.85rem; color:#fff;">${u.position || '-'}</span></div>
-                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Tecrübe</label><span style="font-size:0.85rem; color:#fff;">${u.experience || '-'}</span></div>
-                    <div class="detail-item" style="display:flex; flex-direction:column;"><label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; margin-bottom:2px;">Durum</label><span style="font-size:0.85rem; font-weight:bold; color:${u.status === 'globally_banned' ? '#ef4444' : (u.status === 'banned' ? '#f87171' : '#34d399')}">${u.status}</span></div>
-                </div>
-                <div style="margin-top:15px;">
-                    <h4 style="color:#8b5cf6; margin-bottom:8px; font-size:0.85rem; font-weight:700;">REZERVASYONLAR (${(data.data.reservations||[]).length})</h4>
-                    ${(data.data.reservations||[]).slice(0,10).map(r => `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04); color:rgba(255,255,255,0.8);">${r.dateText} ${r.hourText} · ${r.field_name || r.fieldKey} · ${r.reservation_price} TL · <span style="color:${r.payment_status === 'odendi' ? '#34d399' : '#f87171'}">${r.payment_status}</span></div>`).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);">Rezervasyon yok.</div>'}
-                </div>
-                <div style="margin-top:15px;">
-                    <h4 style="color:#8b5cf6; margin-bottom:8px; font-size:0.85rem; font-weight:700;">YORUMLAR (${(data.data.reviews||[]).length})</h4>
-                    ${(data.data.reviews||[]).map(r => `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04); color:rgba(255,255,255,0.8);">${r.field_name || r.fieldKey} · Puan: ${r.rating_turf || '-'}/5 · ${r.comment || ''}</div>`).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);">Yorum yok.</div>'}
-                </div>
-            `;
-        }).catch(() => detailEl.innerHTML = '<div style="color:var(--danger-red);padding:10px;">Yüklenemedi!</div>');
-    }
-}
-
-function adminToggleUserBanInline(event, id) {
-    event.stopPropagation();
-    fetch(`/api/admin/users/${id}/ban`, { method: 'PUT', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) { 
-            showToast(d.message, 'info'); 
-            renderAdminUsers(); 
-        } else {
-            showToast(d.message, 'error');
-        }
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-async function adminDeleteUserInline(event, id, name) {
-    event.stopPropagation();
-    const confirmed = await showConfirmModal(`${name} kullanıcısını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`);
-    if (!confirmed) return;
-    fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) { 
-            showToast(d.message, 'info'); 
-            renderAdminUsers(); 
-        } else {
-            showToast(d.message, 'error');
-        }
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-function exportAdminUsersCSV() {
-    const search = document.getElementById('adminUserSearch').value.trim();
-    const status = document.getElementById('adminUserStatusFilter').value;
-    const sortBy = document.getElementById('adminUserSortBy').value;
-    const startDate = document.getElementById('adminUserStartDate').value;
-    const endDate = document.getElementById('adminUserEndDate').value;
-    const suspicious = document.getElementById('adminUserSuspicious').checked;
-    
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (status) params.set('status', status);
-    if (sortBy) params.set('sortBy', sortBy);
-    if (startDate) params.set('startDate', startDate);
-    if (endDate) params.set('endDate', endDate);
-    if (suspicious) params.set('suspicious', 'true');
-
-    fetch(`/api/admin/users?${params}`, { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        if (!data.success || !data.data || data.data.length === 0) {
-            showToast('Dışa aktarılacak kullanıcı bulunamadı!', 'error');
-            return;
-        }
-        
-        let csvContent = "\ufeffKullanici ID,Isim,Telefon,E-posta,Yas,Boy,Kilo,Mevki,Tecrube,Rezervasyon Sayisi,30 Gunluk Iptal,Kara Liste Engeli,Durum,Kayit Tarihi\n";
-        data.data.forEach(u => {
-            csvContent += `"${u.id}","${u.name || ''}","${u.phone || ''}","${u.email || ''}","${u.age || ''}","${u.height || ''}","${u.weight || ''}","${u.position || ''}","${u.experience || ''}","${u.total_reservations || 0}","${u.cancelled_reservations_30_days || 0}","${u.blacklist_count || 0}","${u.status}","${u.created_at || ''}"\n`;
-        });
-        
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `ksk_kullanicilar_${new Date().toISOString().slice(0,10)}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }).catch(() => showToast('Dışa aktarma sırasında hata oluştu!', 'error'));
-}
-
-function showAdminUserDetail(id) {
-    const container = document.getElementById('adminUserDetail');
-    container.style.display = 'block';
-    container.innerHTML = '<div style="text-align:center;padding:20px;">Yükleniyor...</div>';
-    fetch(`/api/admin/users/${id}`, { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        if (!data.success || !data.data.user) { container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Kullanıcı bulunamadı!</div>'; return; }
-        const u = data.data.user;
-        container.innerHTML = `<div class="admin-user-detail">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
-                <h3>${u.name}</h3>
-                <div style="display:flex;gap:6px;">
-                    <button class="action-btn" onclick="adminToggleUserBan(${u.id})" style="padding:5px 12px;font-size:0.7rem;background:${u.status === 'banned' || u.status === 'globally_banned' ? 'rgba(16,185,129,0.2);border-color:#10b981;color:#34d399' : 'rgba(239,68,68,0.2);border-color:#ef4444;color:#f87171'}">${u.status === 'banned' || u.status === 'globally_banned' ? 'BAN KALDIR' : 'BANLA'}</button>
-                    <button class="action-btn" onclick="adminDeleteUser(${u.id},'${u.name}')" style="padding:5px 12px;font-size:0.7rem;background:rgba(239,68,68,0.2);border-color:#ef4444;color:#f87171;">SİL</button>
-                </div>
-            </div>
-            <div class="detail-grid">
-                <div class="detail-item"><label>Telefon</label><span>${u.phone || '-'}</span></div>
-                <div class="detail-item"><label>E-posta</label><span>${u.email || '-'}</span></div>
-                <div class="detail-item"><label>Yaş</label><span>${u.age || '-'}</span></div>
-                <div class="detail-item"><label>Boy</label><span>${u.height || '-'} cm</span></div>
-                <div class="detail-item"><label>Kilo</label><span>${u.weight || '-'} kg</span></div>
-                <div class="detail-item"><label>Mevki</label><span>${u.position || '-'}</span></div>
-                <div class="detail-item"><label>Tecrübe</label><span>${u.experience || '-'}</span></div>
-                <div class="detail-item"><label>Durum</label><span style="color:${u.status === 'globally_banned' ? '#ef4444' : (u.status === 'banned' ? '#f87171' : '#34d399')}">${u.status}</span></div>
-            </div>
-            <div style="margin-top:15px;">
-                <h4 style="color:#8b5cf6;margin-bottom:8px;">REZERVASYONLAR (${(data.data.reservations||[]).length})</h4>
-                ${(data.data.reservations||[]).slice(0,10).map(r => `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">${r.dateText} ${r.hourText} · ${r.field_name || r.fieldKey} · ${r.reservation_price} TL · <span style="color:${r.payment_status === 'odendi' ? '#34d399' : '#f87171'}">${r.payment_status}</span></div>`).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);">Rezervasyon yok.</div>'}
-            </div>
-            <div style="margin-top:15px;">
-                <h4 style="color:#8b5cf6;margin-bottom:8px;">YORUMLAR (${(data.data.reviews||[]).length})</h4>
-                ${(data.data.reviews||[]).map(r => `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">${r.field_name || r.fieldKey} · Puan: ${r.rating_turf || '-'}/5 · ${r.comment || ''}</div>`).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);">Yorum yok.</div>'}
-            </div>
-        </div>`;
-    }).catch(() => container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
-}
-
-function adminToggleUserBan(id) {
-    fetch(`/api/admin/users/${id}/ban`, { method: 'PUT', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) { showToast(d.message, 'info'); renderAdminUsers(); document.getElementById('adminUserDetail').style.display = 'none'; }
-        else showToast(d.message, 'error');
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-async function adminDeleteUser(id, name) {
-    const confirmed = await showConfirmModal(`${name} kullanıcısını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`);
-    if (!confirmed) return;
-    fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) { showToast(d.message, 'info'); renderAdminUsers(); document.getElementById('adminUserDetail').style.display = 'none'; }
-        else showToast(d.message, 'error');
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-// --- AKTİVİTE GÜNLÜĞÜ ---
-function renderAdminActivity() {
-    const type = document.getElementById('adminActivityFilter').value;
-    const params = type ? `?type=${type}` : '';
-    fetch(`/api/admin/activity-log${params}`, { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        const container = document.getElementById('adminActivityList');
-        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Aktivite kaydı bulunamadı.</div>'; return; }
-        container.innerHTML = data.data.map(log => `
-            <div class="admin-log-item">
-                <span class="log-action">${log.action_type}</span>
-                <span class="log-target">${log.target_name || ''}</span>
-                <div>${log.description || ''}</div>
-                <div class="log-date">${log.admin_username} · ${new Date(log.created_at).toLocaleString('tr-TR')}</div>
-            </div>
-        `).join('');
-    }).catch(() => document.getElementById('adminActivityList').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
-}
-
-function adminLogAction(action_type, target_type, target_name, description) {
-    fetch('/api/admin/activity-log', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify({ action_type, target_type, target_name, description }) })
-    .catch(() => {});
-}
-
-// --- GLOBAL KARA LİSTE ---
-function loadAdminGlobalBlacklist() {
-    // 1. Banlanmış Kullanıcıları Yükle
-    fetch('/api/admin/users', { headers: getAdminHeaders() })
-    .then(r => r.json()).then(result => {
-        const container = document.getElementById('adminBannedUsersList');
-        if (!container) return;
-        if (!result.success || !result.data) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Hata oluştu.</div>'; return; }
-        const bannedUsers = result.data.filter(u => u.status === 'banned' || u.status === 'globally_banned');
-        if (bannedUsers.length === 0) {
-            container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Yasaklı kullanıcı bulunmuyor.</div>';
-            return;
-        }
-        container.innerHTML = bannedUsers.map(user => `
-            <div class="admin-bl-item" style="border-color: rgba(239, 68, 68, 0.3); display:flex; justify-content:space-between; align-items:center; background:rgba(30,41,59,0.4); padding:12px 18px; border-radius:8px; margin-bottom:8px;">
-                <div class="bl-info">
-                    <div class="bl-name" style="color: #fca5a5; font-weight:700;">${user.name || 'Bilinmeyen'} (${user.status.toUpperCase('tr-TR')})</div>
-                    <div class="bl-meta" style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">📞 ${user.phone} · 📧 ${user.email || '-'} · 🏆 Toplam Rezervasyon: ${user.total_reservations || 0}</div>
-                </div>
-                <button class="action-btn" onclick="adminUnbanUser(${user.id}, '${user.phone}', '${user.status}')" style="padding:6px 14px; font-size:0.75rem; background:rgba(16,185,129,0.15); border-color:#10b981; color:#34d399; font-weight:700; border-radius:6px; cursor:pointer;">BAN KALDIR</button>
-            </div>
-        `).join('');
-    }).catch(e => {
-        console.error(e);
-        const container = document.getElementById('adminBannedUsersList');
-        if (container) container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>';
-    });
-
-    // 2. Sahalardan Engellenen Şüpheli Numaraları Yükle
-    fetch('/api/admin/global-blacklist', { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        const container = document.getElementById('adminGlobalBlacklist');
-        if (!container) return;
-        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Şüpheli numara bulunmuyor.</div>'; return; }
-        container.innerHTML = data.data.map(item => `
-            <div class="admin-bl-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(30,41,59,0.4); padding:12px 18px; border-radius:8px; margin-bottom:8px;">
-                <div class="bl-info">
-                    <div class="bl-name" style="font-weight:700;">${item.name || 'Bilinmeyen'}</div>
-                    <div class="bl-meta" style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">📞 ${item.phone_number} · 🚫 ${item.block_count} saha tarafından engellenmiş · Sahalar: ${item.fields || '-'}</div>
-                </div>
-                <button class="action-btn" onclick="adminRemoveGlobalBan('${item.phone_number}')" style="padding:6px 14px; font-size:0.75rem; background:rgba(16,185,129,0.15); border-color:#10b981; color:#34d399; font-weight:700; border-radius:6px; cursor:pointer;">LİSTEDEN ÇIKAR</button>
-            </div>
-        `).join('');
-    }).catch(() => {
-        const container = document.getElementById('adminGlobalBlacklist');
-        if (container) container.innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>';
-    });
-}
-
-function adminManualGlobalBan() {
-    const phone = document.getElementById('adminGlobalBanPhone').value.trim();
-    if (!phone) { showToast('Telefon numarası girin!', 'error'); return; }
-    fetch('/api/admin/global-blacklist', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify({ phone }) })
-    .then(r => r.json()).then(d => {
-        if (d.success) { showToast(d.message, 'info'); loadAdminGlobalBlacklist(); document.getElementById('adminGlobalBanPhone').value = ''; }
-        else showToast(d.message, 'error');
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-async function adminRemoveGlobalBan(phone) {
-    const confirmed = await showConfirmModal(`${phone} numarasının global yasağını kaldırmak istediğinize emin misiniz?`);
-    if (!confirmed) return;
-    fetch(`/api/admin/global-blacklist/${encodeURIComponent(phone)}`, { method: 'DELETE', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) { showToast(d.message, 'info'); loadAdminGlobalBlacklist(); }
-        else showToast(d.message, 'error');
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-async function adminUnbanUser(id, phone, status) {
-    const confirmed = await showConfirmModal(`${phone} numarasının yasağını kaldırmak istediğinize emin misiniz?`);
-    if (!confirmed) return;
-    
-    let url = `/api/admin/users/${id}/ban`;
-    let method = 'PUT';
-    if (status === 'globally_banned') {
-        url = `/api/admin/global-blacklist/${encodeURIComponent(phone)}`;
-        method = 'DELETE';
-    }
-    
-    fetch(url, { method: method, headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) {
-            showToast(d.message, 'info');
-            loadAdminGlobalBlacklist();
-            if (typeof renderAdminUsers === 'function') renderAdminUsers();
-        } else {
-            showToast(d.message, 'error');
-        }
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-// --- DUYURULAR ---
-function submitAnnouncement() {
-    const title = document.getElementById('annTitle').value.trim();
-    const message = document.getElementById('annMessage').value.trim();
-    const target = document.getElementById('annTarget').value;
-    if (!title || !message) { showToast('Başlık ve mesaj zorunludur!', 'error'); return; }
-    fetch('/api/admin/announcements', { method: 'POST', headers: getAdminHeaders(), body: JSON.stringify({ title, message, target_audience: target }) })
-    .then(r => r.json()).then(d => {
-        if (d.success) { showToast(d.message, 'info'); document.getElementById('annTitle').value = ''; document.getElementById('annMessage').value = ''; loadAdminAnnouncements(); }
-        else showToast(d.message, 'error');
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-function loadAdminAnnouncements() {
-    fetch('/api/admin/announcements', { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        const container = document.getElementById('adminAnnouncementList');
-        if (!data.success || !data.data || data.data.length === 0) { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Henüz duyuru gönderilmemiş.</div>'; return; }
-        container.innerHTML = data.data.map(a => `
-            <div class="admin-ann-item" style="position:relative; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05);">
-                <div class="ann-title" style="font-weight:700; font-size:1.05rem; color:#fff; margin-bottom:5px;">${a.title}</div>
-                <div class="ann-meta" style="color:var(--text-muted); font-size:0.75rem; margin-bottom:8px;">${a.created_by} · ${new Date(a.created_at).toLocaleString('tr-TR')} · Hedef: ${a.target_audience}</div>
-                <div class="ann-msg" style="color:rgba(255,255,255,0.85); font-size:0.85rem; line-height:1.4;">${a.message}</div>
-                <button onclick="deleteAdminAnnouncement(${a.id})" style="position:absolute; right:15px; top:15px; background:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#ef4444; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:bold;">SİL</button>
-            </div>
-        `).join('');
-    }).catch(() => document.getElementById('adminAnnouncementList').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
-}
-
-async function deleteAdminAnnouncement(id) {
-    const confirmed = await showConfirmModal("Bu duyuruyu silmek istediğinize emin misiniz?");
-    if (!confirmed) return;
-    fetch(`/api/admin/announcements/${id}`, { method: 'DELETE', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) {
-            showToast(d.message, 'info');
-            loadAdminAnnouncements();
-        } else {
-            showToast(d.message, 'error');
-        }
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-// --- GELİR RAPORU ---
-function renderAdminRevenue() {
-    const period = document.getElementById('adminRevenuePeriod').value;
-    fetch(`/api/admin/revenue?period=${period}`, { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        const container = document.getElementById('adminRevenueList');
-        if (!data.success || !data.data || data.data.length === 0) { 
-            container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Veri bulunamadı.</div>'; 
-            return; 
-        }
-        const fields = window.fieldsData || {};
-        
-        let totalRev = 0;
-        let totalDebt = 0;
-        let totalResCount = 0;
-        
-        let html = `
-        <table style="width:100%; border-collapse:collapse; margin-top:10px; font-family:'Montserrat',sans-serif; font-size:0.85rem; color:#fff;">
-            <thead>
-                <tr style="border-bottom:2px solid #334155; text-align:left; color:rgba(255,255,255,0.6);">
-                    <th style="padding:10px;">Saha Adı</th>
-                    <th style="padding:10px; text-align:right;">Rezervasyon</th>
-                    <th style="padding:10px; text-align:right;">Tahsil Edilen (Ciro)</th>
-                    <th style="padding:10px; text-align:right;">Kalan Borç</th>
-                    <th style="padding:10px; text-align:right;">Toplam Hak Ediş</th>
-                </tr>
-            </thead>
-            <tbody>
-        `;
-        
-        html += data.data.map(r => {
-            const fieldName = fields[r.fieldKey]?.name || r.fieldKey;
-            const revenue = parseFloat(r.total_revenue || 0);
-            const debt = parseFloat(r.total_debt || 0);
-            const resCount = parseInt(r.total_res || 0);
-            
-            const paidRevenue = revenue - debt;
-            
-            totalRev += paidRevenue;
-            totalDebt += debt;
-            totalResCount += resCount;
-            
-            return `
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.05); transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
-                <td style="padding:12px; font-weight:700;">🏟️ ${fieldName}</td>
-                <td style="padding:12px; text-align:right; color:#fbbf24;">${resCount} adet</td>
-                <td style="padding:12px; text-align:right; color:#34d399; font-weight:700;">${paidRevenue.toLocaleString('tr-TR')} TL</td>
-                <td style="padding:12px; text-align:right; color:#f87171; font-weight:700;">${debt.toLocaleString('tr-TR')} TL</td>
-                <td style="padding:12px; text-align:right; color:#fff; font-weight:700;">${revenue.toLocaleString('tr-TR')} TL</td>
-            </tr>`;
-        }).join('');
-        
-        html += `
-            </tbody>
-            <tfoot>
-                <tr style="border-top:2px solid #334155; font-weight:bold; background:rgba(255,255,255,0.02);">
-                    <td style="padding:15px; font-size:0.9rem; color:#fff;">GENEL TOPLAM</td>
-                    <td style="padding:15px; text-align:right; color:#fbbf24; font-size:0.9rem;">${totalResCount} adet</td>
-                    <td style="padding:15px; text-align:right; color:#34d399; font-size:0.95rem;">${totalRev.toLocaleString('tr-TR')} TL</td>
-                    <td style="padding:15px; text-align:right; color:#f87171; font-size:0.95rem;">${totalDebt.toLocaleString('tr-TR')} TL</td>
-                    <td style="padding:15px; text-align:right; color:#fff; font-size:0.95rem;">${(totalRev + totalDebt).toLocaleString('tr-TR')} TL</td>
-                </tr>
-            </tfoot>
-        </table>`;
-        
-        container.innerHTML = html;
-    }).catch(() => document.getElementById('adminRevenueList').innerHTML = '<div style="color:var(--danger-red);padding:20px;">Yüklenemedi!</div>');
-}
-
-function exportAdminRevenueCSV() {
-    const period = document.getElementById('adminRevenuePeriod').value;
-    fetch(`/api/admin/revenue?period=${period}`, { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        if (!data.success || !data.data || data.data.length === 0) {
-            showToast('Dışa aktarılacak gelir verisi bulunamadı!', 'error');
-            return;
-        }
-        
-        const fields = window.fieldsData || {};
-        let csvContent = "\ufeffSaha Anahtari,Saha Adi,Rezervasyon Adedi,Tahsil Edilen (TL),Kalan Borc (TL),Toplam Hak Edis (TL)\n";
-        
-        data.data.forEach(r => {
-            const fieldName = fields[r.fieldKey]?.name || r.fieldKey;
-            const revenue = parseFloat(r.total_revenue || 0);
-            const debt = parseFloat(r.total_debt || 0);
-            const paidRevenue = revenue - debt;
-            csvContent += `"${r.fieldKey}","${fieldName}","${r.total_res}","${paidRevenue}","${debt}","${revenue}"\n`;
-        });
-        
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `ksk_gelir_raporu_${period}_${new Date().toISOString().slice(0,10)}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }).catch(() => showToast('Dışa aktarma sırasında hata oluştu!', 'error'));
-}
-
-// Close admin login modal on Enter
-document.addEventListener('keydown', (e) => {
-    const adminModal = document.getElementById('adminLoginModal');
-    if (e.key === 'Enter' && adminModal && adminModal.classList.contains('show')) {
-        handleAdminLogin();
-    }
-});
-
-
-
 // Kullanıcının kara listede olduğu sahaları yükle
 async function loadUserBlacklist() {
     if (!currentUser || !currentUser.phone) {
@@ -5807,7 +4315,7 @@ function showToast(message, type = 'success') {
 window.alert = function(msg) {
     if (typeof msg !== 'string') msg = String(msg);
     const lowerMsg = msg.toLowerCase();
-    if (lowerMsg.includes('hata') || lowerMsg.includes('başarısız') || lowerMsg.includes('lütfen') || lowerMsg.includes('kilitli')) {
+    if (lowerMsg.includes('hata') || lowerMsg.includes('ba�ar�s�z') || lowerMsg.includes('l�tfen') || lowerMsg.includes('kilitli')) {
         showToast(msg, 'error');
     } else if (lowerMsg.includes('emin misiniz')) {
         showToast(msg, 'info');
@@ -5820,14 +4328,16 @@ function toggleMobileForm(formId) {
     const formContainer = document.getElementById(formId);
     if (!formContainer) return;
     
-    const btn = formContainer.previousElementSibling?.querySelector('.mobile-create-btn');
+    // Find the corresponding button
+    // The button is inside the previous sibling (mobile-listing-header)
+    const btn = formContainer.nextElementSibling?.querySelector('.mobile-create-btn');
     
     if (formContainer.classList.contains('anim-slide-fade-in') || formContainer.style.display === 'block') {
         // Kapat
         formContainer.classList.remove('anim-slide-fade-in');
         formContainer.classList.add('anim-slide-fade-out');
         
-        if (btn) btn.innerText = '+ ?lan Ver';
+        if (btn) btn.innerText = '+ �lan Ver';
         
         // Animasyon bitince display none yap
         setTimeout(() => {
@@ -5837,7 +4347,7 @@ function toggleMobileForm(formId) {
             }
         }, 300);
     } else {
-        // A?
+        // A�
         formContainer.style.display = 'block';
         formContainer.classList.remove('anim-slide-fade-out');
         formContainer.classList.add('anim-slide-fade-in');
@@ -5878,248 +4388,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-    
-    // Uygulama yüklendiğinde duyuruları kontrol et
-    checkAnnouncements();
 });
-
-// Duyuru Kontrolleri (Uygulama İçi Bildirim)
-let allAnnouncements = [];
-
-function checkAnnouncements() {
-    fetch('/api/announcements')
-    .then(r => r.json())
-    .then(data => {
-        if (!data.success) return;
-        allAnnouncements = data.data || [];
-        
-        // Okunmamış duyuru sayısını hesapla
-        const readIds = JSON.parse(localStorage.getItem('readAnnouncements') || '[]');
-        const unreadCount = allAnnouncements.filter(a => !readIds.includes(a.id)).length;
-        
-        const badge = document.getElementById('announcementBadge');
-        if (badge) {
-            if (unreadCount > 0) {
-                badge.textContent = unreadCount;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-    }).catch(err => console.error("Duyurular yüklenemedi:", err));
-}
-
-function openAnnouncementsModal() {
-    const list = document.getElementById('publicAnnouncementsList');
-    if (!list) return;
-    
-    if (allAnnouncements.length === 0) {
-        list.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">Aktif duyuru veya kampanya bulunmuyor.</div>';
-    } else {
-        list.innerHTML = allAnnouncements.map(a => {
-            const dateStr = new Date(a.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-            return `
-            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:15px;transition:transform 0.2s ease;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:5px;">
-                    <h3 style="color:#fbbf24;font-size:1.05rem;font-weight:700;margin:0;">📢 ${a.title}</h3>
-                    <small style="color:var(--text-muted);font-size:0.75rem;">${dateStr}</small>
-                </div>
-                <p style="color:#e2e8f0;font-size:0.88rem;line-height:1.5;margin:0;white-space:pre-wrap;">${a.message}</p>
-            </div>`;
-        }).join('');
-    }
-    
-    // Tümünü okundu olarak işaretle
-    const allIds = allAnnouncements.map(a => a.id);
-    localStorage.setItem('readAnnouncements', JSON.stringify(allIds));
-    const badge = document.getElementById('announcementBadge');
-    if (badge) badge.style.display = 'none';
-    
-    openModal('announcementsModal');
-}
-
-function bypassAdminLogin() {
-    isAdminLoggedIn = true;
-    adminToken = 'bypass_token';
-    adminData = { display_name: 'Süper Yönetici' };
-    localStorage.setItem('adminToken', adminToken);
-    localStorage.setItem('adminData', JSON.stringify(adminData));
-    
-    // UI Güncelle
-    const authSec = document.getElementById('adminAuthSection');
-    const logSec = document.getElementById('adminLogoutSection');
-    const welcome = document.getElementById('adminWelcomeText');
-    const panel = document.getElementById('adminPanel');
-    const custContainer = document.getElementById('customerContainer');
-    
-    if (authSec) authSec.style.display = 'none';
-    if (logSec) logSec.style.display = 'flex';
-    if (welcome) welcome.textContent = `Süper Yönetici`;
-    if (panel) panel.style.display = 'block';
-    if (custContainer) custContainer.style.display = 'none';
-    
-    document.querySelector('main').classList.add('admin-mode');
-    document.body.classList.add('admin-mode');
-    
-    // Admin verilerini yükle
-    if (typeof loadAdminStats === 'function') loadAdminStats();
-    if (typeof renderAdminFields === 'function') renderAdminFields();
-    if (typeof renderAdminUsers === 'function') renderAdminUsers();
-    if (typeof loadAdminGlobalBlacklist === 'function') loadAdminGlobalBlacklist();
-    if (typeof loadAdminAnnouncements === 'function') loadAdminAnnouncements();
-    if (typeof loadAdminRevenue === 'function') loadAdminRevenue();
-    
-    showToast('Yönetici Paneline Şifresiz Başarıyla Giriş Yapıldı!', 'success');
-}
-
-let currentAdSubTab = 'forum';
-function switchAdSubTab(sub) {
-    currentAdSubTab = sub;
-    document.querySelectorAll('.ad-sub-btn').forEach(btn => {
-        const isTarget = btn.id === `adSubBtn${sub.charAt(0).toUpperCase() + sub.slice(1)}`;
-        btn.style.background = isTarget ? '#8b5cf6' : '#0f172a';
-        btn.style.borderColor = isTarget ? '#8b5cf6' : 'rgba(255,255,255,0.05)';
-        btn.style.color = isTarget ? '#fff' : 'rgba(255,255,255,0.6)';
-    });
-    
-    document.querySelectorAll('.ad-sub-content').forEach(el => {
-        el.style.display = el.id === `adSubContent${sub.charAt(0).toUpperCase() + sub.slice(1)}` ? 'block' : 'none';
-    });
-    
-    loadAdminAdSubList(sub);
-}
-
-function renderAdminAds() {
-    switchAdSubTab(currentAdSubTab);
-}
-
-function loadAdminAdSubList(sub) {
-    const listContainerId = `adminAds${sub.charAt(0).toUpperCase() + sub.slice(1)}List`;
-    const listEl = document.getElementById(listContainerId);
-    if (!listEl) return;
-
-    // Bulk delete button container — insert before the table if not exists
-    const tableWrapper = listEl.closest('.table-responsive');
-    const contentDiv = listEl.closest('.ad-sub-content');
-    if (contentDiv && !contentDiv.querySelector('.bulk-delete-bar')) {
-        const bar = document.createElement('div');
-        bar.className = 'bulk-delete-bar';
-        bar.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:10px;';
-        bar.innerHTML = `
-            <input type="checkbox" id="selectAll_${sub}" style="width:16px;height:16px;cursor:pointer;" onchange="toggleSelectAllAds('${sub}', this.checked)">
-            <label for="selectAll_${sub}" style="font-size:0.82rem;color:var(--text-muted);cursor:pointer;">Tümünü Seç</label>
-            <button class="action-btn" onclick="adminBulkDeleteAds('${sub}')" style="padding:6px 14px;font-size:0.8rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171;">SEÇİLENLERİ SİL</button>
-        `;
-        if (tableWrapper) tableWrapper.parentNode.insertBefore(bar, tableWrapper);
-    }
-
-    listEl.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);">Yükleniyor...</td></tr>';
-    
-    fetch(`/api/admin/ads/${sub}`, { headers: getAdminHeaders() })
-    .then(r => r.json()).then(data => {
-        if (!data.success || !data.data || data.data.length === 0) {
-            listEl.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);">İlan bulunamadı.</td></tr>';
-            return;
-        }
-        
-        if (sub === 'forum') {
-            listEl.innerHTML = data.data.map(p => `
-                <tr>
-                    <td style="width:36px;text-align:center;"><input type="checkbox" class="ad-check-${sub}" value="${p.id}" style="width:15px;height:15px;cursor:pointer;"></td>
-                    <td style="font-weight:700;color:#fff;">${p.title}</td>
-                    <td>${p.message}</td>
-                    <td>${p.user_name || p.created_by}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.user_phone || ''}</span></td>
-                    <td>${new Date(p.created_at).toLocaleString('tr-TR')}</td>
-                    <td><span class="user-status ${p.status === 'aktif' ? 'active' : 'banned'}" style="font-size:0.7rem;padding:4px 8px;border-radius:4px;">${p.status.toUpperCase()}</span></td>
-                    <td>
-                        <button class="action-btn" onclick="adminDeleteAd('${sub}', ${p.id})" style="padding:4px 8px;font-size:0.7rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171;cursor:pointer;">SİL</button>
-                    </td>
-                </tr>
-            `).join('');
-        } else if (sub === 'matches') {
-            listEl.innerHTML = data.data.map(p => `
-                <tr>
-                    <td style="width:36px;text-align:center;"><input type="checkbox" class="ad-check-${sub}" value="${p.id}" style="width:15px;height:15px;cursor:pointer;"></td>
-                    <td style="font-weight:700;color:#fff;">${p.name}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.phone || ''}</span></td>
-                    <td>${p.dateText} ${p.hourText}</td>
-                    <td>${p.details || '-'}</td>
-                    <td>${new Date(p.created_at).toLocaleString('tr-TR')}</td>
-                    <td><span class="user-status ${p.status === 'aktif' ? 'active' : 'banned'}" style="font-size:0.7rem;padding:4px 8px;border-radius:4px;">${p.status.toUpperCase()}</span></td>
-                    <td>
-                        <button class="action-btn" onclick="adminDeleteAd('${sub}', ${p.id})" style="padding:4px 8px;font-size:0.7rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171;cursor:pointer;">SİL</button>
-                    </td>
-                </tr>
-            `).join('');
-        } else if (sub === 'teams') {
-            listEl.innerHTML = data.data.map(p => `
-                <tr>
-                    <td style="width:36px;text-align:center;"><input type="checkbox" class="ad-check-${sub}" value="${p.id}" style="width:15px;height:15px;cursor:pointer;"></td>
-                    <td style="font-weight:700;color:#fff;">${p.teamName}<br><span style="font-size:0.75rem;color:var(--text-muted);">Kaptan: ${p.captainName}</span></td>
-                    <td>${p.ageGroup || '-'}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.matchSize || ''}</span></td>
-                    <td>${p.skillLevel || '-'}<br><span style="font-size:0.75rem;color:var(--text-muted);">${p.availableDays || ''} ${p.timeRange || ''}</span></td>
-                    <td>${p.message || ''}</td>
-                    <td><span class="user-status ${p.status === 'aktif' ? 'active' : 'banned'}" style="font-size:0.7rem;padding:4px 8px;border-radius:4px;">${p.status.toUpperCase()}</span></td>
-                    <td>
-                        <button class="action-btn" onclick="adminDeleteAd('${sub}', ${p.id})" style="padding:4px 8px;font-size:0.7rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#f87171;cursor:pointer;">SİL</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-    }).catch(() => {
-        listEl.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--danger-red);">Yüklenemedi!</td></tr>';
-    });
-}
-
-function toggleSelectAllAds(sub, checked) {
-    document.querySelectorAll(`.ad-check-${sub}`).forEach(cb => cb.checked = checked);
-}
-
-async function adminBulkDeleteAds(sub) {
-    const checked = [...document.querySelectorAll(`.ad-check-${sub}:checked`)];
-    if (checked.length === 0) { showToast('Lütfen silinecek ilanları seçin!', 'error'); return; }
-    const confirmed = await showConfirmModal(`${checked.length} ilan silinecek. Emin misiniz?`);
-    if (!confirmed) return;
-    let done = 0;
-    checked.forEach(cb => {
-        fetch(`/api/admin/ads/${sub}/${cb.value}`, { method: 'DELETE', headers: getAdminHeaders() })
-        .then(r => r.json()).then(d => {
-            done++;
-            if (done === checked.length) {
-                showToast(`${done} ilan silindi.`, 'info');
-                loadAdminAdSubList(sub);
-                const allCheckbox = document.getElementById(`selectAll_${sub}`);
-                if (allCheckbox) allCheckbox.checked = false;
-            }
-        }).catch(() => { done++; });
-    });
-}
-
-async function adminDeleteAd(sub, id) {
-    const confirmed = await showConfirmModal("Bu ilanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.");
-    if (!confirmed) return;
-    
-    fetch(`/api/admin/ads/${sub}/${id}`, { method: 'DELETE', headers: getAdminHeaders() })
-    .then(r => r.json()).then(d => {
-        if (d.success) {
-            showToast(d.message, 'info');
-            loadAdminAdSubList(sub);
-        } else {
-            showToast(d.message, 'error');
-        }
-    }).catch(() => showToast('Sunucu hatası!', 'error'));
-}
-
-function togglePasswordVisibility(inputId, btn) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    if (input.type === 'password') {
-        input.type = 'text';
-        btn.innerText = 'GİZLE';
-    } else {
-        input.type = 'password';
-        btn.innerText = 'GÖSTER';
-    }
-}
 
 
 

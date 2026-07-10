@@ -1,0 +1,102 @@
+// Event Delegation: data-click → function mapping
+(function() {
+    const actionMap = {
+        'toggleMobileMenu': function() { toggleMobileMenu(); },
+        'closeMobileMenu': function() { closeMobileMenu(); },
+        'openModal-loginModal': function() { openModal('loginModal'); },
+        'openModal-registerModal': function() { openModal('registerModal'); },
+        'openBusinessPanel-final': function() { openBusinessPanel('final'); },
+        'openBusinessPanel-arena': function() { openBusinessPanel('arena'); },
+        'openBusinessPanel-ciragan': function() { openBusinessPanel('ciragan'); },
+        'openBusinessPanel-olimpiyat': function() { openBusinessPanel('olimpiyat'); },
+        'openBusinessPanel-sporium05': function() { openBusinessPanel('sporium05'); },
+        'openBusinessPanel-ziyaret': function() { openBusinessPanel('ziyaret'); },
+        'openProfilePanel': function() { openProfilePanel(); },
+        'handleUserLogout': function() { handleUserLogout(); },
+        'handleBusinessLogout': function() { handleBusinessLogout(); },
+        'switchCustomerTab-booking': function() { switchCustomerTab('booking'); },
+        'switchCustomerTab-players': function() { switchCustomerTab('players'); },
+        'switchCustomerTab-matches': function() { switchCustomerTab('matches'); },
+        'switchCustomerTab-teams': function() { switchCustomerTab('teams'); },
+        'completeBooking': function() { completeBooking(); },
+        'createForumPost': function() { createForumPost(); },
+        'toggleMobileForm-players': function() { toggleMobileForm('playersFormContainer'); },
+        'createMatchSeeker': function() { createMatchSeeker(); },
+        'toggleMobileForm-matches': function() { toggleMobileForm('matchesFormContainer'); },
+        'createTeamSeeker': function() { createTeamSeeker(); },
+        'toggleMobileForm-teams': function() { toggleMobileForm('teamsFormContainer'); },
+        'switchBusinessTab-subscriptions': function() { switchBusinessTab('subscriptions'); },
+        'switchBusinessTab-debts': function() { switchBusinessTab('debts'); },
+        'switchBusinessTab-pricing': function() { switchBusinessTab('pricing'); },
+        'switchBusinessTab-stats': function() { switchBusinessTab('stats'); },
+        'switchBusinessTab-settings': function() { switchBusinessTab('settings'); },
+        'switchBusinessTab-blacklist': function() { switchBusinessTab('blacklist'); },
+        'switchBusinessTab-reservations': function() { switchBusinessTab('reservations'); },
+        'switchBusinessTab-hours': function() { switchBusinessTab('hours'); },
+        'switchBusinessTab-comments': function() { switchBusinessTab('comments'); },
+        'filterBusinessGrid-all': function() { filterBusinessGrid('all'); },
+        'filterBusinessGrid-normal': function() { filterBusinessGrid('normal'); },
+        'filterBusinessGrid-abone': function() { filterBusinessGrid('abone'); },
+        'quickBusinessWhatsApp': function() { quickBusinessWhatsApp(); },
+        'quickBusinessCancel': function() { quickBusinessCancel(); },
+        'filterBusinessReservations-all': function() { filterBusinessReservations('all'); },
+        'filterBusinessReservations-normal': function() { filterBusinessReservations('normal'); },
+        'filterBusinessReservations-abone': function() { filterBusinessReservations('abone'); },
+        'loadBusinessDebts-all': function() { loadBusinessDebts('all'); },
+        'loadBusinessDebts-daily': function() { loadBusinessDebts('daily'); },
+        'loadBusinessDebts-weekly': function() { loadBusinessDebts('weekly'); },
+        'loadBusinessDebts-monthly': function() { loadBusinessDebts('monthly'); },
+        'setDebtStatusFilter-all': function() { setDebtStatusFilter('all'); },
+        'setDebtStatusFilter-unpaid': function() { setDebtStatusFilter('unpaid'); },
+        'setDebtStatusFilter-paid': function() { setDebtStatusFilter('paid'); },
+        'toggleDebtSortOrder': function() { toggleDebtSortOrder(); },
+        'setBusinessCommentFilter-all': function() { setBusinessCommentFilter('all'); },
+        'setBusinessCommentFilter-unanswered': function() { setBusinessCommentFilter('unanswered'); },
+        'setBusinessCommentFilter-answered': function() { setBusinessCommentFilter('answered'); },
+        'addToBusinessBlacklist': function() { addToBusinessBlacklist(); },
+        'savePricingSchedule': function() { savePricingSchedule(); },
+        'saveOperatingHours': function() { saveOperatingHours(); },
+        'saveSubscription': function() { saveSubscription(); },
+        'saveAllBusinessSettings': function() { saveAllBusinessSettings(); },
+        'closeModal-loginModal': function() { closeModal('loginModal'); },
+        'handleUserLogin': function() { handleUserLogin(); },
+        'openOAuth-google': function() { openOAuth('google'); },
+        'openOAuth-apple': function() { openOAuth('apple'); },
+        'closeModal-registerModal': function() { closeModal('registerModal'); },
+        'closeModal-hourActionModal': function() { closeModal('hourActionModal'); },
+        'saveHourAction': function() { saveHourAction(); },
+
+        'closeModal-otpVerificationModal': function() { closeModal('otpVerificationModal'); },
+        'submitOTPVerification': function() { submitOTPVerification(); },
+        'submitCompleteProfile': function() { submitCompleteProfile(); },
+        'closeModal-playerProfileModal': function() { closeModal('playerProfileModal'); },
+        'selectRatingStar-1': function() { selectRatingStar(1); },
+        'selectRatingStar-2': function() { selectRatingStar(2); },
+        'selectRatingStar-3': function() { selectRatingStar(3); },
+        'selectRatingStar-4': function() { selectRatingStar(4); },
+        'selectRatingStar-5': function() { selectRatingStar(5); },
+        'submitPlayerReview': function() { submitPlayerReview(); },
+        'closeModal-userProfileModal': function() { closeModal('userProfileModal'); },
+        'saveUserProfile': function() { saveUserProfile(); },
+        'switchProfileSection-active-res': function() { switchProfileSection('active-res'); },
+        'switchProfileSection-past-res': function() { switchProfileSection('past-res'); },
+        'switchProfileSection-debts': function() { switchProfileSection('debts'); },
+        'switchProfileSection-my-reviews': function() { switchProfileSection('my-reviews'); },
+        'closeModal-bookingSuccessModal': function() { closeModal('bookingSuccessModal'); },
+        'closeBookingConfirmModal-false': function() { closeBookingConfirmModal(false); },
+        'closeConfirmModal-false': function() { closeConfirmModal(false); },
+    };
+
+    document.addEventListener('click', function(e) {
+        var el = e.target;
+        while (el && !el.dataset.click) { el = el.parentElement; }
+        if (!el) return;
+
+        var key = el.dataset.click;
+        var handler = actionMap[key];
+        if (handler) {
+            e.preventDefault();
+            handler();
+        }
+    });
+})();

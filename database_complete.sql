@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS reservations (
   payment_status ENUM('odenmedi','odendi') DEFAULT 'odenmedi',
   reservation_price INT DEFAULT 0,
   user_id INT DEFAULT NULL,
-  user_phone VARCHAR(20) DEFAULT NULL,
   type VARCHAR(20) DEFAULT 'normal',
   status VARCHAR(20) DEFAULT 'active',
   PRIMARY KEY (id)
@@ -56,11 +55,10 @@ CREATE TABLE IF NOT EXISTS forum_posts (
   hourText VARCHAR(50) NOT NULL,
   position VARCHAR(50) NOT NULL,
   payment VARCHAR(50) NOT NULL,
-  phone VARCHAR(20) NOT NULL,
+  user_id INT DEFAULT NULL,
   msg TEXT DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   status ENUM('aktif','bulundu','suresi_gecti') DEFAULT 'aktif',
-  user_id INT DEFAULT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -80,14 +78,13 @@ CREATE TABLE IF NOT EXISTS match_seekers (
   playerName VARCHAR(100) NOT NULL,
   age INT NOT NULL,
   position ENUM('KALECI','DEFANS','ORTA SAHA','FORVET') NOT NULL,
-  phone VARCHAR(20) NOT NULL,
+  user_id INT DEFAULT NULL,
   availableHours TEXT NOT NULL,
   availableDates TEXT NOT NULL,
   requestedFee VARCHAR(50) DEFAULT 'ÜCRETSIZ',
   msg TEXT DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   status ENUM('aktif','bulundu','suresi_gecti') DEFAULT 'aktif',
-  user_id INT DEFAULT NULL,
   height INT DEFAULT NULL,
   weight INT DEFAULT NULL,
   PRIMARY KEY (id)
@@ -111,7 +108,7 @@ CREATE TABLE IF NOT EXISTS team_seekers (
 
 CREATE TABLE IF NOT EXISTS player_reviews (
   id INT NOT NULL AUTO_INCREMENT,
-  playerPhone VARCHAR(20) NOT NULL,
+  player_id INT NOT NULL,
   reviewerName VARCHAR(100) NOT NULL,
   rating INT NOT NULL,
   comment TEXT DEFAULT NULL,
@@ -145,7 +142,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   dayOfWeek VARCHAR(50) NOT NULL DEFAULT 'PAZARTESİ',
   hourText VARCHAR(50) NOT NULL,
   subscriberName VARCHAR(100) NOT NULL,
-  subscriberPhone VARCHAR(20) NOT NULL,
+  subscriberPhone VARCHAR(20) DEFAULT NULL,
+  user_id INT DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY unique_subscription_day (fieldKey, pitchNumber, dayOfWeek, hourText)

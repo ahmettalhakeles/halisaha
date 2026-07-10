@@ -74,9 +74,9 @@
             </div>
         </div>
 
-        <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay" data-click="closeMobileMenu"></div>
         <div class="header-actions">
-            <button class="menu-close-btn" onclick="closeMobileMenu()" aria-label="Menüyü Kapat">
+            <button class="menu-close-btn" data-click="closeMobileMenu" aria-label="Menüyü Kapat">
                 <svg viewBox="0 0 24 24" width="24" height="24" stroke="#10b981" stroke-width="3" fill="none">
                     <polyline points="15,18 9,12 15,6"></polyline>
                 </svg>
@@ -90,8 +90,8 @@
             <!-- Çıkış Butonları -->
             <div id="userLogoutSection" class="user-auth-zone" style="display: none;">
                 <span id="welcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px; align-self: center;"></span>
-                <button class="nav-btn profile-nav-btn" onclick="openProfilePanel()">PROFİLİM</button>
-                <button class="nav-btn red-btn" onclick="handleUserLogout()">ÇIKIŞ</button>
+                <button class="nav-btn profile-nav-btn" data-click="openProfilePanel">PROFİLİM</button>
+                <button class="nav-btn red-btn" data-click="handleUserLogout">ÇIKIŞ</button>
             </div>
 
             <!-- Duyurular Butonu (Header'da sağ üstte) -->
@@ -111,10 +111,10 @@
         <div id="customerContainer" style="width: 100%;">
             <!-- MÜŞTERİ SEKME MENÜSÜ -->
             <div class="customer-tabs" id="customerTabsRow">
-                <button class="tab-btn active" id="customer-tab-btn-booking" onclick="switchCustomerTab('booking')">REZERVASYON YAP</button>
-                <button class="tab-btn" id="customer-tab-btn-players" onclick="switchCustomerTab('players')">OYUNCU BUL</button>
-                <button class="tab-btn" id="customer-tab-btn-matches" onclick="switchCustomerTab('matches')">MAÇ BUL</button>
-                <button class="tab-btn" id="customer-tab-btn-teams" onclick="switchCustomerTab('teams')">TAKIM BUL</button>
+                <button class="tab-btn active" id="customer-tab-btn-booking" data-click="switchCustomerTab-booking">REZERVASYON YAP</button>
+                <button class="tab-btn" id="customer-tab-btn-players" data-click="switchCustomerTab-players">OYUNCU BUL</button>
+                <button class="tab-btn" id="customer-tab-btn-matches" data-click="switchCustomerTab-matches">MAÇ BUL</button>
+                <button class="tab-btn" id="customer-tab-btn-teams" data-click="switchCustomerTab-teams">TAKIM BUL</button>
             </div>
 
             <!-- TAB 1: REZERVASYON YAP -->
@@ -157,7 +157,7 @@
                                 <div id="bookingTurnstile" class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-callback="onTurnstileSuccess"></div>
                             </div>
 
-                            <button id="submitBtn" class="action-btn" onclick="completeBooking()">REZERVASYON YAP</button>
+                            <button id="submitBtn" class="action-btn" data-click="completeBooking">REZERVASYON YAP</button>
 
                             
                         </div>
@@ -173,7 +173,7 @@
                             <!-- Giriş Yapılmamışsa Kilit Ekranı -->
                             <div class="form-lock-overlay" id="playersFormLock" style="display: none;">
                                 <p>OYUNCU ARAMA İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
-                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                                <button class="action-btn" data-click="openModal-loginModal" style="max-width: 200px;">GİRİŞ YAP</button>
                             </div>
                             <h3>YENİ OYUNCU İLANI OLUŞTUR</h3>
                             <div class="form-group">
@@ -208,12 +208,12 @@
                                 <label>EKSTRA MESAJ</label>
                                 <textarea id="forumMessage" class="form-control" rows="2" placeholder="NOTUNUZU YAZIN"></textarea>
                             </div>
-                            <button class="action-btn" onclick="createForumPost()">ILANI YAYINLA</button>
+                            <button class="action-btn" data-click="createForumPost">ILANI YAYINLA</button>
                         </div>
                         <div class="forum-wall">
                             <div class="mobile-listing-header">
                                 <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">⚽ AKTİF OYUNCU İLANLARI</h2>
-                                <button class="mobile-create-btn" onclick="toggleMobileForm('playersFormContainer')">+ İlan Ver</button>
+                                <button class="mobile-create-btn" data-click="toggleMobileForm-players">+ İlan Ver</button>
                             </div>
                             <div class="posts-container" id="postsContainer"></div>
                         </div>
@@ -229,7 +229,7 @@
                             <!-- Giriş Yapılmamışsa Kilit Ekranı -->
                             <div class="form-lock-overlay" id="matchesFormLock" style="display: none;">
                                 <p>MAÇ ARAMA İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
-                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                                <button class="action-btn" data-click="openModal-loginModal" style="max-width: 200px;">GİRİŞ YAP</button>
                             </div>
                             <h3>MAÇ ARAMA İLANI OLUŞTUR</h3>
                             <div class="form-group">
@@ -285,12 +285,12 @@
                                 <label>EKSTRA MESAJ</label>
                                 <textarea id="matchMsg" class="form-control" rows="2" placeholder="Kendinizi kısaca tanıtın..."></textarea>
                             </div>
-                            <button class="action-btn" onclick="createMatchSeeker()">İLANI YAYINLA</button>
+                            <button class="action-btn" data-click="createMatchSeeker">İLANI YAYINLA</button>
                         </div>
                         <div class="forum-wall">
                             <div class="mobile-listing-header">
                                 <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">🏟️ AKTİF MAÇ ARAYAN İLANLARI</h2>
-                                <button class="mobile-create-btn" onclick="toggleMobileForm('matchesFormContainer')">+ İlan Ver</button>
+                                <button class="mobile-create-btn" data-click="toggleMobileForm-matches">+ İlan Ver</button>
                             </div>
                             <div class="filter-bar" id="matchFilterBar">
                                 <div class="filter-row">
@@ -334,7 +334,7 @@
                         <div class="forum-form-container mobile-collapsible" id="teamsFormContainer">
                             <div class="form-lock-overlay" id="teamsFormLock" style="display: none;">
                                 <p>TAKIM İLANI VERMEK İÇİN GİRİŞ YAPMALISINIZ</p>
-                                <button class="action-btn" onclick="openModal('loginModal')" style="max-width: 200px;">GİRİŞ YAP</button>
+                                <button class="action-btn" data-click="openModal-loginModal" style="max-width: 200px;">GİRİŞ YAP</button>
                             </div>
                             <h3>TAKIM ARAMA İLANI OLUŞTUR</h3>
                             <div class="form-group">
@@ -385,12 +385,12 @@
                                 <label>EKSTRA MESAJ</label>
                                 <textarea id="teamMessage" class="form-control" rows="2" placeholder="Takımınızı kısaca tanıtın..."></textarea>
                             </div>
-                            <button class="action-btn" onclick="createTeamSeeker()">İLANI YAYINLA</button>
+                            <button class="action-btn" data-click="createTeamSeeker">İLANI YAYINLA</button>
                         </div>
                         <div class="forum-wall">
                             <div class="mobile-listing-header">
                                 <h2 class="section-title" style="margin-top: 0; margin-bottom: 0;">🏟️ AKTİF TAKIM ARAYAN İLANLARI</h2>
-                                <button class="mobile-create-btn" onclick="toggleMobileForm('teamsFormContainer')">+ İlan Ver</button>
+                                <button class="mobile-create-btn" data-click="toggleMobileForm-teams">+ İlan Ver</button>
                             </div>
                             <div class="posts-container" id="teamSeekersContainer"></div>
                         </div>
@@ -408,7 +408,7 @@
         <div class="modal-card mini-modal">
             <div class="modal-header">
                 <h2>KULLANICI GIRISI</h2>
-                <button type="button" class="close-modal" onclick="closeModal('loginModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-loginModal">X</button>
             </div>
             <div class="form-group">
                 <label>MAIL ADRESI</label>
@@ -434,7 +434,7 @@
             <form id="registerForm" onsubmit="handleUserRegister(event)">
                 <div class="modal-header">
                     <h2>KAYIT OL</h2>
-                    <button type="button" class="close-modal" onclick="closeModal('registerModal')">X</button>
+                    <button type="button" class="close-modal" data-click="closeModal-registerModal">X</button>
                 </div>
                 <div class="form-group">
                     <label>ISIM SOYISIM</label>
@@ -473,7 +473,7 @@
         <div class="modal-card mini-modal">
             <div class="modal-header">
                 <h2 id="hourActionTitle">SAAT YONETIMI</h2>
-                <button type="button" class="close-modal" onclick="closeModal('hourActionModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-hourActionModal">X</button>
             </div>
             <div class="form-group">
                 <label>YAPILACAK ISLEM</label>
@@ -482,7 +482,7 @@
                     <option value="TEMIZLE">SAATI TEMIZLE/BOSA CIKAR</option>
                 </select>
             </div>
-            <button class="action-btn" onclick="saveHourAction()">AYARLARI KAYDET</button>
+            <button class="action-btn" data-click="saveHourAction">AYARLARI KAYDET</button>
         </div>
     </div>
 
@@ -493,7 +493,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h2>OYUNCU PROFİLİ</h2>
-                <button type="button" class="close-modal" onclick="closeModal('playerProfileModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-playerProfileModal">X</button>
             </div>
             <div class="player-profile-modal-body">
                 <div class="player-info-section">
@@ -519,11 +519,11 @@
                     <div class="form-group" style="margin-bottom: 5px;">
                         <label>PUAN VERİN</label>
                         <div class="rating-stars-select" id="ratingStarsSelect">
-                            <span class="star-option active" data-value="1" onclick="selectRatingStar(1)">★</span>
-                            <span class="star-option active" data-value="2" onclick="selectRatingStar(2)">★</span>
-                            <span class="star-option active" data-value="3" onclick="selectRatingStar(3)">★</span>
-                            <span class="star-option active" data-value="4" onclick="selectRatingStar(4)">★</span>
-                            <span class="star-option active" data-value="5" onclick="selectRatingStar(5)">★</span>
+                            <span class="star-option active" data-value="1" data-click="selectRatingStar-1">★</span>
+                            <span class="star-option active" data-value="2" data-click="selectRatingStar-2">★</span>
+                            <span class="star-option active" data-value="3" data-click="selectRatingStar-3">★</span>
+                            <span class="star-option active" data-value="4" data-click="selectRatingStar-4">★</span>
+                            <span class="star-option active" data-value="5" data-click="selectRatingStar-5">★</span>
                         </div>
                         <input type="hidden" id="reviewRatingInput" value="5">
                     </div>
@@ -531,7 +531,7 @@
                         <label>YORUMUNUZ (OPSİYONEL)</label>
                         <textarea id="reviewCommentInput" class="form-control" rows="2" placeholder="Oyuncu hakkındaki görüşlerinizi yazın..."></textarea>
                     </div>
-                    <button class="action-btn" onclick="submitPlayerReview()">DEĞERLENDİRMEYİ YAYINLA</button>
+                    <button class="action-btn" data-click="submitPlayerReview">DEĞERLENDİRMEYİ YAYINLA</button>
                 </div>
 
                 <div id="reviewAuthAlert" class="auth-alert-message" style="display: block; margin-top: 10px;">
@@ -546,7 +546,7 @@
         <div class="modal-card user-profile-card">
             <div class="modal-header">
                 <h2>PROFİLİM</h2>
-                <button type="button" class="close-modal" onclick="closeModal('userProfileModal')">X</button>
+                <button type="button" class="close-modal" data-click="closeModal-userProfileModal">X</button>
             </div>
             
             <div class="profile-layout-container">
@@ -593,16 +593,16 @@
                             <option value="Profesyonel">Lisanslı / Profesyonel</option>
                         </select>
                     </div>
-                    <button class="action-btn" onclick="saveUserProfile()">PROFİLİ KAYDET</button>
+                    <button class="action-btn" data-click="saveUserProfile">PROFİLİ KAYDET</button>
                 </div>
 
                 <!-- Sağ Taraf: Rezervasyonlar, Yorumlar -->
                 <div class="profile-details-section">
                     <div class="profile-tabs">
-                        <button class="profile-tab-btn active" id="profile-tab-btn-active-res" onclick="switchProfileSection('active-res')">AKTİF REZERVASYONLAR</button>
-                        <button class="profile-tab-btn" id="profile-tab-btn-past-res" onclick="switchProfileSection('past-res')">GEÇMİŞ REZERVASYONLAR</button>
-                        <button class="profile-tab-btn" id="profile-tab-btn-debts" onclick="switchProfileSection('debts')">💳 BORÇLAR</button>
-                        <button class="profile-tab-btn" id="profile-tab-btn-my-reviews" onclick="switchProfileSection('my-reviews')">YORUMLAR & PUAN</button>
+                        <button class="profile-tab-btn active" id="profile-tab-btn-active-res" data-click="switchProfileSection-active-res">AKTİF REZERVASYONLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-past-res" data-click="switchProfileSection-past-res">GEÇMİŞ REZERVASYONLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-debts" data-click="switchProfileSection-debts">💳 BORÇLAR</button>
+                        <button class="profile-tab-btn" id="profile-tab-btn-my-reviews" data-click="switchProfileSection-my-reviews">YORUMLAR & PUAN</button>
                     </div>
 
                     <!-- Rezervasyonlar Listeleri -->
@@ -643,7 +643,7 @@
     <!-- Rezervasyon Başarı Modalı -->
     <div class="modal-overlay" id="bookingSuccessModal" style="z-index: 2000;">
         <div class="modal-card success-card">
-            <button type="button" class="close-modal success-close-btn" onclick="closeModal('bookingSuccessModal')">×</button>
+            <button type="button" class="close-modal success-close-btn" data-click="closeModal-bookingSuccessModal">×</button>
             <div class="success-icon-container">
                 <svg class="success-checkmark" viewBox="0 0 52 52">
                     <circle class="success-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
@@ -680,7 +680,7 @@
         <div class="modal-card mini-modal" style="text-align:center;max-width:480px;">
             <div class="modal-header">
                 <h2>REZERVASYON ONAYI</h2>
-                <button type="button" class="close-modal" onclick="closeBookingConfirmModal(false)">X</button>
+                <button type="button" class="close-modal" data-click="closeBookingConfirmModal-false">X</button>
             </div>
             <div style="padding:15px 0;">
                 <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:15px;margin-bottom:12px;">
@@ -715,7 +715,7 @@
         <div class="modal-card mini-modal" style="text-align:center;">
             <div class="modal-header">
                 <h2>ONAY</h2>
-                <button type="button" class="close-modal" onclick="closeConfirmModal(false)">X</button>
+                <button type="button" class="close-modal" data-click="closeConfirmModal-false">X</button>
             </div>
             <p id="confirmModalMessage" style="font-size:1.1rem;margin:20px 0;color:#fff;">Emin misiniz?</p>
             <div style="display:flex;gap:15px;justify-content:center;">

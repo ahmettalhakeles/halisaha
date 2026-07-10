@@ -1,0 +1,269 @@
+function initReservationRoutes(app, db) {
+    const { resLimitPerMin, resLimitPerSec } = require('../middleware/rateLimiter');
+
+    // Get all reservations
+    app.get('/api/reservations', (req, res) => {
+        const sqlQuery = 'SELECT * FROM reservations ORDER BY created_at DESC';
+        db.query(sqlQuery, (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, data: results });
+        });
+    });
+
+    // Create reservation
+    app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
+        const { fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status } = req.body;
+        if (!fieldKey || !pitchNumber || !dateText || !hourText || !user_name) {
+            return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
+        }
+
+        db.query('SELECT id, name, phone, status FROM users WHERE id = ?', [user_id], (errUser, userResult) => {
+            if (errUser) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            if (userResult.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
+            if (userResult[0].status === 'globally_banned') return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
+
+            const userPhone = userResult[0].phone;
+
+            db.query('SELECT COUNT(*) AS cnt FROM field_blacklists WHERE phone_number = ? AND fieldKey = ?', [userPhone, fieldKey], (errBlacklist, blacklistResults) => {
+                if (errBlacklist) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                if (blacklistResults[0].cnt > 0) return res.status(403).json({ success: false, message: 'Bu sahada kara listeye alındınız! Rezervasyon yapamazsınız.' });
+
+                db.query('SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND dateText = ? AND hourText = ?', [fieldKey, pitchNumber, dateText, hourText], (errCheck, existing) => {
+                    if (errCheck) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                    if (existing.length > 0) {
+                        if (existing[0].status === 'active') return res.status(409).json({ success: false, message: 'Bu saat dilimi zaten dolu!' });
+                        if (existing[0].status === 'blocked') return res.status(409).json({ success: false, message: 'Bu saat dilimi işletme tarafından engellenmiş!' });
+                        if (existing[0].status === 'blocked_yuksek') return res.status(409).json({ success: false, message: 'Bu saat dilimi yoğunluk nedeniyle kullanılamıyor!' });
+                        if (existing[0].type === 'abone') return res.status(409).json({ success: false, message: 'Bu saat dilimi abonelik için ayrılmış!' });
+                    }
+
+                    db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "active", "normal")', [fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert) => {
+                        if (errInsert) return res.status(500).json({ success: false, message: 'Rezervasyon oluşturulamadı!' });
+                        res.json({ success: true, message: 'Rezervasyon başarıyla oluşturuldu!' });
+                    });
+                });
+            });
+        });
+    });
+
+    // Cancel reservation
+    app.delete('/api/reservations/:id', (req, res) => {
+        const { id } = req.params;
+        db.query('DELETE FROM reservations WHERE id = ?', [id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Rezervasyon iptal edilemedi!' });
+            res.json({ success: true, message: 'Rezervasyon başarıyla iptal edildi!' });
+        });
+    });
+
+    // Update reservation price/payment
+    app.put('/api/reservations/:id', (req, res) => {
+        const { id } = req.params;
+        const { reservation_price, payment_status } = req.body;
+        const updates = [];
+        const values = [];
+        if (reservation_price !== undefined) { updates.push('reservation_price = ?'); values.push(reservation_price); }
+        if (payment_status !== undefined) { updates.push('payment_status = ?'); values.push(payment_status); }
+        if (updates.length === 0) return res.status(400).json({ success: false, message: 'Güncellenecek alan bulunamadı!' });
+        values.push(id);
+        db.query(`UPDATE reservations SET ${updates.join(', ')} WHERE id = ?`, values, (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Güncelleme hatası!' });
+            res.json({ success: true, message: 'Rezervasyon güncellendi!' });
+        });
+    });
+
+    // Reserve specific hours
+    app.post('/api/reserve-specific-hours', (req, res) => {
+        const { fieldKey, pitchNumber, dateText, hours, user_name, user_id, reservation_price, payment_status } = req.body;
+        if (!fieldKey || !pitchNumber || !dateText || !hours || !hours.length || !user_name) {
+            return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
+        }
+
+        db.query('SELECT id, phone, status FROM users WHERE id = ?', [user_id], (errUser, userResult) => {
+            if (errUser) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            if (userResult.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
+            if (userResult[0].status === 'globally_banned') return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
+
+            const userPhone = userResult[0].phone;
+            db.query('SELECT COUNT(*) AS cnt FROM field_blacklists WHERE phone_number = ? AND fieldKey = ?', [userPhone, fieldKey], (errBlacklist, blacklistResults) => {
+                if (errBlacklist) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                if (blacklistResults[0].cnt > 0) return res.status(403).json({ success: false, message: 'Bu sahada kara listeye alındınız!' });
+
+                const promises = hours.map(hour => {
+                    return new Promise((resolve, reject) => {
+                        db.query('SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND dateText = ? AND hourText = ?', [fieldKey, pitchNumber, dateText, hour], (errCheck, existing) => {
+                            if (errCheck) return reject(errCheck);
+                            if (existing.length > 0) return resolve({ conflict: true, hour });
+                            db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "active", "normal")', [fieldKey, pitchNumber, dateText, hour, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert) => {
+                                if (errInsert) return reject(errInsert);
+                                resolve({ conflict: false, hour });
+                            });
+                        });
+                    });
+                });
+
+                Promise.all(promises).then(results => {
+                    const conflicts = results.filter(r => r.conflict).map(r => r.hour);
+                    const succeeded = results.filter(r => !r.conflict).length;
+                    res.json({
+                        success: true,
+                        message: conflicts.length > 0 ? `${succeeded} saat başarıyla rezerve edildi. ${conflicts.length} saat dolu olduğu için atlandı.` : 'Tüm saatler başarıyla rezerve edildi!',
+                        conflicts
+                    });
+                }).catch(err => {
+                    res.status(500).json({ success: false, message: 'Rezervasyon hatası!' });
+                });
+            });
+        });
+    });
+
+    // Get user reservations
+    app.get('/api/user-reservations', (req, res) => {
+        const { user_id } = req.query;
+        if (!user_id) return res.status(400).json({ success: false, message: 'user_id zorunludur!' });
+        db.query(
+            `SELECT r.*, u.phone AS user_phone FROM reservations r LEFT JOIN users u ON r.user_id = u.id WHERE r.user_id = ? AND r.status = 'active' ORDER BY r.dateText DESC, r.hourText DESC`,
+            [user_id],
+            (err, results) => {
+                if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                res.json(results);
+            }
+        );
+    });
+
+    // Get reservation by id
+    app.get('/api/reservations/:id', (req, res) => {
+        const { id } = req.params;
+        db.query('SELECT * FROM reservations WHERE id = ?', [id], (err, results) => {
+            if (err || results.length === 0) return res.status(404).json({ success: false, message: 'Rezervasyon bulunamadı!' });
+            res.json(results[0]);
+        });
+    });
+
+    // Block/unblock pitch slot
+    app.put('/api/reservations/:id/block', (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body;
+        db.query('UPDATE reservations SET status = ? WHERE id = ?', [status || 'blocked', id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Güncelleme hatası!' });
+            res.json({ success: true, message: 'Saat dilimi güncellendi!' });
+        });
+    });
+
+    // Update reservation user
+    app.put('/api/reservations/:id/user', (req, res) => {
+        const { id } = req.params;
+        const { user_id, user_name } = req.body;
+        db.query('UPDATE reservations SET user_id = ?, user_name = ? WHERE id = ?', [user_id, user_name, id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Güncelleme hatası!' });
+            res.json({ success: true, message: 'Rezervasyon kullanıcısı güncellendi!' });
+        });
+    });
+
+    // Get business reservations
+    app.get('/api/business-reservations', (req, res) => {
+        const { fieldKey } = req.query;
+        if (!fieldKey) return res.status(400).json({ success: false, message: 'fieldKey zorunludur!' });
+        db.query(
+            `SELECT r.*, u.phone AS user_phone FROM reservations r LEFT JOIN users u ON r.user_id = u.id WHERE r.fieldKey = ? ORDER BY r.dateText DESC, r.hourText DESC`,
+            [fieldKey],
+            (err, results) => {
+                if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                res.json(results);
+            }
+        );
+    });
+
+    // Business debts
+    app.get('/api/business-debts', (req, res) => {
+        const { fieldKey } = req.query;
+        if (!fieldKey) return res.status(400).json({ success: false, message: 'fieldKey zorunludur!' });
+        db.query(
+            `SELECT r.*, u.phone AS user_phone FROM reservations r LEFT JOIN users u ON r.user_id = u.id WHERE r.fieldKey = ? AND r.payment_status = 'odenmedi' AND r.status = 'active' ORDER BY r.dateText DESC, r.hourText DESC`,
+            [fieldKey],
+            (err, results) => {
+                if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                res.json(results);
+            }
+        );
+    });
+
+    // Business debts (path param version)
+    app.get('/api/business-debts/:fieldKey', (req, res) => {
+        const { fieldKey } = req.params;
+        const { filter } = req.query;
+
+        db.query(`SELECT * FROM reservations WHERE fieldKey = ? AND status != 'cancelled' ORDER BY dateText ASC, hourText ASC`, [fieldKey], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            if (filter === 'daily') {
+                const filtered = results.filter(r => {
+                    const d = getActualPlayDate(r.dateText, r.hourText);
+                    return d && d.toDateString() === now.toDateString();
+                });
+                return res.json({ success: true, data: filtered });
+            } else if (filter === 'weekly') {
+                const weekAgo = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const filtered = results.filter(r => {
+                    const d = getActualPlayDate(r.dateText, r.hourText);
+                    return d && d >= weekAgo && d <= now;
+                });
+                return res.json({ success: true, data: filtered });
+            } else if (filter === 'monthly') {
+                const monthAgo = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+                const filtered = results.filter(r => {
+                    const d = getActualPlayDate(r.dateText, r.hourText);
+                    return d && d >= monthAgo && d <= now;
+                });
+                return res.json({ success: true, data: filtered });
+            }
+
+            res.json({ success: true, data: results });
+        });
+    });
+
+    // Business reservations (path param version)
+    app.get('/api/business-reservations/:fieldKey', (req, res) => {
+        const { fieldKey } = req.params;
+        db.query('SELECT * FROM reservations WHERE fieldKey = ? ORDER BY dateText ASC, hourText ASC', [fieldKey], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, data: results });
+        });
+    });
+
+    // Update payment status
+    app.put('/api/reservations/:id/payment', (req, res) => {
+        const { id } = req.params;
+        const { payment_status } = req.body;
+        if (!['odenmedi', 'odendi'].includes(payment_status)) {
+            return res.status(400).json({ success: false, message: 'Geçersiz ödeme durumu!' });
+        }
+        db.query('UPDATE reservations SET payment_status = ? WHERE id = ?', [payment_status, id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            res.json({ success: true, message: 'Ödeme durumu güncellendi!' });
+        });
+    });
+}
+
+function getActualPlayDate(dateText, hourText) {
+    try {
+        const months = {
+            'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3, 'MAYIS': 4, 'HAZİRAN': 5,
+            'TEMMUZ': 6, 'AĞUSTOS': 7, 'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
+        };
+        const parts = dateText.split(' ');
+        if (parts.length < 3) return null;
+        const day = parseInt(parts[0]);
+        const monthName = parts[1].toLocaleUpperCase('tr-TR');
+        const year = parseInt(parts[2]);
+        const month = months[monthName];
+        if (isNaN(day) || month === undefined || isNaN(year)) return null;
+        return new Date(year, month, day);
+    } catch (e) {
+        return null;
+    }
+}
+
+module.exports = { initReservationRoutes };
