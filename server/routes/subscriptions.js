@@ -21,7 +21,7 @@ function initSubscriptionRoutes(app, db) {
         db.query(
             `SELECT s.*, u.name AS subscriberName, u.phone AS user_phone
              FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
-             WHERE s.fieldKey = ? ORDER BY s.pitchNumber ASC, FIELD(s.dayOfWeek, "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ", "PAZAR"), s.hourText ASC`,
+             WHERE s.fieldKey = ? ORDER BY s.pitchNumber ASC, FIELD(s.dayOfWeek, 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ', 'PAZAR'), s.hourText ASC`,
             [fieldKey],
             (err, results) => {
                 if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
@@ -36,7 +36,7 @@ function initSubscriptionRoutes(app, db) {
         db.query(
             `SELECT s.*, u.name AS subscriberName, u.phone AS user_phone
              FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
-             WHERE s.user_id = ? ORDER BY FIELD(s.dayOfWeek, "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ", "PAZAR"), s.hourText ASC`,
+             WHERE s.user_id = ? ORDER BY FIELD(s.dayOfWeek, 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ', 'PAZAR'), s.hourText ASC`,
             [userId],
             (err, results) => {
                 if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });

@@ -2,6 +2,110 @@ function initBusinessRoutes(app, db) {
     const fieldsData = require('../fieldsData');
 
     // Get match seekers with filters
+    app.get('/api/weekly-schedule/:fieldKey', (req, res) => {
+        const { fieldKey } = req.params;
+        const { weekStart, weekEnd, pitchNumber } = req.query;
+
+        if (!weekStart || !weekEnd) {
+            return res.status(400).json({ success: false, message: 'weekStart ve weekEnd parametreleri gerekli!' });
+        }
+
+        const pitchFilter = pitchNumber ? ' AND pitchNumber = ?' : '';
+        const params = pitchNumber ? [fieldKey, weekStart, weekEnd, parseInt(pitchNumber)] : [fieldKey, weekStart, weekEnd];
+
+        const resSql = `
+            SELECT r.*, 
+                   r.user_name AS reserverName,
+                   r.user_phone AS reserverPhone,
+                   r.dateText,
+                   r.hourText,
+                   r.pitchNumber,
+                   r.type,
+                   r.payment_status,
+                   r.reservation_price,
+                   r.status
+            FROM reservations r
+            WHERE r.fieldKey = ?
+              AND r.dateText >= ?
+              AND r.dateText <= ?
+              AND (r.status IS NULL OR r.status != 'cancelled')
+              ${pitchFilter}
+            ORDER BY r.dateText ASC, r.hourText ASC
+        `;
+
+        const hoursSql = 'SELECT * FROM field_daily_hours WHERE fieldKey = ?';
+        const settingsSql = 'SELECT * FROM pitch_objects WHERE fieldKey = ? ORDER BY pitchNumber ASC';
+
+        db.query(hoursSql, [fieldKey], (hErr, hoursRows) => {
+            if (hErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+
+            db.query(settingsSql, [fieldKey], (sErr, settingsRows) => {
+                if (sErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+
+                db.query(resSql, params, (rErr, resRows) => {
+                    if (rErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+
+                    const dailyHours = {};
+                    hoursRows.forEach(h => {
+                        dailyHours[h.dayOfWeek] = { opening: h.openingHour, closing: h.closingHour };
+                    });
+
+                    const disabledHours = [];
+                    settingsRows.forEach(s => {
+                        if (s.disabledHours) {
+                            try {
+                                const parsed = JSON.parse(s.disabledHours);
+                                if (Array.isArray(parsed)) parsed.forEach(h => disabledHours.push({ pitchNumber: s.pitchNumber, hour: h }));
+                            } catch (e) {}
+                        }
+                    });
+
+                    res.json({ success: true, reservations: resRows, dailyHours, disabledHours, pitchCount: settingsRows.length || 1 });
+                });
+            });
+        });
+    });
+
+    // İşletme borç listesi
+    app.get('/api/business-debts/:fieldKey', (req, res) => {
+        const { fieldKey } = req.params;
+        const { filter } = req.query;
+        
+        const sqlQuery = "SELECT * FROM reservations WHERE fieldKey = ? AND status != 'cancelled' ORDER BY dateText ASC, hourText ASC";
+        db.query(sqlQuery, [fieldKey], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
+            const startOf7DaysAgo = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const startOf30DaysAgo = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+            let filtered = results;
+            if (filter === 'daily') {
+                filtered = results.filter(r => {
+                    const pDate = getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at);
+                    return pDate.toDateString() === now.toDateString();
+                });
+            } else if (filter === 'weekly') {
+                filtered = results.filter(r => {
+                    const pDate = getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at);
+                    const pTime = pDate.getTime();
+                    return pTime >= startOf7DaysAgo.getTime() && pTime <= endOfToday.getTime();
+                });
+            } else if (filter === 'monthly') {
+                filtered = results.filter(r => {
+                    const pDate = getActualPlayDate(r.dateText, r.hourText) || new Date(r.created_at);
+                    const pTime = pDate.getTime();
+                    return pTime >= startOf30DaysAgo.getTime() && pTime <= endOfToday.getTime();
+                });
+            }
+            
+            res.json({ success: true, data: filtered });
+        });
+    });
+
+    // Get match seekers with filters
     app.get('/api/match-seekers', (req, res) => {
         const { position, minAge, maxAge, minFee, maxFee, date, hour } = req.query;
         let sql = `
@@ -248,7 +352,18 @@ function initBusinessRoutes(app, db) {
                 if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
 
                 const now = new Date();
-                const stats = { total: 0, today: 0, totalEarningsPaid: 0, totalEarningsUnpaid: 0 };
+                const stats = { 
+                    total: 0, today: 0, thisMonth: 0, last7Days: 0,
+                    totalEarningsPaid: 0, totalEarningsUnpaid: 0,
+                    todayEarningsPaid: 0, todayEarningsUnpaid: 0,
+                    thisMonthEarningsPaid: 0, thisMonthEarningsUnpaid: 0,
+                    last7DaysEarningsPaid: 0, last7DaysEarningsUnpaid: 0 
+                };
+
+                const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
+                const startOf7DaysAgo = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
                 for (const resRow of results) {
                     const mPrice = Number(resRow.morningPrice) || 0;
@@ -259,6 +374,7 @@ function initBusinessRoutes(app, db) {
                     const isPaid = resRow.payment_status === 'odendi';
 
                     const resDate = getActualPlayDate(resRow.dateText, resRow.hourText) || new Date(resRow.created_at);
+                    const pTime = resDate.getTime();
 
                     stats.total++;
                     if (isPaid) stats.totalEarningsPaid += price;
@@ -266,11 +382,32 @@ function initBusinessRoutes(app, db) {
 
                     if (resDate.toDateString() === now.toDateString()) {
                         stats.today++;
+                        if (isPaid) stats.todayEarningsPaid += price;
+                        else stats.todayEarningsUnpaid += price;
+                    }
+
+                    if (pTime >= startOf7DaysAgo.getTime() && pTime <= endOfToday.getTime()) {
+                        stats.last7Days++;
+                        if (isPaid) stats.last7DaysEarningsPaid += price;
+                        else stats.last7DaysEarningsUnpaid += price;
+                    }
+
+                    if (pTime >= startOfThisMonth.getTime() && pTime <= endOfToday.getTime()) {
+                        stats.thisMonth++;
+                        if (isPaid) stats.thisMonthEarningsPaid += price;
+                        else stats.thisMonthEarningsUnpaid += price;
                     }
                 }
 
                 stats.totalEarningsPaid = parseFloat(stats.totalEarningsPaid.toFixed(2));
                 stats.totalEarningsUnpaid = parseFloat(stats.totalEarningsUnpaid.toFixed(2));
+                stats.todayEarningsPaid = parseFloat(stats.todayEarningsPaid.toFixed(2));
+                stats.todayEarningsUnpaid = parseFloat(stats.todayEarningsUnpaid.toFixed(2));
+                stats.last7DaysEarningsPaid = parseFloat(stats.last7DaysEarningsPaid.toFixed(2));
+                stats.last7DaysEarningsUnpaid = parseFloat(stats.last7DaysEarningsUnpaid.toFixed(2));
+                stats.thisMonthEarningsPaid = parseFloat(stats.thisMonthEarningsPaid.toFixed(2));
+                stats.thisMonthEarningsUnpaid = parseFloat(stats.thisMonthEarningsUnpaid.toFixed(2));
+                
                 res.json({ success: true, data: stats });
             }
         );
@@ -325,6 +462,17 @@ function getActualPlayDate(dateText, hourText) {
     } catch (e) {
         return null;
     }
+    // Get announcements
+    app.get('/api/announcements', (req, res) => {
+        db.query("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC", (err, results) => {
+            if (err) {
+                console.error("Announcements error:", err);
+                return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+            }
+            res.json({ success: true, data: results });
+        });
+    });
+
 }
 
 module.exports = { initBusinessRoutes };

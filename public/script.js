@@ -648,9 +648,7 @@ async function loadWeeklySchedule() {
 
     try {
         const headers = getAuthHeaders();
-        if (!headers['Authorization'] && !headers['x-admin-token']) {
-            throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-        }
+        // Removed token check since /api/weekly-schedule is public for the UI
 
         const url = `/api/weekly-schedule/${currentBusinessFieldKey}?weekStart=${weekStart}&weekEnd=${weekEnd}${pitchNumber ? '&pitchNumber=' + pitchNumber : ''}`;
         const resp = await fetch(url, { headers });
