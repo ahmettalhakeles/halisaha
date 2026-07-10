@@ -781,7 +781,7 @@ function renderKontrolGrid(data, monday, isMobile) {
 
             day.slots.forEach(slot => {
                 const resKey = `${day.fullDate}|${slot}`;
-                const resArr = (resMap[resKey] || []).filter(r => !r.pitchNumber || r.pitchNumber === pitchNum);
+                const resArr = (resMap[resKey] || []).filter(r => !r.pitchNumber || r.pitchNumber == pitchNum);
                 const isDisabled = disabledMap[`${pitchNum}|${slot}`];
 
                 const btn = document.createElement('button');

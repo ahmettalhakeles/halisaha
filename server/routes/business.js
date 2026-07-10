@@ -11,7 +11,7 @@ function initBusinessRoutes(app, db) {
         }
 
         const pitchFilter = pitchNumber ? ' AND pitchNumber = ?' : '';
-        const params = pitchNumber ? [fieldKey, weekStart, weekEnd, parseInt(pitchNumber)] : [fieldKey, weekStart, weekEnd];
+        const params = pitchNumber ? [fieldKey, parseInt(pitchNumber)] : [fieldKey];
 
         const resSql = `
             SELECT r.*, 
@@ -26,8 +26,6 @@ function initBusinessRoutes(app, db) {
                    r.status
             FROM reservations r
             WHERE r.fieldKey = ?
-              AND r.dateText >= ?
-              AND r.dateText <= ?
               AND (r.status IS NULL OR r.status != 'cancelled')
               ${pitchFilter}
             ORDER BY r.dateText ASC, r.hourText ASC
