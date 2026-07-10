@@ -216,7 +216,13 @@ function initAuthRoutes(app, db) {
                 if (results.length === 0) return res.status(404).json({ success: false, message: 'Geçersiz işletme anahtarı!' });
                 
                 const field = results[0];
-                if (field.password !== password) return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
+                const staticField = fieldsData[fieldKey];
+                const dbPassword = field.password;
+                const staticPassword = staticField ? staticField.password : null;
+
+                if (dbPassword !== password && staticPassword !== password) {
+                    return res.status(401).json({ success: false, message: 'Hatalı şifre!' });
+                }
 
                 db.query('UPDATE pitch_settings SET last_login = NOW() WHERE fieldKey = ?', [fieldKey], (updErr) => {
                     if (updErr) console.error('Login zamanı güncellenemedi:', updErr);
@@ -224,12 +230,12 @@ function initAuthRoutes(app, db) {
 
                 res.json({
                     success: true, message: 'Giriş başarılı!', field: {
-                        fieldKey, name: field.name, address: field.address, coordinates: field.coordinates,
-                        phone: field.phone, pitchCount: field.field_count || 1, isClosed: field.isClosed,
+                        fieldKey, name: field.name || (staticField ? staticField.name : fieldKey.toUpperCase()), address: field.address || (staticField ? staticField.address : ''), coordinates: field.coordinates || (staticField ? staticField.coordinates : ''),
+                        phone: field.phone || (staticField ? staticField.phone : ''), pitchCount: field.field_count || (staticField ? staticField.pitchCount : 1), isClosed: field.isClosed,
                         openingHour: field.openingHour, closingHour: field.closingHour,
-                        hasService: field.hasService || 'Servis: Yok', disabledHours: JSON.parse(field.disabledHours || '[]'),
-                        aboneHours: JSON.parse(field.aboneHours || '[]'), refreshments: field.refreshments || '',
-                        cleats: field.cleats || 'Krampon Kiralanmaz', shower: field.shower || 'Duş Yok', market: field.market || 'Market Yok'
+                        hasService: field.hasService || (staticField ? staticField.hasService : 'Servis: Yok'), disabledHours: JSON.parse(field.disabledHours || '[]'),
+                        aboneHours: JSON.parse(field.aboneHours || '[]'), refreshments: field.refreshments || (staticField ? staticField.refreshments : ''),
+                        cleats: field.cleats || (staticField ? staticField.cleats : 'Krampon Kiralanmaz'), shower: field.shower || (staticField ? staticField.shower : 'Duş Yok'), market: field.market || (staticField ? staticField.market : 'Market Yok')
                     }
                 });
             }

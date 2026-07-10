@@ -228,6 +228,19 @@ function initPitchRoutes(app, db) {
             }
         });
     });
+
+    // Dummy field photos endpoints
+    app.get('/api/field-photos/:fieldKey', (req, res) => {
+        res.json({ success: true, data: [] });
+    });
+
+    app.post('/api/field-photos/upload', (req, res) => {
+        res.json({ success: true, message: 'Fotoğraf yüklendi!' });
+    });
+
+    app.delete('/api/field-photos/:id', (req, res) => {
+        res.json({ success: true, message: 'Fotoğraf silindi!' });
+    });
 }
 
 module.exports = { initPitchRoutes };
