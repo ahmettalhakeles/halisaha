@@ -2727,7 +2727,7 @@ async function onDateOrFieldChange() {
         let isWeekdayClosed = false;
         try {
             const closedDaysArr = typeof pitch.closedDays === 'string' ? JSON.parse(pitch.closedDays || '[]') : (pitch.closedDays || []);
-            if (Array.isArray(closedDaysArr) && closedDaysArr.includes(effectiveDayOfWeek)) {
+            if (Array.isArray(closedDaysArr) && closedDaysArr.includes(dayOfWeek)) {
                 isWeekdayClosed = true;
             }
         } catch(e) {}
@@ -2747,7 +2747,7 @@ async function onDateOrFieldChange() {
             btn.classList.add('locked');
             btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(DOLU)</span>${nextDayLabel}`;
             btn.disabled = true;
-        } else if (aboneHours.includes(`${effectiveDayOfWeek} ${hour}`)) {
+        } else if (aboneHours.includes(`${dayOfWeek} ${hour}`)) {
             btn.classList.add('abone-state');
             btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(ABONE)</span>${nextDayLabel}`;
             btn.disabled = true;
