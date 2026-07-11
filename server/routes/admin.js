@@ -5,10 +5,14 @@ function initAdminRoutes(app, db) {
     
     // Middleware to verify admin token
     function verifyAdminToken(req, res, next) {
-        const authHeader = req.headers['authorization'];
-        if (!authHeader) return res.status(401).json({ success: false, message: 'Yetkisiz erişim!' });
+        let token = req.headers['x-admin-token'];
+        if (!token) {
+            const authHeader = req.headers['authorization'];
+            if (authHeader) {
+                token = authHeader.split(' ')[1];
+            }
+        }
         
-        const token = authHeader.split(' ')[1];
         if (!token) return res.status(401).json({ success: false, message: 'Yetkisiz erişim!' });
 
         jwt.verify(token, process.env.JWT_SECRET || 'jwt_key', (err, decoded) => {

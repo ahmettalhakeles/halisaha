@@ -52,7 +52,7 @@ const compression = require('compression');
 app.use(compression());
 
 app.use(express.static(path.join(__dirname, '..', 'public'), {
-    maxAge: 0,
+    maxAge: 86400000, // 1 day in milliseconds
     etag: true
 }));
 
@@ -104,6 +104,10 @@ initAdminRoutes(app, db);
 // DB baglantisini baslat + migration
 (async () => {
     try {
+        // Run minifier
+        const { runMinify } = require('./minify');
+        await runMinify();
+
         const conn = await db.promise().getConnection();
         console.log('MySQL veritabanina basariyla baglanildi!');
 

@@ -58,16 +58,31 @@ function initReservationRoutes(app, db) {
         });
     });
 
-    // Update reservation price/payment
+    // Update reservation
     app.put('/api/reservations/:id', (req, res) => {
         const { id } = req.params;
-        const { reservation_price, payment_status } = req.body;
+        const { reservation_price, payment_status, dateText, hourText, pitchNumber } = req.body;
         const updates = [];
         const values = [];
+        
         if (reservation_price !== undefined) { updates.push('reservation_price = ?'); values.push(reservation_price); }
         if (payment_status !== undefined) { updates.push('payment_status = ?'); values.push(payment_status); }
+        if (dateText !== undefined) { 
+            updates.push('dateText = ?'); 
+            values.push(dateText); 
+            // Calculate and update play_date from dateText using existing helper
+            const playDateStr = parseTurkishDateString(dateText);
+            if (playDateStr) {
+                updates.push('play_date = ?');
+                values.push(playDateStr);
+            }
+        }
+        if (hourText !== undefined) { updates.push('hourText = ?'); values.push(hourText); }
+        if (pitchNumber !== undefined) { updates.push('pitchNumber = ?'); values.push(pitchNumber); }
+        
         if (updates.length === 0) return res.status(400).json({ success: false, message: 'Güncellenecek alan bulunamadı!' });
         values.push(id);
+        
         db.query(`UPDATE reservations SET ${updates.join(', ')} WHERE id = ?`, values, (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Güncelleme hatası!' });
             res.json({ success: true, message: 'Rezervasyon güncellendi!' });

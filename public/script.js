@@ -680,15 +680,9 @@ async function loadWeeklySchedule() {
 
         if (loadingEl) loadingEl.style.display = 'none';
 
-        // Responsive: mobil mi masaüstü mü?
-        const isMobile = window.innerWidth < 768;
-        renderKontrolGrid(data, monday, isMobile);
-
-        if (!isMobile) {
-            if (desktopGrid) desktopGrid.style.display = 'block';
-        } else {
-            if (mobileView) mobileView.style.display = 'block';
-        }
+        // Responsive: Canlı doluluk çizelgesini göster
+        renderKontrolGrid(data, monday, false);
+        if (desktopGrid) desktopGrid.style.display = 'block';
         if (summaryBar) summaryBar.style.display = 'flex';
 
     } catch (err) {
@@ -1645,7 +1639,7 @@ function renderBusinessReservations() {
                     </div>
                     <span class="res-card-arrow">▼</span>
                 </div>
-                <div class="res-card-body" style="display:none;">
+                <div class="res-card-body" onclick="event.stopPropagation()" style="display:none;">
                     <div class="res-card-actions">
                         ${pitchCount > 1 ? `
                         <select id="newPitch_${res.id}" class="res-select">
@@ -1757,7 +1751,16 @@ function renderBusinessHoursGrid() {
     grid.className = 'business-hours-grid-compact';
     grid.innerHTML = '';
 
-    const resForDate = currentBusinessReservations.filter(r => r.dateText === dateText);
+    const resForDate = currentBusinessReservations.filter(r => {
+        let rDateYMD = '';
+        if (r.play_date) {
+            rDateYMD = r.play_date.substring(0, 10);
+        } else {
+            const parsed = getActualPlayDate(r.dateText, r.hourText);
+            if (parsed) rDateYMD = formatDateYMD(parsed);
+        }
+        return rDateYMD === dateText;
+    });
 
     let filtered = resForDate;
     if (businessGridFilter === 'normal') filtered = resForDate.filter(r => r.type !== 'abone');
@@ -2232,6 +2235,7 @@ function initDateDropdowns() {
 // =======================================================
 function renderFieldsGrid() {
     const grid = document.getElementById('fieldsGrid');
+    if (!grid) return;
     const isMobile = window.innerWidth <= 768;
 
     grid.innerHTML = Object.keys(fieldsData).filter(key => !fieldsData[key].isClosed).map(key => {
@@ -2372,36 +2376,7 @@ async function loadFieldPhotos(fieldKey) {
     } catch(e) { console.error('Fotoğraf yükleme hatası:', e); }
 }
 
-// İşletme panelinde fotoğraf yükle
-async function uploadFieldPhoto() {
-    const fileInput = document.getElementById('fieldPhotoInput');
-    const captionInput = document.getElementById('fieldPhotoCaption');
-    const file = fileInput?.files?.[0];
-    if (!file) { alert('Lütfen bir fotoğraf seçin!'); return; }
-    if (!currentBusinessFieldKey) { alert('Önce bir sahaya giriş yapın!'); return; }
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const imageData = e.target.result;
-        try {
-            const response = await fetch('/api/field-photos/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fieldKey: currentBusinessFieldKey, imageData, caption: captionInput?.value || '' })
-            });
-            const result = await response.json();
-            if (result.success) {
-                alert('Fotoğraf yüklendi!');
-                fileInput.value = '';
-                if (captionInput) captionInput.value = '';
-                loadBusinessFieldPhotos();
-                renderFieldsGrid();
-            } else {
-                alert('Hata: ' + (result.message || 'Yüklenemedi'));
-            }
-        } catch(err) { alert('Bağlantı hatası!'); }
-    };
-    reader.readAsDataURL(file);
-}
+// İşletme panelinde fotoğraf yükleme kaldırıldı
 
 // İşletme panelinde fotoğrafları listele
 async function loadBusinessFieldPhotos() {
