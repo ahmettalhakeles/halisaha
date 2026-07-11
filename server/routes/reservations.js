@@ -218,6 +218,9 @@ function getActualPlayDate(dateText, hourText) {
 
 function parseTurkishDateString(dateStr) {
     if (!dateStr) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+        return dateStr.trim();
+    }
     const turkishMonthsDotted = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
     const turkishMonthsUndotted = ['OCAK', 'SUBAT', 'MART', 'NISAN', 'MAYIS', 'HAZIRAN', 'TEMMUZ', 'AGUSTOS', 'EYLUL', 'EKIM', 'KASIM', 'ARALIK'];
     

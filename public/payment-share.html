@@ -186,7 +186,34 @@
 
         <div class="input-group">
             <label for="payerName">Adınız Soyadınız</label>
-            <input type="text" id="payerName" placeholder="Örn: Ahmet Yılmaz" autocomplete="off">
+            <input type="text" id="payerName" placeholder="Örn: Ahmet Yılmaz" autocomplete="off" required>
+        </div>
+
+        <div style="text-align: left; display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">KART ÜZERİNDEKİ İSİM</label>
+                <input type="text" id="shareCardName" placeholder="JOHN DOE" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 15px; border-radius: 8px; font-size: 1rem; box-sizing: border-box;" required>
+            </div>
+
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">KART NUMARASI</label>
+                <input type="text" id="shareCardNumber" placeholder="1234 5678 1234 5678" maxlength="19" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 15px; border-radius: 8px; font-size: 1rem; box-sizing: border-box;" required>
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">SON KULLANMA</label>
+                    <input type="text" id="shareCardExpiry" placeholder="MM/YY" maxlength="5" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 15px; border-radius: 8px; font-size: 1rem; box-sizing: border-box;" required>
+                </div>
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">CVV</label>
+                    <input type="password" id="shareCardCvv" placeholder="123" maxlength="3" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 15px; border-radius: 8px; font-size: 1rem; box-sizing: border-box;" required>
+                </div>
+            </div>
+            
+            <div id="shareCardError" style="color: #f87171; font-size: 0.82rem; margin-top: 5px; display: none; background: rgba(239, 68, 68, 0.08); padding: 10px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                Hatalı kart bilgileri girdiniz.
+            </div>
         </div>
 
         <button class="pay-btn" id="payBtn" onclick="processPayment()">ÖDEMEYİ TAMAMLA</button>
@@ -201,7 +228,37 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchPaymentDetails();
+            initCardFormatters();
         });
+
+        function initCardFormatters() {
+            const num = document.getElementById('shareCardNumber');
+            const exp = document.getElementById('shareCardExpiry');
+            const cvv = document.getElementById('shareCardCvv');
+            
+            if (num) {
+                num.addEventListener('input', (e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    let formatted = val.match(/.{1,4}/g)?.join(' ') || val;
+                    e.target.value = formatted;
+                });
+            }
+            if (exp) {
+                exp.addEventListener('input', (e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    if (val.length >= 2) {
+                        e.target.value = val.substring(0, 2) + '/' + val.substring(2, 4);
+                    } else {
+                        e.target.value = val;
+                    }
+                });
+            }
+            if (cvv) {
+                cvv.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/\D/g, '').substring(0, 3);
+                });
+            }
+        }
 
         async function fetchPaymentDetails() {
             try {
@@ -238,29 +295,77 @@
             }
         }
 
+        function showCardError(msg) {
+            const err = document.getElementById('shareCardError');
+            err.textContent = msg;
+            err.style.display = 'block';
+        }
+
         async function processPayment() {
-            const nameInput = document.getElementById('payerName').value.trim();
-            if (!nameInput) {
-                alert('Lütfen adınızı giriniz.');
+            const payerName = document.getElementById('payerName').value.trim();
+            const cardName = document.getElementById('shareCardName').value.trim();
+            const cardNumber = document.getElementById('shareCardNumber').value.replace(/\s+/g, '');
+            const cardExpiry = document.getElementById('shareCardExpiry').value.trim();
+            const cardCvv = document.getElementById('shareCardCvv').value.trim();
+            const errEl = document.getElementById('shareCardError');
+            
+            if (!payerName) {
+                alert('Lütfen adınızı soyadınızı giriniz.');
                 return;
             }
+            if (!cardName) {
+                showCardError('Lütfen kart üzerindeki ismi giriniz.');
+                return;
+            }
+            if (!/^\d{16}$/.test(cardNumber)) {
+                showCardError('Kart numarası 16 haneli olmalıdır.');
+                return;
+            }
+            if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+                showCardError('Son kullanma tarihi MM/YY formatında olmalıdır.');
+                return;
+            }
+            
+            const [month, year] = cardExpiry.split('/').map(Number);
+            if (month < 1 || month > 12) {
+                showCardError('Geçersiz ay girdiniz (01 - 12 arası olmalıdır).');
+                return;
+            }
+            
+            const now = new Date();
+            const currentYear = now.getFullYear() % 100;
+            const currentMonth = now.getMonth() + 1;
+            if (year < currentYear || (year === currentYear && month < currentMonth)) {
+                showCardError('Kartın son kullanma tarihi geçmiş.');
+                return;
+            }
+            
+            if (!/^\d{3}$/.test(cardCvv)) {
+                showCardError('CVV 3 haneli olmalıdır.');
+                return;
+            }
+            
+            errEl.style.display = 'none';
 
             const btn = document.getElementById('payBtn');
             btn.disabled = true;
-            btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(0,0,0,0.1);border-left-color:#000;border-radius:50%;animation:spin 1s linear infinite;"></div>İşleniyor...</div>';
+            btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(0,0,0,0.1);border-left-color:#000;border-radius:50%;animation:spin 1s linear infinite;"></div>Ödeme Yapılıyor...</div>';
 
-            // Simulate 2 second payment gateway delay
             setTimeout(async () => {
                 try {
                     const res = await fetch(`/api/payment/share/${shareCode}/pay`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ payer_name: nameInput })
+                        body: JSON.stringify({ payer_name: payerName })
                     });
                     const result = await res.json();
 
                     btn.style.display = 'none';
                     document.getElementById('payerName').disabled = true;
+                    document.getElementById('shareCardName').disabled = true;
+                    document.getElementById('shareCardNumber').disabled = true;
+                    document.getElementById('shareCardExpiry').disabled = true;
+                    document.getElementById('shareCardCvv').disabled = true;
 
                     const msgEl = document.getElementById('statusMsg');
                     msgEl.style.display = 'block';
@@ -275,6 +380,10 @@
                         btn.disabled = false;
                         btn.innerHTML = 'ÖDEMEYİ TAMAMLA';
                         document.getElementById('payerName').disabled = false;
+                        document.getElementById('shareCardName').disabled = false;
+                        document.getElementById('shareCardNumber').disabled = false;
+                        document.getElementById('shareCardExpiry').disabled = false;
+                        document.getElementById('shareCardCvv').disabled = false;
                     }
                 } catch (error) {
                     btn.disabled = false;

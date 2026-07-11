@@ -772,6 +772,57 @@
         </div>
     </footer>
 
+    <!-- KREDİ KARTI SİMÜLASYON MODALI -->
+    <div class="modal-overlay" id="paymentSimulationModal" style="z-index: 2200;">
+        <div class="modal-card" style="max-width: 450px; background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 25px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(16, 185, 129, 0.2); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="color:var(--primary-green); font-size:1.3rem; font-weight:800; margin:0;">GÜVENLİ ÖDEME SİMÜLASYONU</h2>
+                <button type="button" class="close-modal" onclick="closeModal('paymentSimulationModal')" style="background:none; border:none; color:rgba(255,255,255,0.6); font-size:1.2rem; cursor:pointer;">X</button>
+            </div>
+            
+            <div style="margin: 20px 0; text-align: left;">
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">ÖDENECEK TUTAR:</span>
+                    <strong style="color: var(--neon-green); font-size: 1.4rem; font-family: 'Oswald', sans-serif;" id="simPaymentAmount">0.00 TL</strong>
+                </div>
+
+                <!-- Kart Formu -->
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;">KART ÜZERİNDEKİ İSİM</label>
+                        <input type="text" id="simCardName" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="JOHN DOE" required>
+                    </div>
+
+                    <div class="form-group" style="margin: 0;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;">KART NUMARASI</label>
+                        <input type="text" id="simCardNumber" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="1234 5678 1234 5678" maxlength="19" required>
+                    </div>
+
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1; margin: 0;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;">SON KULLANMA</label>
+                            <input type="text" id="simCardExpiry" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="MM/YY" maxlength="5" required>
+                        </div>
+                        <div class="form-group" style="flex: 1; margin: 0;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;">CVV</label>
+                            <input type="password" id="simCardCvv" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="123" maxlength="3" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="simCardError" style="color: #f87171; font-size: 0.82rem; margin-top: 15px; display: none; background: rgba(239, 68, 68, 0.08); padding: 10px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    Hatalı kart bilgileri girdiniz.
+                </div>
+            </div>
+
+            <div style="margin-top: 25px;">
+                <button type="button" id="simPaySubmitBtn" class="action-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <span id="simPayBtnText">ÖDEMEYİ TAMAMLA</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- KVKK MODALI -->
     <div class="modal-overlay" id="kvkkModal" style="z-index: 10005;">
         <div class="modal-card" style="max-width: 600px; background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px;">

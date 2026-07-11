@@ -4519,4 +4519,13 @@ body.admin-impersonating #sunsetWidget {
     display: inline-block;
     box-sizing: border-box;
 }
+
+.btn-loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--primary-green);
+    animation: spin 1s ease-in-out infinite;
+}
 

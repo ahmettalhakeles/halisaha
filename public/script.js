@@ -569,6 +569,14 @@ function formatDateYMD(date) {
     return `${y}-${m}-${d}`;
 }
 
+function getPlayDateStringYMD(val) {
+    if (!val) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) return val.trim();
+    const d = parseTurkishDateString(val);
+    if (!d) return val.trim();
+    return formatDateYMD(d);
+}
+
 function formatDateDM(date) {
     return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
@@ -2595,7 +2603,7 @@ function getPreviousCalendarDayText(dateStr) {
     return d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
 }
 
-function onDateOrFieldChange() {
+async function onDateOrFieldChange() {
     try {
     if (!currentSelectedFieldKey) return;
     const alertZone = document.getElementById('authRequiredAlert');
@@ -2618,6 +2626,29 @@ function onDateOrFieldChange() {
     if (submitBtn) submitBtn.style.display = 'none';
     currentSelectedHourBtn = null;
     if (!currentSelectedPitchNumber) return;
+
+    // Fetch weekly schedule for this field to get all reservations
+    let weeklyReservations = [];
+    try {
+        const parts = dateText.split('-');
+        const selectDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        const day = selectDate.getDay();
+        const diffToPzt = (day === 0) ? -6 : 1 - day;
+        const monday = new Date(selectDate);
+        monday.setDate(selectDate.getDate() + diffToPzt);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        
+        const weekStart = formatDateYMD(monday);
+        const weekEnd = formatDateYMD(sunday);
+        const resp = await fetch(`/api/weekly-schedule/${currentSelectedFieldKey}?weekStart=${weekStart}&weekEnd=${weekEnd}`);
+        const scheduleResult = await resp.json();
+        if (scheduleResult.success) {
+            weeklyReservations = scheduleResult.reservations || [];
+        }
+    } catch(e) {
+        console.error("Weekly schedule fetch failed for customer view:", e);
+    }
 
     const pitch = pitchObjectsList.find(p => p.fieldKey === currentSelectedFieldKey && p.pitchNumber === currentSelectedPitchNumber) || field;
     const morningPrice = pitch.morningPrice || 2500;
@@ -2677,7 +2708,14 @@ function onDateOrFieldChange() {
         btn.dataset.hour = hour;
         const hStartCheck = parseInt(hour.split(':')[0]);
         const nextDateText = hStartCheck < 6 ? getNextCalendarDayText(dateText) : null;
-        const isTaken = userReservations.some(r => r.fieldKey === currentSelectedFieldKey && r.pitchNumber === currentSelectedPitchNumber && r.hourText === hour && (r.dateText === dateText || (nextDateText && r.dateText === nextDateText)));
+        const isTaken = weeklyReservations.some(r => {
+            if (r.fieldKey !== currentSelectedFieldKey || r.pitchNumber !== currentSelectedPitchNumber || r.hourText !== hour) return false;
+            if (r.status === 'cancelled') return false;
+            const rDateStr = getPlayDateStringYMD(r.play_date ? r.play_date.substring(0, 10) : r.dateText);
+            const targetDateStr = getPlayDateStringYMD(dateText);
+            const targetNextDateStr = nextDateText ? getPlayDateStringYMD(nextDateText) : '';
+            return rDateStr === targetDateStr || (targetNextDateStr && rDateStr === targetNextDateStr);
+        });
 
         const hStart = parseInt(hour.split(':')[0]);
         const isNextDay = hStart < 6;
@@ -2914,44 +2952,117 @@ function resetPaymentUI() {
     document.getElementById('btnPaySplit').innerHTML = 'İki Kişi Paylaş';
 }
 
+// Kredi Kartı Ödeme Değişkenleri
+let currentPaymentReservationId = null;
+let currentPaymentType = null; // 'single' veya 'split'
+let currentPaymentShareCode = null;
+let currentPaymentAmount = 0;
+
+function showCardError(msg) {
+    const errorEl = document.getElementById('simCardError');
+    if (errorEl) {
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+    }
+}
+
+function validateCardInputs() {
+    const name = document.getElementById('simCardName').value.trim();
+    const number = document.getElementById('simCardNumber').value.replace(/\s+/g, '');
+    const expiry = document.getElementById('simCardExpiry').value.trim();
+    const cvv = document.getElementById('simCardCvv').value.trim();
+    const errorEl = document.getElementById('simCardError');
+    
+    if (!name) {
+        showCardError("Lütfen kart sahibinin adını girin.");
+        return null;
+    }
+    if (!/^\d{16}$/.test(number)) {
+        showCardError("Kart numarası 16 haneli olmalıdır.");
+        return null;
+    }
+    if (!/^\d{2}\/\d{2}$/.test(expiry)) {
+        showCardError("Son kullanma tarihi MM/YY formatında olmalıdır.");
+        return null;
+    }
+    
+    const [month, year] = expiry.split('/').map(Number);
+    if (month < 1 || month > 12) {
+        showCardError("Geçersiz ay girdiniz (01 - 12 arası olmalıdır).");
+        return null;
+    }
+    
+    const now = new Date();
+    const currentYear = now.getFullYear() % 100;
+    const currentMonth = now.getMonth() + 1;
+    
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        showCardError("Kartın son kullanma tarihi geçmiş.");
+        return null;
+    }
+    
+    if (!/^\d{3}$/.test(cvv)) {
+        showCardError("CVV 3 haneli olmalıdır.");
+        return null;
+    }
+    
+    if (errorEl) errorEl.style.display = 'none';
+    return { name, number, expiry, cvv };
+}
+
+// Kart formatlama event listener'ları
+function initCardInputFormatters() {
+    const numberInput = document.getElementById('simCardNumber');
+    const expiryInput = document.getElementById('simCardExpiry');
+    const cvvInput = document.getElementById('simCardCvv');
+    
+    if (numberInput) {
+        numberInput.addEventListener('input', (e) => {
+            let val = e.target.value.replace(/\D/g, '');
+            let formatted = val.match(/.{1,4}/g)?.join(' ') || val;
+            e.target.value = formatted;
+        });
+    }
+    if (expiryInput) {
+        expiryInput.addEventListener('input', (e) => {
+            let val = e.target.value.replace(/\D/g, '');
+            if (val.length >= 2) {
+                e.target.value = val.substring(0, 2) + '/' + val.substring(2, 4);
+            } else {
+                e.target.value = val;
+            }
+        });
+    }
+    if (cvvInput) {
+        cvvInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '').substring(0, 3);
+        });
+    }
+}
+
+// Sayfa yüklendiğinde formatlayıcıları kur
+setTimeout(initCardInputFormatters, 1000);
+
 async function paySingle() {
     if (!latestReservationId) return;
     
-    const btn = document.getElementById('btnPaySingle');
-    btn.disabled = true;
-    btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(255,255,255,0.2);border-left-color:#fff;border-radius:50%;animation:spin 1s linear infinite;"></div>İşleniyor...</div>';
-    document.getElementById('btnPaySplit').disabled = true;
-
-    setTimeout(async () => {
-        try {
-            const res = await fetch(`/api/reservations/${latestReservationId}/payment/pay-single`, { method: 'POST' });
-            const result = await res.json();
-            
-            const statusEl = document.getElementById('paymentStatus');
-            statusEl.style.display = 'block';
-            
-            if (result.success) {
-                document.getElementById('paymentButtons').style.display = 'none';
-                statusEl.style.background = 'rgba(16,185,129,0.1)';
-                statusEl.style.color = 'var(--neon-green)';
-                statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
-                statusEl.innerHTML = '✓ Ödeme Başarılı!';
-            } else {
-                statusEl.style.background = 'rgba(239,68,68,0.1)';
-                statusEl.style.color = '#ef4444';
-                statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
-                statusEl.innerHTML = `✗ ${result.message || 'Ödeme başarısız oldu'}`;
-                btn.disabled = false;
-                document.getElementById('btnPaySplit').disabled = false;
-                btn.innerHTML = 'Tek Kişi Öde';
-            }
-        } catch (error) {
-            btn.disabled = false;
-            document.getElementById('btnPaySplit').disabled = false;
-            btn.innerHTML = 'Tek Kişi Öde';
-            alert('Bağlantı hatası!');
-        }
-    }, 2000); // simulate 2s payment processing
+    currentPaymentReservationId = latestReservationId;
+    currentPaymentType = 'single';
+    currentPaymentAmount = parseFloat(document.getElementById('successBookingPrice').innerText);
+    
+    closeModal('bookingSuccessModal');
+    
+    // Formu sıfırla
+    document.getElementById('simCardName').value = '';
+    document.getElementById('simCardNumber').value = '';
+    document.getElementById('simCardExpiry').value = '';
+    document.getElementById('simCardCvv').value = '';
+    document.getElementById('simCardError').style.display = 'none';
+    
+    document.getElementById('simPaymentAmount').textContent = `${currentPaymentAmount} TL`;
+    document.getElementById('simPayBtnText').textContent = 'ÖDEMEYİ TAMAMLA';
+    
+    openModal('paymentSimulationModal');
 }
 
 async function initSplitPayment() {
@@ -2959,7 +3070,7 @@ async function initSplitPayment() {
     
     const btn = document.getElementById('btnPaySplit');
     btn.disabled = true;
-    btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(16,185,129,0.2);border-left-color:var(--neon-green);border-radius:50%;animation:spin 1s linear infinite;"></div>İşleniyor...</div>';
+    btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(16,185,129,0.2);border-left-color:var(--neon-green);border-radius:50%;animation:spin 1s linear infinite;"></div>Başlatılıyor...</div>';
     document.getElementById('btnPaySingle').disabled = true;
 
     try {
@@ -2967,18 +3078,24 @@ async function initSplitPayment() {
         const result = await res.json();
         
         if (result.success) {
-            document.getElementById('paymentButtons').style.display = 'none';
-            document.getElementById('paymentShareInfo').style.display = 'block';
+            currentPaymentReservationId = latestReservationId;
+            currentPaymentType = 'split';
+            currentPaymentShareCode = result.share_code;
+            currentPaymentAmount = parseFloat(document.getElementById('successBookingPrice').innerText) / 2;
             
-            const shareUrl = `${window.location.origin}/payment/share/${result.share_code}`;
-            document.getElementById('shareLinkInput').value = shareUrl;
+            closeModal('bookingSuccessModal');
             
-            const statusEl = document.getElementById('paymentStatus');
-            statusEl.style.display = 'block';
-            statusEl.style.background = 'rgba(16,185,129,0.1)';
-            statusEl.style.color = 'var(--neon-green)';
-            statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
-            statusEl.innerHTML = '✓ Ortak ödeme başlatıldı! Kendi payınızı ödemek için linki kullanın.';
+            // Formu sıfırla
+            document.getElementById('simCardName').value = '';
+            document.getElementById('simCardNumber').value = '';
+            document.getElementById('simCardExpiry').value = '';
+            document.getElementById('simCardCvv').value = '';
+            document.getElementById('simCardError').style.display = 'none';
+            
+            document.getElementById('simPaymentAmount').textContent = `${currentPaymentAmount} TL (Yarı Tutar)`;
+            document.getElementById('simPayBtnText').textContent = 'KENDİ PAYIMI ÖDE';
+            
+            openModal('paymentSimulationModal');
         } else {
             const statusEl = document.getElementById('paymentStatus');
             statusEl.style.display = 'block';
@@ -2997,6 +3114,91 @@ async function initSplitPayment() {
         alert('Bağlantı hatası!');
     }
 }
+
+// Ödeme Simülasyonu Gönder Butonu Tıklama Dinleyicisi
+setTimeout(() => {
+    const paySubmitBtn = document.getElementById('simPaySubmitBtn');
+    if (paySubmitBtn) {
+        paySubmitBtn.onclick = async () => {
+            const cardData = validateCardInputs();
+            if (!cardData) return;
+            
+            paySubmitBtn.disabled = true;
+            const originalBtnContent = document.getElementById('simPayBtnText').innerHTML;
+            document.getElementById('simPayBtnText').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="btn-loading-spinner"></div>Ödeme Yapılıyor...</div>';
+            
+            setTimeout(async () => {
+                try {
+                    if (currentPaymentType === 'single') {
+                        const res = await fetch(`/api/reservations/${currentPaymentReservationId}/payment/pay-single`, { method: 'POST' });
+                        const result = await res.json();
+                        
+                        closeModal('paymentSimulationModal');
+                        openModal('bookingSuccessModal');
+                        
+                        const statusEl = document.getElementById('paymentStatus');
+                        statusEl.style.display = 'block';
+                        
+                        if (result.success) {
+                            document.getElementById('paymentButtons').style.display = 'none';
+                            statusEl.style.background = 'rgba(16,185,129,0.1)';
+                            statusEl.style.color = 'var(--neon-green)';
+                            statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
+                            statusEl.innerHTML = '✓ Ödeme Başarılı!';
+                            onDateOrFieldChange();
+                        } else {
+                            statusEl.style.background = 'rgba(239,68,68,0.1)';
+                            statusEl.style.color = '#ef4444';
+                            statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+                            statusEl.innerHTML = `✗ ${result.message || 'Ödeme başarısız oldu'}`;
+                            resetPaymentUI();
+                        }
+                    } else if (currentPaymentType === 'split') {
+                        // Kendi payını ödemek için API /api/payment/share/:code/pay kullanılır
+                        const res = await fetch(`/api/payment/share/${currentPaymentShareCode}/pay`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ payer_name: loggedInUser })
+                        });
+                        const result = await res.json();
+                        
+                        closeModal('paymentSimulationModal');
+                        openModal('bookingSuccessModal');
+                        
+                        const statusEl = document.getElementById('paymentStatus');
+                        statusEl.style.display = 'block';
+                        
+                        if (result.success) {
+                            document.getElementById('paymentButtons').style.display = 'none';
+                            document.getElementById('paymentShareInfo').style.display = 'block';
+                            
+                            const shareUrl = `${window.location.origin}/payment/share/${currentPaymentShareCode}`;
+                            document.getElementById('shareLinkInput').value = shareUrl;
+                            
+                            statusEl.style.background = 'rgba(16,185,129,0.1)';
+                            statusEl.style.color = 'var(--neon-green)';
+                            statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
+                            statusEl.innerHTML = '✓ Kendi payınızı ödediniz! Arkadaşınızla linki paylaşın.';
+                            onDateOrFieldChange();
+                        } else {
+                            statusEl.style.background = 'rgba(239,68,68,0.1)';
+                            statusEl.style.color = '#ef4444';
+                            statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+                            statusEl.innerHTML = `✗ ${result.message || 'Ödeme başarısız oldu'}`;
+                            resetPaymentUI();
+                        }
+                    }
+                } catch(e) {
+                    console.error("Ödeme hatası:", e);
+                    alert("Ödeme alınırken bağlantı hatası oluştu!");
+                } finally {
+                    paySubmitBtn.disabled = false;
+                    document.getElementById('simPayBtnText').innerHTML = originalBtnContent;
+                }
+            }, 2000);
+        };
+    }
+}, 1000);
 
 function copyShareLink() {
     const input = document.getElementById('shareLinkInput');
