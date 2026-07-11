@@ -3288,8 +3288,9 @@ main.business-mode {
     .logo-area {
         width: 100%;
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
+        position: relative;
         margin-bottom: 10px;
     }
 
@@ -3428,8 +3429,8 @@ main.business-mode {
         display: block !important;
         position: absolute !important;
         left: 15px !important;
-        top: 15px !important;
-        transform: none !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
         z-index: 999 !important;
     }
 

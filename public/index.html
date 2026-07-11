@@ -177,15 +177,15 @@
                             </div>
                             <h3>YENİ OYUNCU İLANI OLUŞTUR</h3>
                             <div class="form-group">
-                                <label>MAÇ TARİHİ</label>
+                                <label for="forumDate">MAÇ TARİHİ</label>
                                 <select id="forumDate" class="form-control"></select>
                             </div>
                             <div class="form-group">
-                                <label>MAÇ SAATİ</label>
+                                <label for="forumHour">MAÇ SAATİ</label>
                                 <select id="forumHour" class="form-control"></select>
                             </div>
                             <div class="form-group">
-                                <label>ARANILAN MEVKİ</label>
+                                <label for="forumPosition">ARANILAN MEVKİ</label>
                                 <select id="forumPosition" class="form-control">
                                     <option value="KALECI">KALECI</option>
                                     <option value="DEFANS">DEFANS</option>
@@ -194,18 +194,18 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>UCRET DURUMU</label>
+                                <label for="forumPayment">UCRET DURUMU</label>
                                 <select id="forumPayment" class="form-control">
                                     <option value=" UCRET KARSILANACAK"> UCRET KARSILANACAK</option>
                                     <option value=" UCRET KARSILANMAYACAK"> UCRET KARSILANMAYACAK</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>KAPTAN TELEFON (WHATSAPP - OPSİYONEL)</label>
+                                <label for="forumPhone">KAPTAN TELEFON (WHATSAPP - OPSİYONEL)</label>
                                 <input type="text" id="forumPhone" class="form-control" placeholder="+905XXXXXXXXX (Opsiyonel)">
                             </div>
                             <div class="form-group">
-                                <label>EKSTRA MESAJ</label>
+                                <label for="forumMessage">EKSTRA MESAJ</label>
                                 <textarea id="forumMessage" class="form-control" rows="2" placeholder="NOTUNUZU YAZIN"></textarea>
                             </div>
                             <button class="action-btn" data-click="createForumPost">ILANI YAYINLA</button>
@@ -233,23 +233,23 @@
                             </div>
                             <h3>MAÇ ARAMA İLANI OLUŞTUR</h3>
                             <div class="form-group">
-                                <label>AD SOYAD</label>
+                                <label for="matchName">AD SOYAD</label>
                                 <input type="text" id="matchName" class="form-control" placeholder="İsim Soyisim">
                             </div>
                             <div class="form-group">
-                                <label>YAŞ</label>
+                                <label for="matchAge">YAŞ</label>
                                 <input type="number" id="matchAge" class="form-control" placeholder="25" min="10" max="65">
                             </div>
                             <div class="form-group">
-                                <label>BOY (cm)</label>
+                                <label for="matchHeight">BOY (cm)</label>
                                 <input type="number" id="matchHeight" class="form-control" min="100" max="250" placeholder="175">
                             </div>
                             <div class="form-group">
-                                <label>KİLO (kg)</label>
+                                <label for="matchWeight">KİLO (kg)</label>
                                 <input type="number" id="matchWeight" class="form-control" min="30" max="250" placeholder="70">
                             </div>
                             <div class="form-group">
-                                <label>MEVKİ</label>
+                                <label for="matchPosition">MEVKİ</label>
                                 <select id="matchPosition" class="form-control">
                                     <option value="KALECI">KALECI</option>
                                     <option value="DEFANS">DEFANS</option>
@@ -258,7 +258,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>TELEFON (OPSİYONEL - Sadece anlaşma sonrası paylaşılır)</label>
+                                <label for="matchPhone">TELEFON (OPSİYONEL - Sadece anlaşma sonrası paylaşılır)</label>
                                 <input type="text" id="matchPhone" class="form-control" placeholder="+905XXXXXXXXX (Opsiyonel)">
                             </div>
                             <div class="form-group">
@@ -270,7 +270,7 @@
                                 <div class="hour-checkbox-grid" id="matchHourCheckboxes"></div>
                             </div>
                             <div class="form-group">
-                                <label>İSTEDİĞİNİZ ÜCRET (TL)</label>
+                                <label for="matchFee">İSTEDİĞİNİZ ÜCRET (TL)</label>
                                 <select id="matchFee" class="form-control">
                                     <option value="ÜCRETSİZ">ÜCRETSİZ (BEKLENTİM YOK)</option>
                                     <option value="50">50</option>
@@ -282,7 +282,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>EKSTRA MESAJ</label>
+                                <label for="matchMsg">EKSTRA MESAJ</label>
                                 <textarea id="matchMsg" class="form-control" rows="2" placeholder="Kendinizi kısaca tanıtın..."></textarea>
                             </div>
                             <button class="action-btn" data-click="createMatchSeeker">İLANI YAYINLA</button>
@@ -294,24 +294,24 @@
                             </div>
                             <div class="filter-bar" id="matchFilterBar">
                                 <div class="filter-row">
-                                    <select id="filterPosition" class="filter-control" onchange="loadMatchSeekers()">
+                                    <select id="filterPosition" aria-label="Mevki Filtresi" class="filter-control" onchange="loadMatchSeekers()">
                                         <option value="">TÜM MEVKİLER</option>
                                         <option value="KALECI">KALECI</option>
                                         <option value="DEFANS">DEFANS</option>
                                         <option value="ORTA SAHA">ORTA SAHA</option>
                                         <option value="FORVET">FORVET</option>
                                     </select>
-                                    <input type="number" id="filterMinAge" class="filter-control" placeholder="Min Yaş" min="10" max="65" onchange="loadMatchSeekers()">
-                                    <input type="number" id="filterMaxAge" class="filter-control" placeholder="Max Yaş" min="10" max="65" onchange="loadMatchSeekers()">
+                                    <input type="number" id="filterMinAge" aria-label="Minimum Yaş" class="filter-control" placeholder="Min Yaş" min="10" max="65" onchange="loadMatchSeekers()">
+                                    <input type="number" id="filterMaxAge" aria-label="Maksimum Yaş" class="filter-control" placeholder="Max Yaş" min="10" max="65" onchange="loadMatchSeekers()">
                                 </div>
                                 <div class="filter-row" style="margin-top: 5px;">
-                                    <select id="filterDate" class="filter-control" onchange="loadMatchSeekers()">
+                                    <select id="filterDate" aria-label="Tarih Filtresi" class="filter-control" onchange="loadMatchSeekers()">
                                         <option value="">TÜM TARİHLER</option>
                                     </select>
-                                    <select id="filterHour" class="filter-control" onchange="loadMatchSeekers()">
+                                    <select id="filterHour" aria-label="Saat Filtresi" class="filter-control" onchange="loadMatchSeekers()">
                                         <option value="">TÜM SAATLER</option>
                                     </select>
-                                    <select id="filterFee" class="filter-control" onchange="loadMatchSeekers()">
+                                    <select id="filterFee" aria-label="Ücret Filtresi" class="filter-control" onchange="loadMatchSeekers()">
                                         <option value="">TÜM ÜCRETLER</option>
                                         <option value="0">ÜCRETSİZ</option>
                                         <option value="50">0-50 TL</option>
@@ -338,11 +338,11 @@
                             </div>
                             <h3>TAKIM ARAMA İLANI OLUŞTUR</h3>
                             <div class="form-group">
-                                <label>TAKIM ADI</label>
+                                <label for="teamName">TAKIM ADI</label>
                                 <input type="text" id="teamName" class="form-control" placeholder="Takım Adı">
                             </div>
                             <div class="form-group">
-                                <label>TAKIM YAŞ ORTALAMASI</label>
+                                <label for="teamAgeGroup">TAKIM YAŞ ORTALAMASI</label>
                                 <select id="teamAgeGroup" class="form-control">
                                     <option value="">Seçiniz</option>
                                     <option value="Lise (15-18)">Lise (15-18)</option>
@@ -352,7 +352,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>KAÇ KİŞİLİK MAÇ?</label>
+                                <label for="teamMatchSize">KAÇ KİŞİLİK MAÇ?</label>
                                 <select id="teamMatchSize" class="form-control">
                                     <option value="">Seçiniz</option>
                                     <option value="6v6">6v6</option>
@@ -361,7 +361,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>OYUN SEVİYESİ</label>
+                                <label for="teamSkillLevel">OYUN SEVİYESİ</label>
                                 <select id="teamSkillLevel" class="form-control">
                                     <option value="">Seçiniz</option>
                                     <option value="Amatör">Amatör</option>
@@ -378,11 +378,11 @@
                                 <div class="hour-checkbox-grid" id="teamHourCheckboxes"></div>
                             </div>
                             <div class="form-group">
-                                <label>KAPTAN ADI</label>
+                                <label for="teamCaptainName">KAPTAN ADI</label>
                                 <input type="text" id="teamCaptainName" class="form-control" placeholder="Kaptan Adı Soyadı">
                             </div>
                             <div class="form-group">
-                                <label>EKSTRA MESAJ</label>
+                                <label for="teamMessage">EKSTRA MESAJ</label>
                                 <textarea id="teamMessage" class="form-control" rows="2" placeholder="Takımınızı kısaca tanıtın..."></textarea>
                             </div>
                             <button class="action-btn" data-click="createTeamSeeker">İLANI YAYINLA</button>
@@ -411,11 +411,11 @@
                 <button type="button" class="close-modal" data-click="closeModal-loginModal">X</button>
             </div>
             <div class="form-group">
-                <label>MAIL ADRESI</label>
+                <label for="loginEmail">MAIL ADRESI</label>
                 <input type="email" id="loginEmail" class="form-control" onkeypress="if(event.key === 'Enter') handleUserLogin()">
             </div>
             <div class="form-group">
-                <label>SIFRE</label>
+                <label for="loginPassword">SIFRE</label>
                 <div style="position: relative; display: flex; align-items: center;">
                     <input type="password" id="loginPassword" class="form-control" style="padding-right: 70px;" onkeypress="if(event.key === 'Enter') handleUserLogin()">
                     <button type="button" onclick="togglePasswordVisibility('loginPassword', this)" style="position: absolute; right: 10px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-weight: bold; outline: none; padding: 5px;">GÖSTER</button>
@@ -437,20 +437,20 @@
                     <button type="button" class="close-modal" data-click="closeModal-registerModal">X</button>
                 </div>
                 <div class="form-group">
-                    <label>ISIM SOYISIM</label>
+                    <label for="regName">ISIM SOYISIM</label>
                     <input type="text" id="regName" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label>TELEFON NUMARASI</label>
+                    <label for="regPhone">TELEFON NUMARASI</label>
                     <input type="text" id="regPhone" class="form-control" placeholder="05XXXXXXXXX" maxlength="13" required>
                     <small class="help-text" style="color:var(--text-muted);">05 ile başlayan 11 haneli numara giriniz</small>
                 </div>
                 <div class="form-group">
-                    <label>MAIL ADRESI</label>
+                    <label for="regEmail">MAIL ADRESI</label>
                     <input type="email" id="regEmail" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label>SIFRE</label>
+                    <label for="regPassword">SIFRE</label>
                     <div style="position: relative; display: flex; align-items: center;">
                         <input type="password" id="regPassword" class="form-control" style="padding-right: 70px;" required>
                         <button type="button" onclick="togglePasswordVisibility('regPassword', this)" style="position: absolute; right: 10px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-weight: bold; outline: none; padding: 5px;">GÖSTER</button>
@@ -476,7 +476,7 @@
                 <button type="button" class="close-modal" data-click="closeModal-hourActionModal">X</button>
             </div>
             <div class="form-group">
-                <label>YAPILACAK ISLEM</label>
+                <label for="hourActionSelect">YAPILACAK ISLEM</label>
                 <select id="hourActionSelect" class="form-control">
                     <option value="KAPAT">BU SAATI GENEL KULLANIMA KAPAT/ENGELLE</option>
                     <option value="TEMIZLE">SAATI TEMIZLE/BOSA CIKAR</option>
@@ -528,7 +528,7 @@
                         <input type="hidden" id="reviewRatingInput" value="5">
                     </div>
                     <div class="form-group">
-                        <label>YORUMUNUZ (OPSİYONEL)</label>
+                        <label for="reviewCommentInput">YORUMUNUZ (OPSİYONEL)</label>
                         <textarea id="reviewCommentInput" class="form-control" rows="2" placeholder="Oyuncu hakkındaki görüşlerinizi yazın..."></textarea>
                     </div>
                     <button class="action-btn" data-click="submitPlayerReview">DEĞERLENDİRMEYİ YAYINLA</button>
@@ -554,27 +554,27 @@
                 <div class="profile-edit-section">
                     <h3 class="section-subtitle">PROFİL BİLGİLERİ</h3>
                     <div class="form-group">
-                        <label>İSİM SOYİSİM</label>
+                        <label for="profileNameInput">İSİM SOYİSİM</label>
                         <input type="text" id="profileNameInput" class="form-control" placeholder="İsim Soyisim">
                     </div>
                     <div class="form-group">
-                        <label>TELEFON NUMARASI</label>
+                        <label for="profilePhoneInput">TELEFON NUMARASI</label>
                         <input type="text" id="profilePhoneInput" class="form-control" placeholder="+905XXXXXXXXX">
                     </div>
                     <div class="form-group">
-                        <label>YAŞ</label>
+                        <label for="profileAgeInput">YAŞ</label>
                         <input type="number" id="profileAgeInput" class="form-control" min="10" max="70" placeholder="Yaş">
                     </div>
                     <div class="form-group">
-                        <label>BOY (cm)</label>
+                        <label for="profileHeightInput">BOY (cm)</label>
                         <input type="number" id="profileHeightInput" class="form-control" min="100" max="250" placeholder="175">
                     </div>
                     <div class="form-group">
-                        <label>KİLO (kg)</label>
+                        <label for="profileWeightInput">KİLO (kg)</label>
                         <input type="number" id="profileWeightInput" class="form-control" min="30" max="250" placeholder="70">
                     </div>
                     <div class="form-group">
-                        <label>MEVKİ</label>
+                        <label for="profilePositionInput">MEVKİ</label>
                         <select id="profilePositionInput" class="form-control">
                             <option value="">SEÇİNİZ...</option>
                             <option value="KALECI">KALECİ</option>
@@ -584,7 +584,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>TECRÜBE SEVİYESİ</label>
+                        <label for="profileExperienceInput">TECRÜBE SEVİYESİ</label>
                         <select id="profileExperienceInput" class="form-control">
                             <option value="">SEÇİNİZ...</option>
                             <option value="Amatör">Amatör</option>
@@ -685,7 +685,7 @@
                 <div id="paymentShareInfo" style="display: none; margin-top: 20px; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; border: 1px dashed rgba(255,255,255,0.2);">
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Ödeme linkini arkadaşınla paylaş:</p>
                     <div style="display: flex; gap: 10px;">
-                        <input type="text" id="shareLinkInput" readonly style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 6px; font-size: 0.85rem;">
+                        <input type="text" id="shareLinkInput" aria-label="Paylaşım Linki" readonly style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 6px; font-size: 0.85rem;">
                         <button onclick="copyShareLink()" id="btnCopyLink" style="background: var(--neon-green); color: #000; border: none; padding: 0 15px; border-radius: 6px; font-weight: 600; cursor: pointer;">Kopyala</button>
                     </div>
                 </div>
@@ -789,22 +789,22 @@
                 <!-- Kart Formu -->
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;">KART ÜZERİNDEKİ İSİM</label>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;" for="simCardName">KART ÜZERİNDEKİ İSİM</label>
                         <input type="text" id="simCardName" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="JOHN DOE" required>
                     </div>
 
                     <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;">KART NUMARASI</label>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;" for="simCardNumber">KART NUMARASI</label>
                         <input type="text" id="simCardNumber" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="1234 5678 1234 5678" maxlength="19" required>
                     </div>
 
                     <div style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1; margin: 0;">
-                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;">SON KULLANMA</label>
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;" for="simCardExpiry">SON KULLANMA</label>
                             <input type="text" id="simCardExpiry" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="MM/YY" maxlength="5" required>
                         </div>
                         <div class="form-group" style="flex: 1; margin: 0;">
-                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;">CVV</label>
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;" for="simCardCvv">CVV</label>
                             <input type="password" id="simCardCvv" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="123" maxlength="3" required>
                         </div>
                     </div>
