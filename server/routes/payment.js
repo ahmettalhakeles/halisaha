@@ -1,6 +1,22 @@
 const crypto = require('crypto');
 const { beginTransaction, commitTransaction, rollbackTransaction } = require('../middleware/paymentLock');
 
+async function checkAndCancelExpiredPayments(db) {
+    try {
+        const [expiredGroups] = await db.promise().query(
+            `SELECT * FROM payment_groups 
+             WHERE status = 'active' AND deadline < NOW()`
+        );
+        for (const group of expiredGroups) {
+            await db.promise().query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
+            await db.promise().query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
+            console.log(`[Cron Sim] Cancelled expired reservation id ${group.reservation_id} due to payment group timeout.`);
+        }
+    } catch (e) {
+        console.error("Expired payment check failed:", e);
+    }
+}
+
 function initPaymentRoutes(app, db) {
     // Helper function to generate a random 8-char share code
     const generateShareCode = () => {
@@ -88,6 +104,7 @@ function initPaymentRoutes(app, db) {
 
     // Get share link details
     app.get('/api/payment/share/:code', async (req, res) => {
+        await checkAndCancelExpiredPayments(db);
         const shareCode = req.params.code;
         const connection = await db.promise().getConnection();
         
@@ -109,6 +126,7 @@ function initPaymentRoutes(app, db) {
             // Check if expired
             if (group.status === 'active' && group.deadline && new Date() > new Date(group.deadline)) {
                 await connection.query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
+                await connection.query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
                 group.status = 'expired';
             }
             
@@ -123,6 +141,7 @@ function initPaymentRoutes(app, db) {
 
     // Pay shared (simulation)
     app.post('/api/payment/share/:code/pay', async (req, res) => {
+        await checkAndCancelExpiredPayments(db);
         const shareCode = req.params.code;
         const payerName = req.body.payer_name || 'Anonim';
         const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -150,6 +169,7 @@ function initPaymentRoutes(app, db) {
             if (group.status === 'expired' || (group.deadline && new Date() > new Date(group.deadline))) {
                 if (group.status !== 'expired') {
                     await connection.query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
+                    await connection.query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
                 }
                 await rollbackTransaction(connection);
                 return res.status(400).json({ success: false, message: 'Ödeme süresi dolmuştur.' });

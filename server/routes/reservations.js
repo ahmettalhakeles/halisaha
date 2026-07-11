@@ -1,9 +1,31 @@
+async function checkAndCancelExpiredPayments(db) {
+    try {
+        const [expiredGroups] = await db.promise().query(
+            `SELECT * FROM payment_groups 
+             WHERE status = 'active' AND deadline < NOW()`
+        );
+        for (const group of expiredGroups) {
+            await db.promise().query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
+            await db.promise().query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
+            console.log(`[Cron Sim] Cancelled expired reservation id ${group.reservation_id} due to payment group timeout.`);
+        }
+    } catch (e) {
+        console.error("Expired payment check failed:", e);
+    }
+}
+
 function initReservationRoutes(app, db) {
     const { resLimitPerMin, resLimitPerSec } = require('../middleware/rateLimiter');
 
     // Get all reservations
-    app.get('/api/reservations', (req, res) => {
-        const sqlQuery = 'SELECT * FROM reservations ORDER BY created_at DESC';
+    app.get('/api/reservations', async (req, res) => {
+        await checkAndCancelExpiredPayments(db);
+        const sqlQuery = `
+            SELECT r.*, pg.status AS pg_status, pg.paid_count AS pg_paid_count, pg.share_amount AS pg_share_amount
+            FROM reservations r
+            LEFT JOIN payment_groups pg ON r.id = pg.reservation_id
+            ORDER BY r.created_at DESC
+        `;
         db.query(sqlQuery, (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             res.json({ success: true, data: results });

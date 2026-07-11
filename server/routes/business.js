@@ -1,8 +1,25 @@
+async function checkAndCancelExpiredPayments(db) {
+    try {
+        const [expiredGroups] = await db.promise().query(
+            `SELECT * FROM payment_groups 
+             WHERE status = 'active' AND deadline < NOW()`
+        );
+        for (const group of expiredGroups) {
+            await db.promise().query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
+            await db.promise().query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
+            console.log(`[Cron Sim] Cancelled expired reservation id ${group.reservation_id} due to payment group timeout.`);
+        }
+    } catch (e) {
+        console.error("Expired payment check failed:", e);
+    }
+}
+
 function initBusinessRoutes(app, db) {
     const fieldsData = require('../fieldsData');
 
     // Get match seekers with filters
-    app.get('/api/weekly-schedule/:fieldKey', (req, res) => {
+    app.get('/api/weekly-schedule/:fieldKey', async (req, res) => {
+        await checkAndCancelExpiredPayments(db);
         const { fieldKey } = req.params;
         const { weekStart, weekEnd, pitchNumber } = req.query;
 

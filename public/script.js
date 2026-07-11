@@ -3145,6 +3145,7 @@ setTimeout(() => {
                             statusEl.style.color = 'var(--neon-green)';
                             statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
                             statusEl.innerHTML = '✓ Ödeme Başarılı!';
+                            await loadReservationsFromServer();
                             onDateOrFieldChange();
                         } else {
                             statusEl.style.background = 'rgba(239,68,68,0.1)';
@@ -3179,6 +3180,7 @@ setTimeout(() => {
                             statusEl.style.color = 'var(--neon-green)';
                             statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
                             statusEl.innerHTML = '✓ Kendi payınızı ödediniz! Arkadaşınızla linki paylaşın.';
+                            await loadReservationsFromServer();
                             onDateOrFieldChange();
                         } else {
                             statusEl.style.background = 'rgba(239,68,68,0.1)';
@@ -4115,15 +4117,38 @@ async function loadProfileReservations() {
             const isEvening = slotStartHour >= 17 || slotStartHour < 6;
             const price = r.reservation_price || (isEvening ? eveningPrice : morningPrice);
             
+            let paymentStatusHtml = '';
+            let priceHtml = '';
+            
+            if (r.pg_status) {
+                if (r.pg_paid_count === 1) {
+                    paymentStatusHtml = `<p style="font-size:0.75rem; color:#f59e0b; font-weight:bold; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); padding:4px 8px; border-radius:4px; display:inline-block; margin-top:5px;">⚠️ BEKLENİYOR</p>`;
+                    priceHtml = `<div class="profile-booking-price">${r.pg_share_amount} TL ÖDENDİ</div>`;
+                } else if (r.pg_paid_count === 2 || r.payment_status === 'odendi') {
+                    paymentStatusHtml = `<p style="font-size:0.75rem; color:var(--neon-green); font-weight:bold; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); padding:4px 8px; border-radius:4px; display:inline-block; margin-top:5px;">✅ ÖDENDİ</p>`;
+                    priceHtml = `<div class="profile-booking-price">${price} TL</div>`;
+                } else {
+                    paymentStatusHtml = `<p style="font-size:0.75rem; color:#ef4444; font-weight:bold; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); padding:4px 8px; border-radius:4px; display:inline-block; margin-top:5px;">⚠️ ÖDEME BEKLENİYOR</p>`;
+                    priceHtml = `<div class="profile-booking-price">${price} TL</div>`;
+                }
+            } else {
+                if (r.payment_status === 'odendi') {
+                    paymentStatusHtml = `<p style="font-size:0.75rem; color:var(--neon-green); font-weight:bold; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); padding:4px 8px; border-radius:4px; display:inline-block; margin-top:5px;">✅ ÖDENDİ</p>`;
+                } else {
+                    paymentStatusHtml = `<p style="font-size:0.75rem; color:#fca5a5; font-weight:bold; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); padding:4px 8px; border-radius:4px; display:inline-block; margin-top:5px;">⚠️ ÖDEME BEKLENİYOR</p>`;
+                }
+                priceHtml = `<div class="profile-booking-price">${price} TL</div>`;
+            }
+            
             return `
                 <div class="profile-booking-item" id="prof-res-${r.id}" style="${r.type === 'abone' ? 'border: 2px solid #f59e0b; background:rgba(245,158,11,0.08);' : ''}">
                     <div class="profile-booking-details">
                         <h4>${field.name} - SAHA ${r.pitchNumber}${r.type === 'abone' ? ' <span style="background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:700;">ABONE</span>' : ''}</h4>
                         <p>${r.dateText} | ${r.hourText}</p>
-                        <p style="font-size:0.75rem; color:${r.payment_status === 'odendi' ? 'var(--neon-green)' : '#fca5a5'}; font-weight:bold;">${r.payment_status === 'odendi' ? '✅ ÖDENDİ' : '⚠️ ÖDEME BEKLENIYOR'}</p>
+                        ${paymentStatusHtml}
                     </div>
                     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-                        <div class="profile-booking-price">${price} TL</div>
+                        ${priceHtml}
                         <button class="btn-danger-sm" onclick="cancelMyReservation(${r.id})">İPTAL ET</button>
                     </div>
                 </div>
@@ -4159,7 +4184,7 @@ async function loadProfileReservations() {
 
     // Render Debts
     if (debtsContainer) {
-        const unpaidList = userRes.filter(r => r.payment_status !== 'odendi' && !isReservationPast(r.dateText, r.hourText));
+        const unpaidList = userRes.filter(r => r.payment_status !== 'odendi' && r.pg_paid_count !== 1 && !isReservationPast(r.dateText, r.hourText));
         const totalDebt = unpaidList.reduce((sum, r) => {
             const pitch = pitchObjectsList.find(p => p.fieldKey === r.fieldKey && p.pitchNumber === r.pitchNumber) || fieldsData[r.fieldKey] || {};
             const mp = pitch.morningPrice || 2500;
