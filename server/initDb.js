@@ -20,6 +20,11 @@ async function initDatabase(connection) {
         { check: "SHOW COLUMNS FROM users LIKE 'experience'", alter: "ALTER TABLE users ADD COLUMN experience VARCHAR(50) DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM users LIKE 'height'",     alter: "ALTER TABLE users ADD COLUMN height INT DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM users LIKE 'weight'",     alter: "ALTER TABLE users ADD COLUMN weight INT DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM users LIKE 'is_email_verified'", alter: "ALTER TABLE users ADD COLUMN is_email_verified TINYINT DEFAULT 0" },
+        { check: "SHOW COLUMNS FROM users LIKE 'otp_code'", alter: "ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM users LIKE 'otp_expiry'", alter: "ALTER TABLE users ADD COLUMN otp_expiry DATETIME DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM users LIKE 'google_id'", alter: "ALTER TABLE users ADD COLUMN google_id VARCHAR(255) DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM users LIKE 'apple_id'", alter: "ALTER TABLE users ADD COLUMN apple_id VARCHAR(255) DEFAULT NULL" },
         // match_seekers table
         { check: "SHOW COLUMNS FROM match_seekers LIKE 'height'", alter: "ALTER TABLE match_seekers ADD COLUMN height INT DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM match_seekers LIKE 'weight'", alter: "ALTER TABLE match_seekers ADD COLUMN weight INT DEFAULT NULL" },
