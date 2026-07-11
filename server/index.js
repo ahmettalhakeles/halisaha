@@ -1,4 +1,9 @@
 require('dotenv').config();
+if (!process.env.JWT_SECRET) {
+    console.error('FATAL ERROR: JWT_SECRET environment variable is not defined.');
+    process.exit(1);
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -13,11 +18,17 @@ process.on('uncaughtException', (err) => {
 
 const db = require('./db');
 const errorHandler = require('./middleware/errorHandler');
+const { globalLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(globalLimiter);
+
+app.use(cors({
+    origin: process.env.NODE_ENV === 'production' ? 'https://halisaha-production.up.railway.app' : '*'
+}));
+
 app.use(express.json());
 
 app.use(helmet({
@@ -36,6 +47,13 @@ app.use(helmet({
     },
     crossOriginEmbedderPolicy: false,
 }));
+
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+    next();
+});
 
 app.get('/health', (req, res) => {
     res.status(200).send('OK');

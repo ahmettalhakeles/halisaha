@@ -48,7 +48,7 @@ function initAdminRoutes(app, db) {
             const token = jwt.sign(
                 { username: admin.username, display_name: admin.display_name, role: 'admin' },
                 process.env.JWT_SECRET || 'jwt_key',
-                { expiresIn: '7d' }
+                { expiresIn: '24h' }
             );
 
             res.json({

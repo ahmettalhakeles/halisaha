@@ -24,4 +24,32 @@ const authLimiter = rateLimit({
     legacyHeaders: false
 });
 
-module.exports = { resLimitPerMin, resLimitPerSec, authLimiter };
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    statusCode: 429,
+    message: { success: false, message: 'Çok fazla istek gönderdiniz, lütfen daha sonra tekrar deneyin.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+const loginLimitPerSec = rateLimit({
+    windowMs: 1000,
+    max: 3,
+    statusCode: 429,
+    message: { success: false, message: 'Çok fazla deneme, lütfen sonra tekrar deneyin.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+const loginLimitPer15Min = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    statusCode: 429,
+    message: { success: false, message: 'Çok fazla deneme, lütfen sonra tekrar deneyin.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+module.exports = { resLimitPerMin, resLimitPerSec, authLimiter, globalLimiter, loginLimitPerSec, loginLimitPer15Min };
+
