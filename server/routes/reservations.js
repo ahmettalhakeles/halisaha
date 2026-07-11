@@ -1,5 +1,11 @@
 async function checkAndCancelExpiredPayments(db) {
     try {
+        // Delete pending_payment reservations older than 10 minutes
+        await db.promise().query(
+            `DELETE FROM reservations 
+             WHERE status = 'pending_payment' AND created_at < NOW() - INTERVAL 10 MINUTE`
+        );
+
         const [expiredGroups] = await db.promise().query(
             `SELECT * FROM payment_groups 
              WHERE status = 'active' AND deadline < NOW()`
@@ -62,7 +68,7 @@ function initReservationRoutes(app, db) {
                         if (existing[0].type === 'abone') return res.status(409).json({ success: false, message: 'Bu saat dilimi abonelik için ayrılmış!' });
                     }
 
-                    db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "active", "normal")', [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert, insertResult) => {
+                    db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")', [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert, insertResult) => {
                         if (errInsert) return res.status(500).json({ success: false, message: 'Rezervasyon oluşturulamadı!' });
                         res.json({ success: true, message: 'Rezervasyon başarıyla oluşturuldu!', id: insertResult.insertId });
                     });
@@ -136,7 +142,7 @@ function initReservationRoutes(app, db) {
                         db.query('SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND (play_date = ? OR dateText = ?) AND hourText = ?', [fieldKey, pitchNumber, playDateVal, displayDateText, hour], (errCheck, existing) => {
                             if (errCheck) return reject(errCheck);
                             if (existing.length > 0) return resolve({ conflict: true, hour });
-                            db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "active", "normal")', [fieldKey, pitchNumber, displayDateText, playDateVal, hour, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert) => {
+                            db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")', [fieldKey, pitchNumber, displayDateText, playDateVal, hour, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert) => {
                                 if (errInsert) return reject(errInsert);
                                 resolve({ conflict: false, hour });
                             });

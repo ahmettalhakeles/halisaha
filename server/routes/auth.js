@@ -109,8 +109,8 @@ function initAuthRoutes(app, db) {
 
     // Register
     app.post('/api/register', loginLimitPerSec, loginLimitPer15Min, cleanAndTrimBody, (req, res) => {
-        const { name, phone, email, password } = req.body;
-        if (!name || !phone || !email || !password) {
+        const { firstName, lastName, phone, email, password } = req.body;
+        if (!firstName || !lastName || !phone || !email || !password) {
             return res.status(400).json({ success: false, message: 'Tüm alanları doldurunuz!' });
         }
 
@@ -137,14 +137,11 @@ function initAuthRoutes(app, db) {
                 return res.status(403).json({ success: false, message: 'Bu telefon numarası suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
             }
 
-            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-            const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
             const bcrypt = require('bcryptjs');
             const hashedPassword = bcrypt.hashSync(password, 10);
 
-            const sqlQuery = 'INSERT INTO users (name, phone, email, password, is_email_verified, otp_code, otp_expiry) VALUES (?, ?, ?, ?, 1, ?, ?)';
-            db.execute(sqlQuery, [name, phone, email, hashedPassword, otpCode, otpExpiry], (err, result) => {
+            const sqlQuery = 'INSERT INTO users (first_name, last_name, phone, email, password) VALUES (?, ?, ?, ?, ?)';
+            db.execute(sqlQuery, [firstName, lastName, phone, email, hashedPassword], (err, result) => {
                 if (err) {
                     if (err.code === 'ER_DUP_ENTRY') {
                         let field = 'telefon numarası veya e-posta';
@@ -158,9 +155,8 @@ function initAuthRoutes(app, db) {
                 res.json({
                     success: true,
                     message: 'Kayıt başarılı! Giriş yapıldı.',
-                    unverified: false,
                     token,
-                    user: { id: result.insertId, name, email, phone, age: null, position: null, experience: null }
+                    user: { id: result.insertId, first_name: firstName, last_name: lastName, email, phone, age: null, position: null, experience: null }
                 });
             });
         });
@@ -188,7 +184,7 @@ function initAuthRoutes(app, db) {
         }
 
         db.execute(
-            'SELECT id, name, phone, email, password as dbPassword, age, position, experience, is_email_verified, status FROM users WHERE email = ?',
+            'SELECT id, first_name, last_name, phone, email, password as dbPassword, age, position, experience, status FROM users WHERE email = ?',
             [email],
             (err, results) => {
                 if (err) {
@@ -241,122 +237,13 @@ function initAuthRoutes(app, db) {
         );
     });
 
-    // OTP Verify
-    app.post('/api/auth/verify-otp', (req, res) => {
-        const { userId, email, otpCode } = req.body;
-        if (!otpCode) return res.status(400).json({ success: false, message: 'OTP kodu gereklidir!' });
-
-        const query = userId
-            ? 'SELECT id, name, phone, email, age, position, experience, otp_code, otp_expiry FROM users WHERE id = ?'
-            : 'SELECT id, name, phone, email, age, position, experience, otp_code, otp_expiry FROM users WHERE email = ?';
-        db.query(query, [userId || email], (err, results) => {
-            if (err || results.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
-            const user = results[0];
-            if (user.otp_code !== otpCode) return res.status(400).json({ success: false, message: 'Geçersiz doğrulama kodu!' });
-            if (new Date() > new Date(user.otp_expiry)) return res.status(400).json({ success: false, message: 'Doğrulama kodunun süresi dolmuştur!' });
-
-            db.query('UPDATE users SET is_email_verified = 1, otp_code = NULL, otp_expiry = NULL WHERE id = ?', [user.id], (updErr) => {
-                if (updErr) return res.status(500).json({ success: false, message: 'E-posta doğrulanamadı!' });
-                res.json({ success: true, message: 'E-posta adresiniz doğrulandı!', user: { id: user.id, name: user.name, phone: user.phone, email: user.email, age: user.age, position: user.position, experience: user.experience } });
-            });
-        });
-    });
-
-    // Complete Profile (OAuth)
-    app.put('/api/auth/complete-profile', (req, res) => {
-        const { userId, phone } = req.body;
-        if (!userId || !phone) return res.status(400).json({ success: false, message: 'Kullanıcı ID ve telefon numarası zorunludur!' });
-
-        db.query('SELECT COUNT(DISTINCT fieldKey) AS count FROM field_blacklists WHERE phone_number = ?', [phone], (errBan, banRes) => {
-            if (errBan) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            if (banRes[0] && banRes[0].count >= 3) return res.status(403).json({ success: false, message: 'Bu telefon numarası suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
-
-            db.query('SELECT id FROM users WHERE phone = ? AND id != ?', [phone, userId], (errPhone, phoneRes) => {
-                if (errPhone) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-                if (phoneRes.length > 0) return res.status(409).json({ success: false, message: 'Bu telefon numarası zaten başka bir hesap tarafından kullanılıyor!' });
-
-                db.query("UPDATE users SET phone = ?, is_email_verified = 1, status = 'active' WHERE id = ?", [phone, userId], (updErr) => {
-                    if (updErr) return res.status(500).json({ success: false, message: 'Profil güncellenemedi!' });
-                    db.query('SELECT id, name, phone, email, age, position, experience FROM users WHERE id = ?', [userId], (errUser, userResults) => {
-                        if (errUser || userResults.length === 0) return res.status(500).json({ success: false, message: 'Kullanıcı detayları alınamadı!' });
-                        res.json({ success: true, message: 'Profiliniz başarıyla tamamlandı!', user: userResults[0] });
-                    });
-                });
-            });
-        });
-    });
-
-    // Google OAuth
-    app.get(['/api/auth/google', '/api/auth/Google'], (req, res) => {
-        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.GOOGLE_CALLBACK_URL)}&response_type=code&scope=openid%20profile%20email`;
-        res.redirect(googleAuthUrl);
-    });
-
-    app.get(['/api/auth/google/callback', '/api/auth/Google/callback'], async (req, res) => {
-        const code = req.query.code;
-        if (!code) return res.redirect('/?error=no_code');
-        try {
-            const tokenResponse = await require('https').get(`https://oauth2.googleapis.com/token?code=${code}&client_id=${process.env.GOOGLE_CLIENT_ID}&client_secret=${process.env.GOOGLE_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(process.env.GOOGLE_CALLBACK_URL)}&grant_type=authorization_code`, (resp) => {
-                let data = '';
-                resp.on('data', chunk => data += chunk);
-                resp.on('end', async () => {
-                    try {
-                        const tokenData = JSON.parse(data);
-                        if (!tokenData.access_token) return res.redirect('/?error=token_error');
-                        const userInfoResponse = await require('https').get(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokenData.access_token}`, (resp2) => {
-                            let data2 = '';
-                            resp2.on('data', chunk => data2 += chunk);
-                            resp2.on('end', () => {
-                                try {
-                                    const googleUser = JSON.parse(data2);
-                                    handleSocialAuthSuccess(googleUser.email, googleUser.name, 'google', 'google_id', res);
-                                } catch (e) { res.redirect('/?error=parse_error'); }
-                            });
-                        });
-                        userInfoResponse.on('error', () => res.redirect('/?error=userinfo_error'));
-                    } catch (e) { res.redirect('/?error=token_parse_error'); }
-                });
-            });
-            tokenResponse.on('error', () => res.redirect('/?error=token_request_error'));
-        } catch (e) { res.redirect('/?error=oauth_exception'); }
-    });
-
-    // OAuth Login (from popup)
-    app.post('/api/oauth-login', (req, res) => {
-        const { name, phone, email, provider } = req.body;
-        if (!name || !phone || !email) return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
-
-        db.query('SELECT id, name, phone, email FROM users WHERE email = ?', [email], (err, results) => {
-            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            if (results.length > 0) {
-                const user = results[0];
-                db.query('UPDATE users SET name = ?, phone = ? WHERE email = ?', [name, phone, email], (updErr) => {
-                    if (updErr) return res.status(500).json({ success: false, message: 'Profil güncellenemedi!' });
-                    res.json({ success: true, user: { ...user, name, phone } });
-                });
-            } else {
-                const idCol = provider === 'google' ? 'google_id' : 'apple_id';
-                db.query(`INSERT INTO users (name, phone, email, password, is_email_verified, ${idCol}) VALUES (?, ?, ?, 'social_login_pwd', 1, ?)`, [name, phone, email, email], (err, result) => {
-                    if (err) return res.status(500).json({ success: false, message: 'Kayıt hatası!' });
-                    res.json({ success: true, user: { id: result.insertId, name, phone, email } });
-                });
-            }
-        });
-    });
-
-    // Apple OAuth callback
-    app.all('/api/auth/apple/callback', (req, res) => {
-        const code = req.query.code || 'mock_apple_code';
-        handleSocialAuthSuccess('apple_user@example.com', 'Apple User', 'apple', 'apple_id', res);
-    });
-
     // User profile update
     app.put('/api/users/profile', (req, res) => {
-        const { id, name, phone, age, height, weight, position, experience } = req.body;
-        if (!id || !name || !phone) return res.status(400).json({ success: false, message: 'İsim ve telefon zorunludur!' });
-        db.query('UPDATE users SET name = ?, phone = ?, age = ?, height = ?, weight = ?, position = ?, experience = ? WHERE id = ?', [name, phone, age || null, height || null, weight || null, position || null, experience || null, id], (err) => {
+        const { id, firstName, lastName, phone, age, height, weight, position, experience } = req.body;
+        if (!id || !firstName || !lastName || !phone) return res.status(400).json({ success: false, message: 'İsim, soyisim ve telefon zorunludur!' });
+        db.query('UPDATE users SET first_name = ?, last_name = ?, phone = ?, age = ?, height = ?, weight = ?, position = ?, experience = ? WHERE id = ?', [firstName, lastName, phone, age || null, height || null, weight || null, position || null, experience || null, id], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Profil güncellenemedi!' });
-            db.query('SELECT id, name, phone, email, age, height, weight, position, experience FROM users WHERE id = ?', [id], (err2, results) => {
+            db.query('SELECT id, first_name, last_name, phone, email, age, height, weight, position, experience FROM users WHERE id = ?', [id], (err2, results) => {
                 if (err2 || results.length === 0) return res.status(500).json({ success: false, message: 'Kullanıcı bilgileri alınamadı!' });
                 res.json({ success: true, message: 'Profil başarıyla güncellendi!', user: results[0] });
             });

@@ -20,11 +20,6 @@ async function initDatabase(connection) {
         { check: "SHOW COLUMNS FROM users LIKE 'experience'", alter: "ALTER TABLE users ADD COLUMN experience VARCHAR(50) DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM users LIKE 'height'",     alter: "ALTER TABLE users ADD COLUMN height INT DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM users LIKE 'weight'",     alter: "ALTER TABLE users ADD COLUMN weight INT DEFAULT NULL" },
-        { check: "SHOW COLUMNS FROM users LIKE 'is_email_verified'", alter: "ALTER TABLE users ADD COLUMN is_email_verified TINYINT DEFAULT 0" },
-        { check: "SHOW COLUMNS FROM users LIKE 'otp_code'", alter: "ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL" },
-        { check: "SHOW COLUMNS FROM users LIKE 'otp_expiry'", alter: "ALTER TABLE users ADD COLUMN otp_expiry DATETIME DEFAULT NULL" },
-        { check: "SHOW COLUMNS FROM users LIKE 'google_id'", alter: "ALTER TABLE users ADD COLUMN google_id VARCHAR(255) DEFAULT NULL" },
-        { check: "SHOW COLUMNS FROM users LIKE 'apple_id'", alter: "ALTER TABLE users ADD COLUMN apple_id VARCHAR(255) DEFAULT NULL" },
         // match_seekers table
         { check: "SHOW COLUMNS FROM match_seekers LIKE 'height'", alter: "ALTER TABLE match_seekers ADD COLUMN height INT DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM match_seekers LIKE 'weight'", alter: "ALTER TABLE match_seekers ADD COLUMN weight INT DEFAULT NULL" },
@@ -85,6 +80,66 @@ async function initDatabase(connection) {
         } catch (err) {
             // Table might not exist yet, skip
         }
+    }
+
+    // Drop OAuth/OTP columns if they exist
+    try {
+        const [columns] = await connection.query("SHOW COLUMNS FROM users");
+        const colNames = columns.map(c => c.Field);
+        
+        const colsToDrop = ['google_id', 'apple_id', 'is_email_verified', 'otp_code', 'otp_expiry'];
+        for (const col of colsToDrop) {
+            if (colNames.includes(col)) {
+                await connection.query(`ALTER TABLE users DROP COLUMN ${col}`);
+                console.log(`Dropped column ${col} from users table.`);
+            }
+        }
+    } catch (err) {
+        console.error('Error dropping OAuth/OTP columns:', err.message);
+    }
+
+    // Name splitting migration
+    try {
+        const [columns] = await connection.query("SHOW COLUMNS FROM users");
+        const colNames = columns.map(c => c.Field);
+        
+        if (colNames.includes('name') && !colNames.includes('first_name')) {
+            console.log('Running name to first_name/last_name split migration...');
+            
+            // 1. Add new columns
+            await connection.query("ALTER TABLE users ADD COLUMN first_name VARCHAR(50) DEFAULT NULL");
+            await connection.query("ALTER TABLE users ADD COLUMN last_name VARCHAR(50) DEFAULT NULL");
+            
+            // 2. Read and split names
+            const [users] = await connection.query("SELECT id, name FROM users");
+            for (const user of users) {
+                const rawName = (user.name || '').trim();
+                const parts = rawName.split(/\\s+/);
+                let firstName = '';
+                let lastName = '';
+                
+                if (parts.length > 1) {
+                    lastName = parts.pop();
+                    firstName = parts.join(' ');
+                } else {
+                    firstName = parts[0] || '';
+                    lastName = '';
+                }
+                
+                await connection.query("UPDATE users SET first_name = ?, last_name = ? WHERE id = ?", [firstName, lastName, user.id]);
+            }
+            
+            // 3. Drop legacy name column
+            await connection.query("ALTER TABLE users DROP COLUMN name");
+            
+            // 4. Set NOT NULL constraint on new columns
+            await connection.query("ALTER TABLE users MODIFY COLUMN first_name VARCHAR(50) NOT NULL");
+            await connection.query("ALTER TABLE users MODIFY COLUMN last_name VARCHAR(50) NOT NULL");
+            
+            console.log('Name split migration completed successfully!');
+        }
+    } catch (err) {
+        console.error('Name split migration failed:', err.message);
     }
 
     // Seed passwords for pitch_settings (only if still default)

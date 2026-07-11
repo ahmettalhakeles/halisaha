@@ -1,5 +1,11 @@
 async function checkAndCancelExpiredPayments(db) {
     try {
+        // Delete pending_payment reservations older than 10 minutes
+        await db.promise().query(
+            `DELETE FROM reservations 
+             WHERE status = 'pending_payment' AND created_at < NOW() - INTERVAL 10 MINUTE`
+        );
+
         const [expiredGroups] = await db.promise().query(
             `SELECT * FROM payment_groups 
              WHERE status = 'active' AND deadline < NOW()`
@@ -45,7 +51,7 @@ function initBusinessRoutes(app, db) {
             FROM reservations r
             WHERE r.fieldKey = ?
               AND r.play_date >= ? AND r.play_date <= ?
-              AND (r.status IS NULL OR r.status != 'cancelled')
+              AND (r.status IS NULL OR (r.status != 'cancelled' AND r.status != 'pending_payment'))
               ${pitchFilter}
             ORDER BY r.play_date ASC, r.hourText ASC
         `;
@@ -116,7 +122,7 @@ function initBusinessRoutes(app, db) {
             FROM reservations r
             WHERE r.fieldKey = ?
               AND r.play_date >= ? AND r.play_date <= ?
-              AND (r.status IS NULL OR r.status != 'cancelled')
+              AND (r.status IS NULL OR (r.status != 'cancelled' AND r.status != 'pending_payment'))
               ${pitchFilter}
             ORDER BY r.play_date ASC, r.hourText ASC
         `;

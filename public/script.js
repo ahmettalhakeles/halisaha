@@ -343,7 +343,8 @@ function handleUserLogout() {
 
 async function handleUserRegister(event) {
     event.preventDefault();
-    const name = document.getElementById('regName').value.trim();
+    const firstName = document.getElementById('regFirstName').value.trim();
+    const lastName = document.getElementById('regLastName').value.trim();
     const phone = document.getElementById('regPhone').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const pass = document.getElementById('regPassword').value;
@@ -354,7 +355,7 @@ async function handleUserRegister(event) {
         return;
     }
 
-    if (!name || !phone || !email || !pass) {
+    if (!firstName || !lastName || !phone || !email || !pass) {
         alert("Lütfen tüm alanları doldurun.");
         return;
     }
@@ -370,7 +371,7 @@ async function handleUserRegister(event) {
         const response = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, phone: phoneClean, email, password: pass })
+            body: JSON.stringify({ firstName, lastName, phone: phoneClean, email, password: pass })
         });
         let result;
         try { result = await response.json(); } catch (jsonError) {
@@ -381,7 +382,10 @@ async function handleUserRegister(event) {
 
         if (result.success) {
             currentUser = result.user || null;
-            loggedInUser = (result.user && result.user.name) ? result.user.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
+            if (currentUser) {
+                currentUser.name = (currentUser.first_name + ' ' + currentUser.last_name).trim();
+            }
+            loggedInUser = (currentUser && currentUser.name) ? currentUser.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
             // Kayıt sonrası oturum sadece bu sekme için geçerli (beni hatırla yok)
             sessionStorage.setItem('userToken', result.token);
             sessionStorage.setItem('userData', JSON.stringify(result.user));
@@ -426,7 +430,10 @@ async function handleUserLogin() {
 
         if (result.success) {
             currentUser = result.user;
-            loggedInUser = result.user.name.toLocaleUpperCase('tr-TR');
+            if (currentUser) {
+                currentUser.name = (currentUser.first_name + ' ' + currentUser.last_name).trim();
+            }
+            loggedInUser = currentUser.name.toLocaleUpperCase('tr-TR');
             if (remember) {
                 localStorage.setItem('userToken', result.token);
                 localStorage.setItem('userData', JSON.stringify(result.user));
@@ -3912,7 +3919,8 @@ async function openProfilePanel() {
     }
     
     // Fill editing form fields
-    document.getElementById('profileNameInput').value = currentUser.name || "";
+    document.getElementById('profileFirstNameInput').value = currentUser.first_name || "";
+    document.getElementById('profileLastNameInput').value = currentUser.last_name || "";
     document.getElementById('profilePhoneInput').value = currentUser.phone || "";
     document.getElementById('profileAgeInput').value = currentUser.age || "";
     document.getElementById('profilePositionInput').value = currentUser.position || "";
@@ -4260,7 +4268,8 @@ async function loadProfileReviews() {
 async function saveUserProfile() {
     if (!currentUser) return;
     
-    const name = document.getElementById('profileNameInput').value.trim();
+    const firstName = document.getElementById('profileFirstNameInput').value.trim();
+    const lastName = document.getElementById('profileLastNameInput').value.trim();
     const phone = document.getElementById('profilePhoneInput').value.trim();
     const age = document.getElementById('profileAgeInput').value.trim();
     const height = document.getElementById('profileHeightInput').value.trim();
@@ -4268,8 +4277,8 @@ async function saveUserProfile() {
     const position = document.getElementById('profilePositionInput') ? document.getElementById('profilePositionInput').value : '';
     const experience = document.getElementById('profileExperienceInput') ? document.getElementById('profileExperienceInput').value : '';
     
-    if (!name || !phone) {
-        alert("Ad Soyad ve Telefon alanları zorunludur!");
+    if (!firstName || !lastName || !phone) {
+        alert("İsim, Soyisim ve Telefon alanları zorunludur!");
         return;
     }
     
@@ -4281,7 +4290,8 @@ async function saveUserProfile() {
     
     const updateData = {
         id: currentUser.id,
-        name,
+        firstName,
+        lastName,
         phone: phoneClean,
         age: age ? parseInt(age) : null,
         height: height ? parseInt(height) : null,
@@ -4300,6 +4310,9 @@ async function saveUserProfile() {
         
         if (result.success) {
             currentUser = result.user;
+            if (currentUser) {
+                currentUser.name = (currentUser.first_name + ' ' + currentUser.last_name).trim();
+            }
             loggedInUser = currentUser.name.toLocaleUpperCase('tr-TR');
             
             await loadUserBlacklist();

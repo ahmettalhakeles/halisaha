@@ -3,6 +3,12 @@ const { beginTransaction, commitTransaction, rollbackTransaction } = require('..
 
 async function checkAndCancelExpiredPayments(db) {
     try {
+        // Delete pending_payment reservations older than 10 minutes
+        await db.promise().query(
+            `DELETE FROM reservations 
+             WHERE status = 'pending_payment' AND created_at < NOW() - INTERVAL 10 MINUTE`
+        );
+
         const [expiredGroups] = await db.promise().query(
             `SELECT * FROM payment_groups 
              WHERE status = 'active' AND deadline < NOW()`
@@ -90,8 +96,19 @@ function initPaymentRoutes(app, db) {
             if (reservations.length === 0) {
                 return res.status(404).json({ success: false, message: 'Rezervasyon bulunamadı.' });
             }
+            const reservation = reservations[0];
             
-            await connection.query('UPDATE reservations SET payment_status = "odendi" WHERE id = ?', [reservationId]);
+            // Check if slot is already occupied by another active/abone reservation
+            const [activeRes] = await connection.query(
+                `SELECT id FROM reservations 
+                 WHERE fieldKey = ? AND pitchNumber = ? AND (play_date = ? OR dateText = ?) AND hourText = ? AND status = 'active' AND id != ?`,
+                [reservation.fieldKey, reservation.pitchNumber, reservation.play_date, reservation.dateText, reservation.hourText, reservationId]
+            );
+            if (activeRes.length > 0) {
+                return res.status(409).json({ success: false, message: 'Bu saat dilimi başka bir kullanıcı tarafından rezerve edilmiş.' });
+            }
+            
+            await connection.query('UPDATE reservations SET payment_status = "odendi", status = "active" WHERE id = ?', [reservationId]);
             
             res.json({ success: true, message: 'Ödeme başarılı!' });
         } catch (error) {
@@ -190,6 +207,9 @@ function initPaymentRoutes(app, db) {
                     'UPDATE payment_groups SET paid_count = 1, status = "active", first_paid_at = NOW(), deadline = ? WHERE id = ?',
                     [deadlineDate, group.id]
                 );
+                
+                // Set reservation to active
+                await connection.query('UPDATE reservations SET status = "active" WHERE id = ?', [group.reservation_id]);
                 
                 await commitTransaction(connection);
                 res.json({ success: true, paid_count: 1, status: 'active', message: 'İlk ödeme başarıyla alındı. İkinci kişinin ödemesi bekleniyor.' });

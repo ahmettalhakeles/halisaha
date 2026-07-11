@@ -436,9 +436,15 @@
                     <h2>KAYIT OL</h2>
                     <button type="button" class="close-modal" data-click="closeModal-registerModal">X</button>
                 </div>
-                <div class="form-group">
-                    <label for="regName">ISIM SOYISIM</label>
-                    <input type="text" id="regName" class="form-control" required>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="regFirstName">İSİM</label>
+                        <input type="text" id="regFirstName" class="form-control" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="regLastName">SOYİSİM</label>
+                        <input type="text" id="regLastName" class="form-control" required>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="regPhone">TELEFON NUMARASI</label>
@@ -553,9 +559,15 @@
                 <!-- Sol Taraf: Profil Düzenleme Formu -->
                 <div class="profile-edit-section">
                     <h3 class="section-subtitle">PROFİL BİLGİLERİ</h3>
-                    <div class="form-group">
-                        <label for="profileNameInput">İSİM SOYİSİM</label>
-                        <input type="text" id="profileNameInput" class="form-control" placeholder="İsim Soyisim">
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="profileFirstNameInput">İSİM</label>
+                            <input type="text" id="profileFirstNameInput" class="form-control" placeholder="İsim">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="profileLastNameInput">SOYİSİM</label>
+                            <input type="text" id="profileLastNameInput" class="form-control" placeholder="Soyisim">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="profilePhoneInput">TELEFON NUMARASI</label>
