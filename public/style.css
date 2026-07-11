@@ -272,6 +272,7 @@ main {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    min-height: 400px; /* CLS optimizasyonu */
 }
 
 /* İSTATİSTİK KARTLARI */
@@ -943,6 +944,7 @@ main {
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 12px;
     margin-bottom: 25px;
+    min-height: 200px; /* CLS optimizasyonu */
 }
 
 .hour-btn {

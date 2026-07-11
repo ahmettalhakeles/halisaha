@@ -4464,8 +4464,11 @@ function applyPhoneMask(input) {
 
     // Yapıştırma desteği
     input.addEventListener('paste', function(e) {
+        const clipboardData = e.clipboardData || window.clipboardData;
+        if (!clipboardData) return;
+        
         e.preventDefault();
-        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        const pastedText = clipboardData.getData('text');
         const digits = pastedText.replace(/\D/g, '');
         this.value = formatPhoneNumberInput(digits);
         const len = this.value.length;
