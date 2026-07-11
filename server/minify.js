@@ -38,12 +38,9 @@ async function runMinify() {
 
             const jsPath = path.join(publicPath, 'script.js');
             const jsContent = fs.readFileSync(jsPath, 'utf8');
-            // Basic js minification (removes comments)
-            const jsMin = jsContent
-                .replace(/\/\*[\s\S]*?\*\//g, '')
-                .replace(/\/\/.*$/gm, '');
-            fs.writeFileSync(path.join(publicPath, 'script.min.js'), jsMin);
-            console.log('Fallback minification completed.');
+            // Safe fallback: copy original script.js as script.min.js to avoid breaking syntax/URLs
+            fs.writeFileSync(path.join(publicPath, 'script.min.js'), jsContent);
+            console.log('Fallback copy minification completed.');
         } catch (fallbackErr) {
             console.error('Fallback minification failed:', fallbackErr.message);
         }

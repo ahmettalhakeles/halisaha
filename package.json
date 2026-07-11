@@ -13,6 +13,7 @@
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "clean-css": "^5.3.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -20,10 +21,7 @@
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.22.5"
-  },
-  "devDependencies": {
-    "clean-css": "^5.3.3",
+    "mysql2": "^3.22.5",
     "terser": "^5.49.0"
   }
 }
