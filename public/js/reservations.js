@@ -17,10 +17,10 @@ async function initPitchSelector() {
                     if (pitch.coordinates) {
                         fieldsData[pitch.fieldKey].coordinates = pitch.coordinates;
                     }
-                    fieldsData[pitch.fieldKey].refreshments = pitch.refreshments || "";
-                    fieldsData[pitch.fieldKey].cleats = pitch.cleats || "Krampon Kiralanmaz";
-                    fieldsData[pitch.fieldKey].shower = pitch.shower || "Duş Yok";
-                    fieldsData[pitch.fieldKey].market = pitch.market || "Market Yok";
+                    fieldsData[pitch.fieldKey].refreshments = pitch.refreshments || fieldsData[pitch.fieldKey].refreshments || "";
+                    fieldsData[pitch.fieldKey].cleats = pitch.cleats || fieldsData[pitch.fieldKey].cleats || "Krampon Kiralanmaz";
+                    fieldsData[pitch.fieldKey].shower = pitch.shower || fieldsData[pitch.fieldKey].shower || "Duş Yok";
+                    fieldsData[pitch.fieldKey].market = pitch.market || fieldsData[pitch.fieldKey].market || "Market Yok";
                 }
             });
         }
