@@ -4,7 +4,7 @@ function initSubscriptionRoutes(app, db) {
         const { fieldKey } = req.query;
         if (!fieldKey) return res.status(400).json({ success: false, message: 'fieldKey zorunludur!' });
         db.query(
-            `SELECT s.*, u.name AS subscriberName, u.phone AS user_phone
+            `SELECT s.*, CONCAT(u.first_name, ' ', u.last_name) AS subscriberName, u.phone AS user_phone
              FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
              WHERE s.fieldKey = ? ORDER BY s.subscriberName`,
             [fieldKey],
@@ -19,7 +19,7 @@ function initSubscriptionRoutes(app, db) {
     app.get('/api/subscriptions/:fieldKey', (req, res) => {
         const { fieldKey } = req.params;
         db.query(
-            `SELECT s.*, u.name AS subscriberName, u.phone AS user_phone
+            `SELECT s.*, CONCAT(u.first_name, ' ', u.last_name) AS subscriberName, u.phone AS user_phone
              FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
              WHERE s.fieldKey = ? ORDER BY s.pitchNumber ASC, FIELD(s.dayOfWeek, 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ', 'PAZAR'), s.hourText ASC`,
             [fieldKey],
@@ -34,7 +34,7 @@ function initSubscriptionRoutes(app, db) {
     app.get('/api/subscriptions/by-user/:userId', (req, res) => {
         const { userId } = req.params;
         db.query(
-            `SELECT s.*, u.name AS subscriberName, u.phone AS user_phone
+            `SELECT s.*, CONCAT(u.first_name, ' ', u.last_name) AS subscriberName, u.phone AS user_phone
              FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
              WHERE s.user_id = ? ORDER BY FIELD(s.dayOfWeek, 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ', 'PAZAR'), s.hourText ASC`,
             [userId],

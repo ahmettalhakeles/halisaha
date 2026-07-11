@@ -2715,13 +2715,22 @@ async function onDateOrFieldChange() {
         btn.dataset.hour = hour;
         const hStartCheck = parseInt(hour.split(':')[0]);
         const nextDateText = hStartCheck < 6 ? getNextCalendarDayText(dateText) : null;
+        let myRes = null;
         const isTaken = weeklyReservations.some(r => {
             if (r.fieldKey !== currentSelectedFieldKey || r.pitchNumber !== currentSelectedPitchNumber || r.hourText !== hour) return false;
             if (r.status === 'cancelled') return false;
             const rDateStr = getPlayDateStringYMD(r.play_date ? r.play_date.substring(0, 10) : r.dateText);
             const targetDateStr = getPlayDateStringYMD(dateText);
             const targetNextDateStr = nextDateText ? getPlayDateStringYMD(nextDateText) : '';
-            return rDateStr === targetDateStr || (targetNextDateStr && rDateStr === targetNextDateStr);
+            const match = rDateStr === targetDateStr || (targetNextDateStr && rDateStr === targetNextDateStr);
+            if (match) {
+                const isMine = currentUser && (
+                    (r.user_id && parseInt(r.user_id) === parseInt(currentUser.id)) ||
+                    (r.user_name && r.user_name.toLocaleUpperCase('tr-TR') === currentUser.name.toLocaleUpperCase('tr-TR'))
+                );
+                if (isMine) myRes = r;
+            }
+            return match;
         });
 
         const hStart = parseInt(hour.split(':')[0]);
@@ -2752,7 +2761,12 @@ async function onDateOrFieldChange() {
 
         if (isTaken) {
             btn.classList.add('locked');
-            btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(DOLU)</span>${nextDayLabel}`;
+            if (myRes) {
+                btn.classList.add('my-own-slot');
+                btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(SİZİN)</span>${nextDayLabel}`;
+            } else {
+                btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(DOLU)</span>${nextDayLabel}`;
+            }
             btn.disabled = true;
         } else if (aboneHours.includes(`${dayOfWeek} ${hour}`)) {
             btn.classList.add('abone-state');
@@ -4040,21 +4054,37 @@ function getActualPlayDate(dateText, hourText) {
     return d;
 }
 
+function getTurkeyCurrentTime() {
+    const tzString = 'Europe/Istanbul';
+    const date = new Date();
+    try {
+        const trStr = date.toLocaleString('en-US', { timeZone: tzString });
+        return new Date(trStr);
+    } catch (e) {
+        return date;
+    }
+}
+
 function parseReservationDateTime(dateText, hourText) {
     const resDate = parseTurkishDateString(dateText);
     if (!resDate) return null;
     
     const hourPart = hourText.split(' - ')[1] || hourText.split(' - ')[0];
     const [h, m] = hourPart.split(':').map(Number);
-    resDate.setHours(h, m, 0, 0);
     
+    // If end hour is past midnight (00:00 to 05:59), the date is actually the next day
+    if (h < 6) {
+        resDate.setDate(resDate.getDate() + 1);
+    }
+    
+    resDate.setHours(h, m, 0, 0);
     return resDate;
 }
 
 function isReservationPast(dateText, hourText) {
     const resDateTime = parseReservationDateTime(dateText, hourText);
     if (!resDateTime) return false;
-    return resDateTime < new Date();
+    return resDateTime < getTurkeyCurrentTime();
 }
 
 async function loadProfileReservations() {

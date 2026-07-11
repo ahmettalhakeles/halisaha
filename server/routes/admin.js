@@ -263,7 +263,7 @@ function initAdminRoutes(app, db) {
         const { search, status, sortBy, startDate, endDate, suspicious } = req.query;
         
         let sql = `
-            SELECT u.id, u.name, u.phone, u.email, u.age, u.position, u.experience, u.height, u.weight, u.status, u.created_at,
+            SELECT u.id, CONCAT(u.first_name, ' ', u.last_name) AS name, u.phone, u.email, u.age, u.position, u.experience, u.height, u.weight, u.status, u.created_at,
                    (SELECT COUNT(*) FROM field_blacklists fb WHERE fb.phone_number = u.phone) AS blacklist_count,
                    (SELECT COUNT(*) FROM reservations r WHERE r.user_id = u.id) AS total_reservations,
                    (SELECT COUNT(*) FROM reservations r WHERE r.user_id = u.id AND r.status = 'cancelled' AND r.play_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) AS cancelled_reservations_30_days
@@ -273,9 +273,9 @@ function initAdminRoutes(app, db) {
         const params = [];
 
         if (search) {
-            sql += " AND (u.name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+            sql += " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
             const term = `%${search}%`;
-            params.push(term, term, term);
+            params.push(term, term, term, term);
         }
         if (status) {
             sql += " AND u.status = ?";
@@ -299,7 +299,7 @@ function initAdminRoutes(app, db) {
         } else if (sortBy === 'registered_desc') {
             sql += " ORDER BY u.created_at DESC";
         } else if (sortBy === 'name_asc') {
-            sql += " ORDER BY u.name ASC";
+            sql += " ORDER BY u.first_name ASC, u.last_name ASC";
         } else {
             sql += " ORDER BY u.created_at DESC";
         }
@@ -418,7 +418,7 @@ function initAdminRoutes(app, db) {
     // Get global blacklist (suspicious numbers and statistics)
     app.get('/api/admin/global-blacklist', verifyAdminToken, (req, res) => {
         db.query(
-            `SELECT fb.phone_number, COUNT(DISTINCT fb.fieldKey) AS block_count, GROUP_CONCAT(DISTINCT fb.fieldKey SEPARATOR ', ') AS fields, MAX(u.name) AS name
+            `SELECT fb.phone_number, COUNT(DISTINCT fb.fieldKey) AS block_count, GROUP_CONCAT(DISTINCT fb.fieldKey SEPARATOR ', ') AS fields, MAX(CONCAT(u.first_name, ' ', u.last_name)) AS name
              FROM field_blacklists fb
              LEFT JOIN users u ON fb.phone_number = u.phone
              GROUP BY fb.phone_number`,
@@ -541,7 +541,7 @@ function initAdminRoutes(app, db) {
                 `SELECT fp.id, 
                         CONCAT(fp.position, ' Arıyor - ', fp.dateText, ' ', fp.hourText) AS title, 
                         fp.msg AS message, 
-                        COALESCE(u.name, fp.phone) AS user_name, 
+                        COALESCE(CONCAT(u.first_name, ' ', u.last_name), fp.phone) AS user_name, 
                         u.phone AS user_phone, 
                         fp.created_at, 
                         fp.status 

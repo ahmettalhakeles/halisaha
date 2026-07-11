@@ -39,7 +39,7 @@ function initReviewRoutes(app, db) {
     app.get('/api/reviews/:fieldKey', (req, res) => {
         const { fieldKey } = req.params;
         const sql = `
-            SELECT r.*, u.name AS userName 
+            SELECT r.*, CONCAT(u.first_name, ' ', u.last_name) AS userName 
             FROM reviews r 
             LEFT JOIN users u ON r.user_id = u.id 
             WHERE r.fieldKey = ? 

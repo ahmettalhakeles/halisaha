@@ -2,7 +2,7 @@ function initForumRoutes(app, db) {
     // Get all forum posts
     app.get('/api/forum', (req, res) => {
         db.query(
-            `SELECT fp.*, u.name AS user_name, u.phone AS user_phone, u.email AS user_email
+            `SELECT fp.*, CONCAT(u.first_name, ' ', u.last_name) AS user_name, u.phone AS user_phone, u.email AS user_email
              FROM forum_posts fp LEFT JOIN users u ON fp.user_id = u.id
              ORDER BY fp.created_at DESC`,
             (err, results) => {
