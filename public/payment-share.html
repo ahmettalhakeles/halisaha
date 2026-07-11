@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halı Saha - Ortak Ödeme</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .payment-card {
+            background: rgba(30, 30, 30, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+        .logo-placeholder {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--neon-green);
+            margin-bottom: 30px;
+            text-shadow: 0 0 15px rgba(52, 211, 153, 0.3);
+        }
+        .details-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .detail-row:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .detail-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .detail-value {
+            font-weight: 600;
+            color: #fff;
+        }
+        .amount-box {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .amount-label {
+            color: var(--neon-green);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .amount-value {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #fff;
+        }
+        .pay-btn {
+            background: var(--neon-green);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 16px 30px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .pay-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+        .pay-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            font-weight: 600;
+        }
+        .status-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--neon-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .input-group input {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--neon-green);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="payment-card" id="loadingCard">
+        <div class="spinner" style="margin: 40px auto; width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--neon-green); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="color: var(--text-muted);">Ödeme bilgileri yükleniyor...</p>
+    </div>
+
+    <div class="payment-card" id="paymentCard" style="display: none;">
+        <div class="logo-placeholder">ORTAK ÖDEME</div>
+        
+        <div class="details-box">
+            <div class="detail-row">
+                <span class="detail-label">Saha</span>
+                <span class="detail-value" id="fieldVal">-</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Tarih</span>
+                <span class="detail-value" id="dateVal">-</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Saat</span>
+                <span class="detail-value" id="hourVal">-</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Rezerve Eden</span>
+                <span class="detail-value" id="ownerVal">-</span>
+            </div>
+        </div>
+
+        <div class="amount-box">
+            <div class="amount-label">Ödemeniz Gereken Tutar</div>
+            <div class="amount-value" id="amountVal">- TL</div>
+        </div>
+
+        <div class="input-group">
+            <label for="payerName">Adınız Soyadınız</label>
+            <input type="text" id="payerName" placeholder="Örn: Ahmet Yılmaz" autocomplete="off">
+        </div>
+
+        <button class="pay-btn" id="payBtn" onclick="processPayment()">ÖDEMEYİ TAMAMLA</button>
+        
+        <div id="statusMsg" class="status-message"></div>
+    </div>
+
+    <script>
+        const urlParts = window.location.pathname.split('/');
+        const shareCode = urlParts[urlParts.length - 1];
+        let shareAmount = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchPaymentDetails();
+        });
+
+        async function fetchPaymentDetails() {
+            try {
+                const res = await fetch(`/api/payment/share/${shareCode}`);
+                const result = await res.json();
+
+                document.getElementById('loadingCard').style.display = 'none';
+
+                if (result.success) {
+                    const data = result.data;
+                    
+                    if (data.status === 'completed') {
+                        showError('Bu ortak ödeme zaten tamamlanmış.');
+                        return;
+                    }
+                    if (data.status === 'expired') {
+                        showError('Bu ortak ödemenin süresi dolmuş.');
+                        return;
+                    }
+
+                    document.getElementById('paymentCard').style.display = 'block';
+                    document.getElementById('fieldVal').textContent = `${data.fieldKey.toUpperCase()} - SAHA ${data.pitchNumber}`;
+                    document.getElementById('dateVal').textContent = data.dateText;
+                    document.getElementById('hourVal').textContent = data.hourText;
+                    document.getElementById('ownerVal').textContent = data.res_owner;
+                    document.getElementById('amountVal').textContent = `${data.share_amount} TL`;
+                    shareAmount = data.share_amount;
+                } else {
+                    showError(result.message || 'Ödeme bilgileri bulunamadı.');
+                }
+            } catch (error) {
+                document.getElementById('loadingCard').style.display = 'none';
+                showError('Bağlantı hatası oluştu.');
+            }
+        }
+
+        async function processPayment() {
+            const nameInput = document.getElementById('payerName').value.trim();
+            if (!nameInput) {
+                alert('Lütfen adınızı giriniz.');
+                return;
+            }
+
+            const btn = document.getElementById('payBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(0,0,0,0.1);border-left-color:#000;border-radius:50%;animation:spin 1s linear infinite;"></div>İşleniyor...</div>';
+
+            // Simulate 2 second payment gateway delay
+            setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/payment/share/${shareCode}/pay`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payer_name: nameInput })
+                    });
+                    const result = await res.json();
+
+                    btn.style.display = 'none';
+                    document.getElementById('payerName').disabled = true;
+
+                    const msgEl = document.getElementById('statusMsg');
+                    msgEl.style.display = 'block';
+                    
+                    if (result.success) {
+                        msgEl.className = 'status-message status-success';
+                        msgEl.innerHTML = `✓ ${result.message}`;
+                    } else {
+                        msgEl.className = 'status-message status-error';
+                        msgEl.innerHTML = `✗ ${result.message}`;
+                        btn.style.display = 'block';
+                        btn.disabled = false;
+                        btn.innerHTML = 'ÖDEMEYİ TAMAMLA';
+                        document.getElementById('payerName').disabled = false;
+                    }
+                } catch (error) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'ÖDEMEYİ TAMAMLA';
+                    alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            }, 2000);
+        }
+
+        function showError(msg) {
+            const card = document.createElement('div');
+            card.className = 'payment-card';
+            card.innerHTML = `
+                <div style="font-size: 3rem; margin-bottom: 20px;">⚠️</div>
+                <h2 style="color: #fff; margin-bottom: 15px;">İşlem Yapılamıyor</h2>
+                <p style="color: var(--text-muted);">${msg}</p>
+            `;
+            document.body.appendChild(card);
+        }
+    </script>
+</body>
+</html>

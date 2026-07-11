@@ -89,6 +89,10 @@ app.get('/isletme', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'isletme.html'));
 });
 
+app.get('/payment/share/:code', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'payment-share.html'));
+});
+
 app.get('/yonetici', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'yonetici.html'));
 });
@@ -106,6 +110,7 @@ const { initPlayerReviewRoutes } = require('./routes/playerReviews');
 const { initFieldCommentRoutes } = require('./routes/fieldComments');
 const { initBlacklistRoutes } = require('./routes/blacklist');
 const { initAdminRoutes } = require('./routes/admin');
+const { initPaymentRoutes } = require('./routes/payment');
 
 initAuthRoutes(app, db);
 initPitchRoutes(app, db);
@@ -118,6 +123,7 @@ initPlayerReviewRoutes(app, db);
 initFieldCommentRoutes(app, db);
 initBlacklistRoutes(app, db);
 initAdminRoutes(app, db);
+initPaymentRoutes(app, db);
 
 // DB baglantisini baslat + migration
 (async () => {

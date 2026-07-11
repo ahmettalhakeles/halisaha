@@ -40,9 +40,9 @@ function initReservationRoutes(app, db) {
                         if (existing[0].type === 'abone') return res.status(409).json({ success: false, message: 'Bu saat dilimi abonelik için ayrılmış!' });
                     }
 
-                    db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "active", "normal")', [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert) => {
+                    db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "active", "normal")', [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert, insertResult) => {
                         if (errInsert) return res.status(500).json({ success: false, message: 'Rezervasyon oluşturulamadı!' });
-                        res.json({ success: true, message: 'Rezervasyon başarıyla oluşturuldu!' });
+                        res.json({ success: true, message: 'Rezervasyon başarıyla oluşturuldu!', id: insertResult.insertId });
                     });
                 });
             });

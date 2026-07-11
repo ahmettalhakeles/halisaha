@@ -59,7 +59,11 @@ async function initDatabase(connection) {
         // New tables/columns for fixes
         { check: "SHOW TABLES LIKE 'field_photos'", alter: "CREATE TABLE field_photos (id INT AUTO_INCREMENT PRIMARY KEY, fieldKey VARCHAR(50) NOT NULL, url LONGTEXT NOT NULL, caption VARCHAR(255) DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
         { check: "SHOW TABLES LIKE 'super_admins'", alter: "CREATE TABLE super_admins (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, display_name VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
-        { check: "SHOW COLUMNS FROM announcements LIKE 'status'", alter: "ALTER TABLE announcements ADD COLUMN status VARCHAR(20) DEFAULT 'active'" }
+        { check: "SHOW COLUMNS FROM announcements LIKE 'status'", alter: "ALTER TABLE announcements ADD COLUMN status VARCHAR(20) DEFAULT 'active'" },
+        
+        // Split Payment Tables
+        { check: "SHOW TABLES LIKE 'payment_groups'", alter: "CREATE TABLE payment_groups (id INT AUTO_INCREMENT PRIMARY KEY, reservation_id INT NOT NULL, share_code VARCHAR(8) NOT NULL UNIQUE, total_amount INT NOT NULL, share_amount INT NOT NULL, status ENUM('pending','active','completed','expired') DEFAULT 'pending', paid_count TINYINT DEFAULT 0, first_paid_at DATETIME NULL, deadline DATETIME NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX(share_code), INDEX(reservation_id), INDEX(status), FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
+        { check: "SHOW TABLES LIKE 'payment_shares'", alter: "CREATE TABLE payment_shares (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, payer_name VARCHAR(100), amount INT NOT NULL, paid_at DATETIME DEFAULT CURRENT_TIMESTAMP, ip_address VARCHAR(45), FOREIGN KEY (group_id) REFERENCES payment_groups(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" }
     ];
 
     for (const { check, alter } of migrations) {
