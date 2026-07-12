@@ -39,7 +39,7 @@ function initBusinessRoutes(app, db) {
         const resSql = `
             SELECT r.*, 
                    r.user_name AS reserverName,
-                   r.user_phone AS reserverPhone,
+                   u.phone AS reserverPhone,
                    r.dateText,
                    r.play_date,
                    r.hourText,
@@ -49,6 +49,7 @@ function initBusinessRoutes(app, db) {
                    r.reservation_price,
                    r.status
             FROM reservations r
+            LEFT JOIN users u ON r.user_id = u.id
             WHERE r.fieldKey = ?
               AND r.play_date >= ? AND r.play_date <= ?
               AND (r.status IS NULL OR (r.status != 'cancelled' AND r.status != 'pending_payment'))
@@ -110,7 +111,7 @@ function initBusinessRoutes(app, db) {
         const resSql = `
             SELECT r.*, 
                    r.user_name AS reserverName,
-                   r.user_phone AS reserverPhone,
+                   u.phone AS reserverPhone,
                    r.dateText,
                    r.play_date,
                    r.hourText,
@@ -120,6 +121,7 @@ function initBusinessRoutes(app, db) {
                    r.reservation_price,
                    r.status
             FROM reservations r
+            LEFT JOIN users u ON r.user_id = u.id
             WHERE r.fieldKey = ?
               AND r.play_date >= ? AND r.play_date <= ?
               AND (r.status IS NULL OR (r.status != 'cancelled' AND r.status != 'pending_payment'))
