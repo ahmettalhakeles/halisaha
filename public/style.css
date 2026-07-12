@@ -4355,38 +4355,46 @@ body.admin-impersonating #sunsetWidget {
    KONTROL PANELİ - Yatay Çizelge Kart Stilleri
    ======================================================= */
 
-.kontrol-days-list {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
+.kontrol-desktop-grid {
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
-    padding-bottom: 15px;
+    padding-bottom: 5px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: rgba(16, 185, 129, 0.3) transparent;
 }
 
 /* Webkit Scrollbar for horizontal scrolling of day columns */
-.kontrol-days-list::-webkit-scrollbar {
+.kontrol-desktop-grid::-webkit-scrollbar {
     height: 6px;
 }
-.kontrol-days-list::-webkit-scrollbar-thumb {
+.kontrol-desktop-grid::-webkit-scrollbar-thumb {
     background: rgba(16, 185, 129, 0.3);
     border-radius: 4px;
 }
-.kontrol-days-list::-webkit-scrollbar-track {
+.kontrol-desktop-grid::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.02);
     border-radius: 4px;
 }
 
+.kontrol-days-list {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    width: max-content;
+    min-width: 100%;
+    padding-bottom: 10px;
+}
+
 /* Günlük Sütun Kartı */
 .kontrol-day-row-card {
-    flex: 0 0 130px;
-    min-width: 130px;
+    flex: 0 0 160px;
+    min-width: 160px;
     background: rgba(21, 31, 50, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 10px;
-    padding: 10px 6px;
+    padding: 12px 8px;
     transition: all 0.25s ease;
     backdrop-filter: blur(10px);
     display: flex;
@@ -4416,7 +4424,7 @@ body.admin-impersonating #sunsetWidget {
     font-family: 'Montserrat', sans-serif;
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    padding-bottom: 8px;
+    padding-bottom: 6px;
 }
 
 .kontrol-day-row-name {
@@ -4481,10 +4489,10 @@ body.admin-impersonating #sunsetWidget {
     align-items: center;
     justify-content: center;
     width: 100%;
-    padding: 6px 4px;
+    padding: 8px 6px;
     border-radius: 6px;
     font-family: 'Montserrat', sans-serif;
-    font-size: 0.72rem;
+    font-size: 0.76rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
@@ -4545,17 +4553,19 @@ body.admin-impersonating #sunsetWidget {
 /* Mobil Uyumlar */
 @media (max-width: 767px) {
     .kontrol-day-row-card {
-        padding: 12px;
+        padding: 10px 6px;
+        flex: 0 0 150px;
+        min-width: 150px;
     }
     .kontrol-day-row-name {
-        font-size: 0.82rem;
+        font-size: 0.78rem;
     }
     .kontrol-day-row-date {
-        font-size: 0.68rem;
+        font-size: 0.65rem;
     }
     .kontrol-hour-btn {
-        padding: 8px 12px;
-        font-size: 0.74rem;
+        padding: 7px 4px;
+        font-size: 0.72rem;
     }
 }
 
