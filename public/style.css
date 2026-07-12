@@ -4439,42 +4439,31 @@ body.admin-impersonating #sunsetWidget {
 /* Yatay Saat Listesi Container'ı */
 .kontrol-hours-inline-list {
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 6px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-
-/* Webkit Scrollbar */
-.kontrol-hours-inline-list::-webkit-scrollbar {
-    height: 4px;
-}
-.kontrol-hours-inline-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-}
-.kontrol-hours-inline-list::-webkit-scrollbar-track {
-    background: transparent;
+    width: 100%;
+    overflow: visible;
+    padding-bottom: 0;
 }
 
 /* Modern Saat Butonu (Kutular) */
 .kontrol-hour-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    padding: 8px 16px;
+    justify-content: flex-start;
+    width: 100%;
+    padding: 10px 14px;
     border-radius: 8px;
     font-family: 'Montserrat', sans-serif;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid transparent;
     flex-shrink: 0;
     color: #fff;
-    min-width: 95px;
+    min-width: 0;
+    text-align: left;
 }
 
 /* BOŞ SAAT Butonu */
@@ -4536,9 +4525,8 @@ body.admin-impersonating #sunsetWidget {
         font-size: 0.72rem;
     }
     .kontrol-hour-btn {
-        padding: 6px 12px;
-        font-size: 0.72rem;
-        min-width: 85px;
+        padding: 8px 12px;
+        font-size: 0.74rem;
     }
 }
 
