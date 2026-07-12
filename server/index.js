@@ -70,7 +70,7 @@ const compression = require('compression');
 app.use(compression());
 
 app.use(express.static(path.join(__dirname, '..', 'public'), {
-    maxAge: 86400000, // 1 day in milliseconds
+    maxAge: process.env.NODE_ENV === 'production' ? '30d' : 0,
     etag: true
 }));
 

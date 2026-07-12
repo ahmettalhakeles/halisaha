@@ -162,6 +162,9 @@ let dailyHoursList = [];
 let currentPitchDailyHours = [];
 let pendingBookingData = null;
 let userBlacklistedFields = [];
+let forumPostsLoaded = false;
+let matchSeekersLoaded = false;
+let teamSeekersLoaded = false;
 
 function getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json' };
@@ -218,7 +221,6 @@ window.onload = async function() {
                 console.error("Stored user parse error:", e);
             }
         }
-        await initWeatherWidget();
         initDateDropdowns();
         await initPitchSelector();
         await loadDailyHoursList();
@@ -228,9 +230,7 @@ window.onload = async function() {
         updateLoginUIVisibility();
 
         await loadReservationsFromServer();
-        await loadForumPostsFromServer();
-        await loadMatchSeekers();
-        await loadTeamSeekers();
+        loadSecondaryUserPageData();
 
         if (currentUser) {
             await loadUserBlacklist();
@@ -3259,6 +3259,7 @@ async function loadForumPostsFromServer() {
         const result = await response.json();
         if (result.success) {
             forumPosts = result.data;
+            forumPostsLoaded = true;
             renderForumWall();
         }
     } catch (error) { console.error("Forum verileri çekilemedi:", error); }
@@ -3546,6 +3547,7 @@ async function loadMatchSeekers() {
         const result = await response.json();
 
         if (result.success) {
+            matchSeekersLoaded = true;
             let seekers = result.data;
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
@@ -3646,6 +3648,7 @@ async function loadTeamSeekers() {
         const result = await response.json();
 
         if (result.success) {
+            teamSeekersLoaded = true;
             let seekers = result.data;
             const limitDate = new Date();
             limitDate.setDate(limitDate.getDate() - 30); // 30 günden eski olmasın
@@ -3787,6 +3790,14 @@ function switchCustomerTab(tabName) {
         btn.classList.remove('active');
     });
     document.getElementById('customer-tab-btn-' + tabName).classList.add('active');
+
+    if (tabName === 'players' && !forumPostsLoaded) {
+        loadForumPostsFromServer();
+    } else if (tabName === 'matches' && !matchSeekersLoaded) {
+        loadMatchSeekers();
+    } else if (tabName === 'teams' && !teamSeekersLoaded) {
+        loadTeamSeekers();
+    }
     
     if (window.innerWidth <= 768) {
         ['playersFormContainer', 'matchesFormContainer', 'teamsFormContainer'].forEach(formId => {
@@ -3921,6 +3932,23 @@ window.closeConfirmModal = function(result) {
         confirmResolve = null;
     }
 };
+
+function runWhenBrowserIsIdle(callback) {
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(callback, { timeout: 2500 });
+        return;
+    }
+    setTimeout(callback, 800);
+}
+
+function loadSecondaryUserPageData() {
+    runWhenBrowserIsIdle(() => {
+        initWeatherWidget().catch(error => console.error("Hava durumu yuklenemedi:", error));
+        loadForumPostsFromServer().catch(error => console.error("Forum verileri yuklenemedi:", error));
+        loadMatchSeekers().catch(error => console.error("Mac arayanlar yuklenemedi:", error));
+        loadTeamSeekers().catch(error => console.error("Takim arayanlar yuklenemedi:", error));
+    });
+}
 
 // =======================================================
 // KULLANICI PROFİL PANELİ MANTIĞI
@@ -5014,16 +5042,22 @@ let latestTurnstileToken = "";
 let turnstileScriptLoaded = false;
 let turnstileSiteKey = "";
 let turnstileWidgetId = null;
+let turnstileConfigPromise = null;
 
-// Fetch config on load
-fetch('/api/config')
-    .then(r => r.json())
-    .then(data => {
-        if (data.success && data.turnstileSiteKey) {
-            turnstileSiteKey = data.turnstileSiteKey;
-        }
-    })
-    .catch(e => console.error("Config load error:", e));
+function loadTurnstileConfig() {
+    if (turnstileSiteKey) return Promise.resolve();
+    if (!turnstileConfigPromise) {
+        turnstileConfigPromise = fetch('/api/config')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.turnstileSiteKey) {
+                    turnstileSiteKey = data.turnstileSiteKey;
+                }
+            })
+            .catch(e => console.error("Config load error:", e));
+    }
+    return turnstileConfigPromise;
+}
 
 function renderTurnstileWidget() {
     if (typeof turnstile !== 'undefined' && turnstileSiteKey) {
@@ -5042,20 +5076,34 @@ function renderTurnstileWidget() {
     }
 }
 
-function loadTurnstileScript() {
+async function loadTurnstileScript() {
+    await loadTurnstileConfig();
+    if (window.turnstile) {
+        turnstileScriptLoaded = true;
+        return;
+    }
+
     return new Promise((resolve) => {
-        if (window.turnstile) { turnstileScriptLoaded = true; resolve(); return; }
-        const interval = setInterval(() => {
-            if (window.turnstile) {
-                clearInterval(interval);
-                turnstileScriptLoaded = true;
-                resolve();
-            }
-        }, 50);
-        setTimeout(() => {
-            clearInterval(interval);
+        const existingScript = document.querySelector('script[data-turnstile-loader="true"]');
+        const script = existingScript || document.createElement('script');
+
+        const finish = () => {
+            turnstileScriptLoaded = !!window.turnstile;
             resolve();
-        }, 3000);
+        };
+
+        script.addEventListener('load', finish, { once: true });
+        script.addEventListener('error', finish, { once: true });
+
+        if (!existingScript) {
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+            script.async = true;
+            script.defer = true;
+            script.dataset.turnstileLoader = 'true';
+            document.head.appendChild(script);
+        }
+
+        setTimeout(finish, 3000);
     });
 }
 function onTurnstileSuccess(token) {
@@ -6358,7 +6406,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Uygulama yüklendiğinde duyuruları kontrol et
-    checkAnnouncements();
+    runWhenBrowserIsIdle(checkAnnouncements);
 });
 
 // Duyuru Kontrolleri (Uygulama İçi Bildirim)

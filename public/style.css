@@ -24,7 +24,7 @@ body {
     color: var(--text-color);
     padding: 20px;
     line-height: 1.5;
-    font-family: "Montserrat", system-ui, sans-serif;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-weight: 500;
     animation: gradientBG 15s ease infinite;
 }
@@ -91,7 +91,7 @@ header {
 }
 
 .logo-area h1 {
-    font-family: "Oswald", sans-serif;
+    font-family: "Arial Narrow", "Segoe UI Condensed", system-ui, sans-serif;
     color: var(--primary-green);
     font-size: 2.6rem;
     line-height: 1;
@@ -208,7 +208,7 @@ header {
     border-radius: 8px;
     cursor: pointer;
     font-weight: 700;
-    font-family: "Montserrat", sans-serif;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     transition: all 0.3s ease;
     backdrop-filter: blur(4px);
 }
@@ -250,7 +250,7 @@ main {
 }
 
 .section-title {
-    font-family: "Oswald", sans-serif;
+    font-family: "Arial Narrow", "Segoe UI Condensed", system-ui, sans-serif;
     font-size: 1.6rem;
     color: var(--text-color);
     margin-bottom: 20px;
@@ -260,7 +260,7 @@ main {
 }
 
 .section-subtitle {
-    font-family: "Oswald", sans-serif;
+    font-family: "Arial Narrow", "Segoe UI Condensed", system-ui, sans-serif;
     font-size: 1.2rem;
     color: var(--neon-green);
     margin-bottom: 20px;
@@ -4608,4 +4608,4 @@ body.admin-impersonating #sunsetWidget {
         margin-bottom: 8px !important;
     }
 }
-
+
