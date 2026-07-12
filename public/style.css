@@ -4357,18 +4357,41 @@ body.admin-impersonating #sunsetWidget {
 
 .kontrol-days-list {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 15px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(16, 185, 129, 0.3) transparent;
 }
 
-/* Günlük Satır Kartı */
+/* Webkit Scrollbar for horizontal scrolling of day columns */
+.kontrol-days-list::-webkit-scrollbar {
+    height: 6px;
+}
+.kontrol-days-list::-webkit-scrollbar-thumb {
+    background: rgba(16, 185, 129, 0.3);
+    border-radius: 4px;
+}
+.kontrol-days-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+}
+
+/* Günlük Sütun Kartı */
 .kontrol-day-row-card {
+    flex: 0 0 260px;
+    min-width: 260px;
     background: rgba(21, 31, 50, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 12px;
     padding: 16px;
     transition: all 0.25s ease;
     backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .kontrol-day-row-card.today {
@@ -4382,13 +4405,18 @@ body.admin-impersonating #sunsetWidget {
     background: rgba(21, 31, 50, 0.55);
 }
 
-/* Gün Başlığı */
+/* Gün Başlığı (Sütun Üstü) */
 .kontrol-day-row-title {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 10px;
     font-family: 'Montserrat', sans-serif;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 10px;
 }
 
 .kontrol-day-row-name {
@@ -4642,106 +4670,6 @@ body.admin-impersonating #sunsetWidget {
     }
 
     .guest-booking-prompt-actions .nav-btn {
-        width: 100%;
-    }
-}
-
-body.logged-in #businessPanel {
-    display: grid !important;
-    grid-template-columns: 250px minmax(0, 1fr);
-    gap: 22px;
-    align-items: start;
-}
-
-#businessPanelTitle {
-    grid-column: 1 / -1;
-    margin-bottom: 0;
-}
-
-#businessPanel .business-tabs {
-    grid-column: 1;
-    position: sticky;
-    top: 92px;
-    display: flex !important;
-    flex-direction: column;
-    gap: 8px;
-    margin: 0;
-    padding: 14px;
-    border: 1px solid rgba(16, 185, 129, 0.18);
-    border-radius: 14px;
-    background: rgba(11, 15, 25, 0.72);
-    box-shadow: 0 18px 35px rgba(0, 0, 0, 0.22);
-    backdrop-filter: blur(14px);
-}
-
-#businessPanel .business-tabs::before {
-    content: "KONTROL MENUSU";
-    display: block;
-    margin: 0 0 8px;
-    color: var(--neon-green);
-    font-family: "Montserrat", sans-serif;
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-}
-
-#businessPanel .business-tabs .tab-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 44px;
-    padding: 11px 13px;
-    border-radius: 9px;
-    border-color: rgba(255, 255, 255, 0.08);
-    background: rgba(21, 31, 50, 0.82);
-    color: #d1d5db;
-    font-size: 0.78rem;
-    line-height: 1.25;
-    text-align: left;
-    white-space: normal;
-}
-
-#businessPanel .business-tabs .tab-btn:hover {
-    background: rgba(16, 185, 129, 0.09);
-    border-color: rgba(16, 185, 129, 0.35);
-    color: #fff;
-    transform: translateX(2px);
-}
-
-#businessPanel .business-tabs .tab-btn.active {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(52, 211, 153, 0.78));
-    color: #06120d;
-    border-color: rgba(52, 211, 153, 0.9);
-    box-shadow: 0 10px 24px rgba(16, 185, 129, 0.22);
-}
-
-#businessPanel .tab-content-zone {
-    grid-column: 2;
-    min-width: 0;
-}
-
-@media (max-width: 768px) {
-    body.logged-in #businessPanel {
-        display: block !important;
-    }
-
-    #businessPanel .business-tabs {
-        position: static;
-        display: flex !important;
-        margin: 0 0 18px;
-        padding: 12px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    #businessPanel .business-tabs .tab-btn {
-        min-height: 46px;
-        font-size: 0.76rem;
-        padding: 12px 14px;
-    }
-
-    #businessPanel .tab-content-zone {
         width: 100%;
     }
 }
