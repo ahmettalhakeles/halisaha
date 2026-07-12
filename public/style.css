@@ -4358,7 +4358,7 @@ body.admin-impersonating #sunsetWidget {
 .kontrol-days-list {
     display: flex;
     flex-direction: row;
-    gap: 16px;
+    gap: 8px;
     overflow-x: auto;
     padding-bottom: 15px;
     -webkit-overflow-scrolling: touch;
@@ -4381,17 +4381,17 @@ body.admin-impersonating #sunsetWidget {
 
 /* Günlük Sütun Kartı */
 .kontrol-day-row-card {
-    flex: 0 0 260px;
-    min-width: 260px;
+    flex: 0 0 130px;
+    min-width: 130px;
     background: rgba(21, 31, 50, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 10px;
+    padding: 10px 6px;
     transition: all 0.25s ease;
     backdrop-filter: blur(10px);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .kontrol-day-row-card.today {
@@ -4411,23 +4411,23 @@ body.admin-impersonating #sunsetWidget {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    margin-bottom: 10px;
+    gap: 4px;
+    margin-bottom: 6px;
     font-family: 'Montserrat', sans-serif;
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    padding-bottom: 10px;
+    padding-bottom: 8px;
 }
 
 .kontrol-day-row-name {
-    font-size: 0.95rem;
+    font-size: 0.82rem;
     font-weight: 800;
     color: #fff;
     letter-spacing: 0.02em;
 }
 
 .kontrol-day-row-date {
-    font-size: 0.78rem;
+    font-size: 0.68rem;
     color: var(--text-muted);
     background: rgba(255,255,255,0.04);
     padding: 2px 8px;
@@ -4458,10 +4458,11 @@ body.admin-impersonating #sunsetWidget {
 
 .kontrol-pitch-row-label {
     font-family: 'Montserrat', sans-serif;
-    font-size: 0.72rem;
+    font-size: 0.65rem;
     font-weight: 800;
     color: #34d399;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
+    text-align: center;
 }
 
 /* Yatay Saat Listesi Container'ı */
@@ -4478,20 +4479,20 @@ body.admin-impersonating #sunsetWidget {
 .kontrol-hour-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     width: 100%;
-    padding: 10px 14px;
-    border-radius: 8px;
+    padding: 6px 4px;
+    border-radius: 6px;
     font-family: 'Montserrat', sans-serif;
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid transparent;
     flex-shrink: 0;
     color: #fff;
     min-width: 0;
-    text-align: left;
+    text-align: center;
 }
 
 /* BOŞ SAAT Butonu */
@@ -4547,10 +4548,10 @@ body.admin-impersonating #sunsetWidget {
         padding: 12px;
     }
     .kontrol-day-row-name {
-        font-size: 0.88rem;
+        font-size: 0.82rem;
     }
     .kontrol-day-row-date {
-        font-size: 0.72rem;
+        font-size: 0.68rem;
     }
     .kontrol-hour-btn {
         padding: 8px 12px;
