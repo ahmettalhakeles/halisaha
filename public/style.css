@@ -1284,6 +1284,28 @@ main {
     max-width: 450px;
 }
 
+.guest-booking-prompt-card {
+    max-width: 380px;
+}
+
+.guest-booking-prompt-text {
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.guest-booking-prompt-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.guest-booking-prompt-actions .nav-btn {
+    min-width: 140px;
+    justify-content: center;
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -4609,3 +4631,29 @@ body.admin-impersonating #sunsetWidget {
     }
 }
 
+
+
+@media (max-width: 768px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+    select,
+    textarea,
+    .form-control,
+    #businessPanel select.form-control,
+    #businessPanel input.form-control,
+    #playerProfileModal .form-control {
+        font-size: 16px !important;
+    }
+
+    .guest-booking-prompt-card {
+        width: calc(100% - 24px);
+        padding: 22px;
+    }
+
+    .guest-booking-prompt-actions {
+        flex-direction: column;
+    }
+
+    .guest-booking-prompt-actions .nav-btn {
+        width: 100%;
+    }
+}

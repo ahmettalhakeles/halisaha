@@ -165,6 +165,7 @@ let userBlacklistedFields = [];
 let forumPostsLoaded = false;
 let matchSeekersLoaded = false;
 let teamSeekersLoaded = false;
+const announcementAudience = isBusinessPage ? 'businesses' : (isUserPage ? 'users' : 'all');
 
 function getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json' };
@@ -2787,21 +2788,24 @@ async function onDateOrFieldChange() {
         } else {
             btn.classList.add('available');
             btn.innerHTML = `<span class="hour-time">${hour}</span><span class="hour-status">(BOS)</span>${nextDayLabel}`;
-            if (loggedInUser) {
-                btn.onclick = async function() {
-                    if (currentSelectedHourBtn) { currentSelectedHourBtn.classList.remove('selected'); currentSelectedHourBtn.classList.add('available'); }
-                    currentSelectedHourBtn = btn; btn.classList.remove('available'); btn.classList.add('selected');
-                    document.getElementById('submitBtn').style.display = 'block';
-                    const turnstileCont = document.getElementById('turnstileContainer');
-                    if (turnstileCont) {
-                        turnstileCont.style.display = 'block';
-                        await loadTurnstileScript();
-                        if (typeof turnstile !== 'undefined') {
-                            renderTurnstileWidget();
-                        }
+            btn.onclick = async function() {
+                if (!loggedInUser || !currentUser) {
+                    openModal('guestBookingPromptModal');
+                    return;
+                }
+
+                if (currentSelectedHourBtn) { currentSelectedHourBtn.classList.remove('selected'); currentSelectedHourBtn.classList.add('available'); }
+                currentSelectedHourBtn = btn; btn.classList.remove('available'); btn.classList.add('selected');
+                document.getElementById('submitBtn').style.display = 'block';
+                const turnstileCont = document.getElementById('turnstileContainer');
+                if (turnstileCont) {
+                    turnstileCont.style.display = 'block';
+                    await loadTurnstileScript();
+                    if (typeof turnstile !== 'undefined') {
+                        renderTurnstileWidget();
                     }
-                };
-            }
+                }
+            };
         }
         grid.appendChild(btn);
     });
@@ -6413,7 +6417,7 @@ document.addEventListener('DOMContentLoaded', () => {
 let allAnnouncements = [];
 
 function checkAnnouncements() {
-    fetch('/api/announcements')
+    fetch(`/api/announcements?audience=${encodeURIComponent(announcementAudience)}`)
     .then(r => r.json())
     .then(data => {
         if (!data.success) return;

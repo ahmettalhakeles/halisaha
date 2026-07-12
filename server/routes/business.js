@@ -532,6 +532,30 @@ function initBusinessRoutes(app, db) {
         });
     });
 
+    app.get('/api/announcements', (req, res, next) => {
+        const audience = req.query.audience === 'businesses'
+            ? 'businesses'
+            : req.query.audience === 'users'
+                ? 'users'
+                : null;
+
+        if (!audience) {
+            return next();
+        }
+
+        const allowedTargets = audience === 'businesses'
+            ? ['all', 'businesses']
+            : ['all', 'users'];
+
+        db.query("SELECT * FROM announcements WHERE status = 'active' AND target_audience IN (?) ORDER BY created_at DESC", [allowedTargets], (err, results) => {
+            if (err) {
+                console.error("Announcements error:", err);
+                return res.status(500).json({ success: false, message: 'VeritabanÄ± hatasÄ±!' });
+            }
+            res.json({ success: true, data: results });
+        });
+    });
+
     // Get announcements
     app.get('/api/announcements', (req, res) => {
         db.query("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC", (err, results) => {

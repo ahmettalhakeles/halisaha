@@ -81,6 +81,11 @@ app.get('/api/config', (req, res) => {
     });
 });
 
+app.get('/favicon.ico', (req, res) => {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.sendFile(path.join(__dirname, '..', 'public', 'favicon.svg'));
+});
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });

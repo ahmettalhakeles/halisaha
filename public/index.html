@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KSK - KOLAY SAHA KIRALAMA</title>
     <meta name="description" content="KSK - Kolay Saha Kiralama. Amasya halı saha rezervasyon ve oyuncu arama platformu.">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="shortcut icon" href="/favicon.ico">
     <link rel="stylesheet" href="style.min.css?v=1.1.8">
 </head>
 <body>
@@ -470,7 +472,21 @@
         </div>
     </div>
 
-    <!-- Saat Engelleme Modalı (ABONE SEÇENEĞİ KALDIRILDI) -->
+    <div class="modal-overlay" id="guestBookingPromptModal">
+        <div class="modal-card mini-modal guest-booking-prompt-card">
+            <div class="modal-header">
+                <h2>DEVAM ETMEK ICIN GIRIS YAPIN</h2>
+                <button type="button" class="close-modal" onclick="closeModal('guestBookingPromptModal')">X</button>
+            </div>
+            <p class="guest-booking-prompt-text">Saat secimi ve rezervasyon olusturmak icin hesapla devam etmeniz gerekiyor.</p>
+            <div class="guest-booking-prompt-actions">
+                <button type="button" class="nav-btn" onclick="closeModal('guestBookingPromptModal'); openModal('loginModal');">GIRIS YAP</button>
+                <button type="button" class="nav-btn green-btn" onclick="closeModal('guestBookingPromptModal'); openModal('registerModal');">KAYIT OL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saat Engelleme Modal? (ABONE SE?ENE?? KALDIRILDI) -->
     <div class="modal-overlay" id="hourActionModal" style="z-index: 1100;">
         <div class="modal-card mini-modal">
             <div class="modal-header">
