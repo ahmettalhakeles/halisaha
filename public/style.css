@@ -4657,3 +4657,103 @@ body.admin-impersonating #sunsetWidget {
         width: 100%;
     }
 }
+
+body.logged-in #businessPanel {
+    display: grid !important;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+}
+
+#businessPanelTitle {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+}
+
+#businessPanel .business-tabs {
+    grid-column: 1;
+    position: sticky;
+    top: 92px;
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid rgba(16, 185, 129, 0.18);
+    border-radius: 14px;
+    background: rgba(11, 15, 25, 0.72);
+    box-shadow: 0 18px 35px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(14px);
+}
+
+#businessPanel .business-tabs::before {
+    content: "KONTROL MENUSU";
+    display: block;
+    margin: 0 0 8px;
+    color: var(--neon-green);
+    font-family: "Montserrat", sans-serif;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+#businessPanel .business-tabs .tab-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 11px 13px;
+    border-radius: 9px;
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(21, 31, 50, 0.82);
+    color: #d1d5db;
+    font-size: 0.78rem;
+    line-height: 1.25;
+    text-align: left;
+    white-space: normal;
+}
+
+#businessPanel .business-tabs .tab-btn:hover {
+    background: rgba(16, 185, 129, 0.09);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #fff;
+    transform: translateX(2px);
+}
+
+#businessPanel .business-tabs .tab-btn.active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(52, 211, 153, 0.78));
+    color: #06120d;
+    border-color: rgba(52, 211, 153, 0.9);
+    box-shadow: 0 10px 24px rgba(16, 185, 129, 0.22);
+}
+
+#businessPanel .tab-content-zone {
+    grid-column: 2;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    body.logged-in #businessPanel {
+        display: block !important;
+    }
+
+    #businessPanel .business-tabs {
+        position: static;
+        display: flex !important;
+        margin: 0 0 18px;
+        padding: 12px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    #businessPanel .business-tabs .tab-btn {
+        min-height: 46px;
+        font-size: 0.76rem;
+        padding: 12px 14px;
+    }
+
+    #businessPanel .tab-content-zone {
+        width: 100%;
+    }
+}

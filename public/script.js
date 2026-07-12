@@ -492,6 +492,11 @@ function switchBusinessTab(tabName) {
         const expected = tabMap[tabName];
         btn.classList.toggle('active', btnText.includes(expected));
     });
+    document.querySelectorAll('#businessPanel .business-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const tabBtn = document.getElementById(`tab-btn-${tabName}`);
+    if (tabBtn) tabBtn.classList.add('active');
 
     if (tabName === 'kontrol') {
         loadWeeklySchedule();
