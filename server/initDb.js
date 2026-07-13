@@ -45,6 +45,7 @@ async function initDatabase(connection) {
         { check: "SHOW COLUMNS FROM reservations LIKE 'user_id'",           alter: "ALTER TABLE reservations ADD COLUMN user_id INT DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM reservations LIKE 'play_date'",         alter: "ALTER TABLE reservations ADD COLUMN play_date DATE DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM reservations LIKE 'status'",            alter: "ALTER TABLE reservations ADD COLUMN status VARCHAR(20) DEFAULT 'active'" },
+        { check: "SHOW COLUMNS FROM reservations LIKE 'status'",            alter: "ALTER TABLE reservations MODIFY COLUMN status ENUM('pending_payment','active','completed','cancelled','postponed') DEFAULT 'active'" },
         { check: "SHOW COLUMNS FROM reservations LIKE 'type'",              alter: "ALTER TABLE reservations ADD COLUMN type VARCHAR(20) DEFAULT 'normal'" },
         // forum_posts table
         { check: "SHOW COLUMNS FROM forum_posts LIKE 'play_date'", alter: "ALTER TABLE forum_posts ADD COLUMN play_date DATE DEFAULT NULL" },

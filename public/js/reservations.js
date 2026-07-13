@@ -34,6 +34,7 @@ async function loadPitchSettingsFromDatabase() {
         if (result.success) {
             result.data.forEach(setting => {
                 if (fieldsData[setting.fieldKey]) {
+                    fieldsData[setting.fieldKey].isDeleted = setting.isDeleted === 1;
                     fieldsData[setting.fieldKey].isClosed = setting.isClosed === 1;
                     fieldsData[setting.fieldKey].openingHour = setting.openingHour;
                     fieldsData[setting.fieldKey].closingHour = setting.closingHour;
@@ -100,7 +101,7 @@ function initDateDropdowns() {
 // =======================================================
 function renderFieldsGrid() {
     const grid = document.getElementById('fieldsGrid');
-    grid.innerHTML = Object.keys(fieldsData).map(key => {
+    grid.innerHTML = Object.keys(fieldsData).filter(key => !fieldsData[key].isDeleted).map(key => {
         const field = fieldsData[key];
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.coordinates)}`;
 

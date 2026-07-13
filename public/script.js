@@ -2173,6 +2173,7 @@ async function loadPitchSettingsFromDatabase() {
                         address: '',
                         coordinates: '',
                         phone: '',
+                        isDeleted: setting.isDeleted === 1,
                         isClosed: setting.isClosed === 1,
                         hasService: 'Servis: Yok',
                         openingHour: setting.openingHour,
@@ -2188,6 +2189,7 @@ async function loadPitchSettingsFromDatabase() {
                     };
                 } else {
                     fieldsData[setting.fieldKey].name = displayName;
+                    fieldsData[setting.fieldKey].isDeleted = setting.isDeleted === 1;
                     fieldsData[setting.fieldKey].isClosed = setting.isClosed === 1;
                     fieldsData[setting.fieldKey].openingHour = setting.openingHour;
                     fieldsData[setting.fieldKey].closingHour = setting.closingHour;
@@ -2259,7 +2261,7 @@ function renderFieldsGrid() {
     if (!grid) return;
     const isMobile = window.innerWidth <= 768;
 
-    grid.innerHTML = Object.keys(fieldsData).filter(key => !fieldsData[key].isClosed).map(key => {
+    grid.innerHTML = Object.keys(fieldsData).filter(key => !fieldsData[key].isDeleted && !fieldsData[key].isClosed).map(key => {
         const field = fieldsData[key];
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.coordinates)}`;
 
