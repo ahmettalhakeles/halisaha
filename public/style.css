@@ -4684,3 +4684,181 @@ body.admin-impersonating #sunsetWidget {
         width: 100%;
     }
 }
+
+@media (max-width: 768px) {
+    #userProfileModal {
+        padding: 12px !important;
+        align-items: center !important;
+        overflow: hidden !important;
+    }
+
+    #userProfileModal .user-profile-card {
+        width: 95% !important;
+        max-width: 95% !important;
+        height: auto !important;
+        max-height: 90vh !important;
+        margin: 0 auto !important;
+        padding: 18px 14px !important;
+        border-radius: 14px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    #userProfileModal .modal-header {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 20 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px !important;
+        padding: 0 0 12px !important;
+        margin-bottom: 14px !important;
+        background: var(--card-bg) !important;
+        border-bottom: 1px solid rgba(52, 211, 153, 0.18) !important;
+    }
+
+    #userProfileModal .modal-header h2 {
+        font-size: 1.15rem !important;
+        line-height: 1.2 !important;
+        overflow-wrap: anywhere !important;
+    }
+
+    #userProfileModal .close-modal {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        flex: 0 0 auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+
+    #userProfileModal .profile-layout-container {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-top: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #userProfileModal .profile-edit-section,
+    #userProfileModal .profile-details-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 14px !important;
+        box-sizing: border-box !important;
+        overflow-wrap: anywhere !important;
+    }
+
+    #userProfileModal .profile-edit-section > div[style*="display: flex"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+        width: 100% !important;
+    }
+
+    #userProfileModal .form-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    #userProfileModal label,
+    #userProfileModal p,
+    #userProfileModal small,
+    #userProfileModal .profile-booking-details,
+    #userProfileModal .profile-booking-details h4,
+    #userProfileModal .profile-booking-details p {
+        max-width: 100% !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+    }
+
+    #userProfileModal .section-subtitle {
+        font-size: 1rem !important;
+        line-height: 1.25 !important;
+        margin-bottom: 14px !important;
+    }
+
+    #userProfileModal input,
+    #userProfileModal select,
+    #userProfileModal textarea,
+    #userProfileModal .form-control,
+    #userProfileModal .action-btn,
+    #userProfileModal .profile-tab-btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 48px !important;
+        box-sizing: border-box !important;
+    }
+
+    #userProfileModal .form-control {
+        padding: 12px 13px !important;
+        font-size: 16px !important;
+    }
+
+    #userProfileModal .action-btn {
+        padding: 13px 16px !important;
+        font-size: 0.9rem !important;
+    }
+
+    #userProfileModal .profile-tabs {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        width: 100% !important;
+        overflow: visible !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 14px !important;
+    }
+
+    #userProfileModal .profile-tab-btn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 11px 12px !important;
+        border-radius: 10px !important;
+        font-size: 0.76rem !important;
+        white-space: normal !important;
+        line-height: 1.2 !important;
+        text-align: center !important;
+    }
+
+    #userProfileModal .profile-booking-item,
+    #userProfileModal .reservation-item,
+    #userProfileModal .debt-item {
+        width: 100% !important;
+        max-width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    #userProfileModal .profile-booking-price {
+        width: 100% !important;
+        text-align: left !important;
+        overflow-wrap: anywhere !important;
+    }
+
+    #userProfileModal .reservations-scroll,
+    #userProfileModal .reviews-scroll {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 48vh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+    }
+
+    #userProfileModal .my-reviews-summary {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+}

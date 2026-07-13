@@ -83,6 +83,16 @@ async function initDatabase(connection) {
         }
     }
 
+    // Existing databases may have an older ENUM for reservation status.
+    // Keep it flexible because the app uses active, pending_payment, blocked,
+    // blocked_yuksek, cancelled, completed and postponed in different flows.
+    try {
+        await connection.query("ALTER TABLE reservations MODIFY COLUMN status VARCHAR(20) DEFAULT 'active'");
+        console.log('Reservation status column normalized.');
+    } catch (err) {
+        console.error('Reservation status normalization failed:', err.message);
+    }
+
     // Drop OAuth/OTP columns if they exist
     try {
         const [columns] = await connection.query("SHOW COLUMNS FROM users");
