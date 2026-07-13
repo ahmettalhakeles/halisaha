@@ -196,7 +196,10 @@ function initAdminRoutes(app, db) {
         const { key } = req.params;
         db.query('UPDATE pitch_settings SET isDeleted = 1 WHERE fieldKey = ?', [key], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Saha silinemedi!' });
-            res.json({ success: true, message: 'Saha başarıyla silindi!' });
+            db.query('UPDATE pitch_objects SET isDeleted = 1 WHERE fieldKey = ?', [key], (objErr) => {
+                if (objErr) console.error('pitch_objects isDeleted set failed for key:', key, objErr);
+                res.json({ success: true, message: 'Saha başarıyla silindi!' });
+            });
         });
     });
 
@@ -205,7 +208,10 @@ function initAdminRoutes(app, db) {
         const { key } = req.params;
         db.query('UPDATE pitch_settings SET isDeleted = 0 WHERE fieldKey = ?', [key], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Saha geri getirilemedi!' });
-            res.json({ success: true, message: 'Saha başarıyla geri getirildi!' });
+            db.query('UPDATE pitch_objects SET isDeleted = 0 WHERE fieldKey = ?', [key], (objErr) => {
+                if (objErr) console.error('pitch_objects restore isDeleted failed for key:', key, objErr);
+                res.json({ success: true, message: 'Saha başarıyla geri getirildi!' });
+            });
         });
     });
 

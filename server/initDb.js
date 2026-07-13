@@ -200,6 +200,18 @@ async function initDatabase(connection) {
         console.error('play_date migrasyon hatası:', e.message);
     }
 
+    // Sync pitch_objects with deleted pitch_settings
+    try {
+        await connection.query(
+            `UPDATE pitch_objects po 
+             JOIN pitch_settings ps ON po.fieldKey = ps.fieldKey 
+             SET po.isDeleted = ps.isDeleted`
+        );
+        console.log('Saha silinme durumları senkronize edildi.');
+    } catch (e) {
+        console.error('Saha silinme durumu senkronizasyon hatası:', e.message);
+    }
+
     console.log('Veritabanı migration tamamlandı.');
 }
 
