@@ -4862,3 +4862,274 @@ body.admin-impersonating #sunsetWidget {
         gap: 6px !important;
     }
 }
+
+
+/* NAVBAR REFRESH */
+header {
+    width: calc(100% + 40px);
+    max-width: none;
+    margin: -20px -20px 28px -20px;
+    padding: 14px 24px;
+    background: rgba(9, 14, 24, 0.96);
+    border-radius: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    gap: 20px;
+}
+
+.logo-area {
+    flex: 0 0 auto;
+    min-width: 210px;
+}
+
+.weather-container {
+    flex: 0 1 auto;
+    min-width: 0;
+    width: auto;
+    background: transparent;
+    border: none;
+    padding: 0;
+    backdrop-filter: none;
+    align-self: stretch;
+    display: flex;
+    align-items: flex-end;
+}
+
+.weather-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 12px;
+    width: auto;
+}
+
+.weather-title {
+    display: none !important;
+}
+
+.weather-days {
+    flex: 0 1 auto;
+    justify-content: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+
+.weather-day-item {
+    min-width: 84px;
+    padding: 8px 10px;
+    border-radius: 10px;
+}
+
+.weather-day-item strong {
+    font-size: 0.98rem;
+    white-space: nowrap;
+}
+
+.weather-day-item small {
+    line-height: 1.2;
+}
+
+.sunset-visual-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-top: 0;
+    margin-bottom: -3px;
+    min-width: 0;
+    padding: 0 0 5px 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    color: #dbeafe;
+    align-self: flex-end;
+}
+
+.sunset-svg-icon {
+    width: 20px;
+    height: 20px;
+    color: #fbbf24;
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.28));
+}
+
+.sunset-time-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.88);
+    white-space: nowrap;
+}
+
+.header-actions {
+    flex: 0 0 auto;
+    gap: 6px;
+}
+
+.user-auth-zone {
+    gap: 6px;
+}
+
+.nav-btn {
+    min-width: 104px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.76rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.nav-btn.green-btn {
+    color: #fff;
+}
+
+.announcements-menu-btn {
+    position: relative;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    width: auto !important;
+    gap: 6px;
+}
+
+.text-divider {
+    display: none !important;
+}
+
+#customerContainer {
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.customer-tabs {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 10px;
+    width: 176px;
+    margin: 18px 0 0 -32px;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.customer-tabs .tab-btn {
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 12px;
+    text-align: left;
+    justify-content: flex-start;
+    font-size: 0.78rem;
+}
+
+.customer-tab-content {
+    min-width: 0;
+    padding-top: 22px;
+}
+
+#customerFieldsSection .section-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.7rem;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+#customerBookingPanel .section-title,
+.reservation-panel-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.7rem;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+@media (max-width: 900px) {
+    header {
+        width: calc(100% + 40px);
+        margin: -20px -20px 24px -20px;
+    }
+
+    .weather-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .weather-days {
+        justify-content: flex-start;
+    }
+
+    .sunset-visual-box {
+        width: 100%;
+        min-width: 0;
+        justify-content: flex-start;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    #customerContainer {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .customer-tabs {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    header {
+        width: calc(100% + 40px) !important;
+        margin: -20px -20px 20px -20px !important;
+        padding: 12px 14px !important;
+        align-items: stretch !important;
+    }
+
+    .logo-area {
+        margin-bottom: 0;
+        padding-left: 38px;
+    }
+
+    .weather-container {
+        margin-bottom: 0;
+        width: 100%;
+    }
+
+    .weather-row {
+        gap: 8px;
+        width: 100%;
+    }
+
+    .weather-days {
+        width: 100%;
+        overflow-x: auto;
+        justify-content: flex-start;
+        padding-bottom: 2px;
+    }
+
+    .weather-day-item {
+        min-width: 74px !important;
+        padding: 6px 8px !important;
+    }
+
+    .weather-day-item strong {
+        font-size: 0.82rem !important;
+    }
+
+    .sunset-visual-box {
+        justify-content: flex-start;
+        padding: 0 !important;
+    }
+
+    .customer-tabs {
+        width: 100%;
+        margin: 0;
+    }
+
+    .customer-tab-content {
+        padding-top: 0;
+    }
+}

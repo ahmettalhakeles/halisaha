@@ -61,14 +61,17 @@
         </div>
 
         <div class="weather-container">
-            <div class="weather-title">AMASYA 7 GÜNLÜK HAVA TAHMINI</div>
-            <div class="weather-days" id="weatherDisplay">
-            </div>
-            <div class="sunset-visual-box" id="sunsetWidget">
-                <svg class="sunset-svg-icon" viewBox="0 0 24 24">
-                    <path d="M12.005 16.002a4 4 0 0 0 3.995-3.8l.005-.2a4 4 0 0 0-4-4c-2.1 0-3.824 1.62-3.99 3.692l-.01.308a4 4 0 0 0 4 4zM2.005 19.002h20v2h-20zm3.293-10.707 1.414 1.414 1.414-1.414-1.414-1.414zm13.414 0 1.414 1.414 1.414-1.414-1.414-1.414zM11.005 3.002h2v4h-2zm-9 9h4v-2h-4zm16 0h4v-2h-4z" />
-                </svg>
-                <span class="sunset-time-label" id="sunsetText">--:-- GÜN BATIMI</span>
+            <div class="weather-row">
+                <div class="weather-days" id="weatherDisplay">
+                </div>
+                <div class="sunset-visual-box" id="sunsetWidget">
+                    <svg class="sunset-svg-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 16h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M7 16a5 5 0 0 1 10 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M12 4v3M6.8 6.3l2 2M17.2 6.3l-2 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                    <span class="sunset-time-label" id="sunsetText">--:-- Gün batımı</span>
+                </div>
             </div>
         </div>
 
@@ -93,23 +96,21 @@
             </div>
 
             <!-- Duyurular Butonu (Header'da sağ üstte) -->
-            <button class="nav-btn announcements-menu-btn" onclick="openAnnouncementsModal()" style="position: relative; border-color: #fbbf24; color: #fbbf24; padding: 6px 16px; font-size: 0.8rem; font-weight: bold; width: auto; margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px;">
-                📢 DUYURULAR
-                <span id="announcementBadge" style="display: none; position: absolute; top: -7px; right: -7px; background: #ef4444; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: bold; display: none; align-items: center; justify-content: center;">0</span>
+            <button class="nav-btn announcements-menu-btn" onclick="openAnnouncementsModal()">
+                <span aria-hidden="true">&#128226;</span>
+                <span>DUYURULAR</span>
+                <span id="announcementBadge" style="display: none; position: absolute; top: -7px; right: -7px; background: #ef4444; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: bold; align-items: center; justify-content: center;">0</span>
             </button>
         </div>
     </header>
 
     <main>
-        <!-- ORTA KISIM BÖLÜCÜ -->
-        <div class="text-divider">
-            <span class="text-divider-title">KOLAY SAHA KİRALAMA</span>
-        </div>
+
         <!-- KULLANICI DETAY PANELİ: SEKMELİ DÜZEN -->
         <div id="customerContainer" style="width: 100%;">
             <!-- MÜŞTERİ SEKME MENÜSÜ -->
             <div class="customer-tabs" id="customerTabsRow">
-                <button class="tab-btn active" id="customer-tab-btn-booking" data-click="switchCustomerTab-booking">REZERVASYON YAP</button>
+                <button class="tab-btn active" id="customer-tab-btn-booking" data-click="switchCustomerTab-booking">REZERVASYON</button>
                 <button class="tab-btn" id="customer-tab-btn-players" data-click="switchCustomerTab-players">OYUNCU BUL</button>
                 <button class="tab-btn" id="customer-tab-btn-matches" data-click="switchCustomerTab-matches">MAÇ BUL</button>
                 <button class="tab-btn" id="customer-tab-btn-teams" data-click="switchCustomerTab-teams">TAKIM BUL</button>
@@ -120,12 +121,12 @@
                 <div class="customer-booking-layout" id="customerBookingGridLayout">
                     <!-- HALISAHA SEÇİMİ -->
                     <section class="fields-section" id="customerFieldsSection" style="margin-bottom: 0;">
-                        <h2 class="section-title">HALISAHA SECIMI</h2>
+                        <h2 class="section-title reservation-panel-title">Sahalar</h2>
                         <div class="fields-grid" id="fieldsGrid"></div>
                     </section>
                     <!-- KULLANICI REZERVASYON PANELİ -->
                     <section class="booking-section" id="customerBookingPanel" style="margin-bottom: 0;">
-                        <h2 class="section-title">REZERVASYON PANELİ</h2>
+                        <h2 class="section-title reservation-panel-title">Rezervasyon Paneli</h2>
                         <div id="placeholderText" class="placeholder-text">
                             ISLEM YAPMAK ICIN SOL TARAFDAN BIR HALISAHA SECINIZ.
                         </div>

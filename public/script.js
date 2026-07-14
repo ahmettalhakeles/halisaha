@@ -725,7 +725,7 @@ function renderKontrolGrid(data, monday, isMobile) {
     const defaultClose = '01:00';
 
     const days = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 5; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
         const jsDay = d.getDay();
@@ -1721,7 +1721,7 @@ function toggleResCard(el) {
 function getNext7Days() {
     const optionsFormat = { day: 'numeric', month: 'long' };
     let days = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 5; i++) {
         let d = new Date();
         d.setDate(d.getDate() + i);
         let dateText = d.toLocaleDateString('tr-TR', optionsFormat).toLocaleUpperCase('tr-TR');
@@ -2050,7 +2050,7 @@ async function initWeatherWidget() {
 
         const forecasts = [];
         const options = { weekday: 'short' };
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 5; i++) {
             const timeStr = data.daily.time[i];
             const date = new Date(timeStr);
             const dayName = date.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
@@ -2065,7 +2065,7 @@ async function initWeatherWidget() {
         container.innerHTML = forecasts.map(w => `
             <div class="weather-day-item ${w.isBad ? 'bad-weather' : ''}">
                 <span>${w.day}</span>
-                <strong>${w.minTemp}° / ${w.maxTemp}°C</strong>
+                <strong>${w.minTemp}&deg;/${w.maxTemp}&deg;C</strong>
                 <small>${w.condition}</small>
             </div>
         `).join('');
@@ -2074,19 +2074,19 @@ async function initWeatherWidget() {
         if (sunsetText && data.daily.sunset && data.daily.sunset.length > 0) {
             const sunsetStr = data.daily.sunset[0];
             const timePart = sunsetStr.split('T')[1];
-            sunsetText.innerText = `${timePart} GÜN BATIMI`;
+            sunsetText.innerText = `${timePart} Gün batımı`;
         }
     } catch (error) {
         console.error("Hava durumu yüklenemedi:", error);
         const daysShort = [];
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 5; i++) {
             let d = new Date(); d.setDate(d.getDate() + i);
             daysShort.push(d.toLocaleDateString('tr-TR', { weekday: 'short' }).toLocaleUpperCase('tr-TR'));
         }
         container.innerHTML = daysShort.map((day, idx) => {
             const min = 12 + idx;
             const max = 22 + idx * 2;
-            return `<div class="weather-day-item"><span>${day}</span><strong>${min}° / ${max}°C</strong><small>BULUTLU</small></div>`;
+            return `<div class="weather-day-item"><span>${day}</span><strong>${min}&deg;/${max}&deg;C</strong><small>BULUTLU</small></div>`;
         }).join('');
     }
 }
