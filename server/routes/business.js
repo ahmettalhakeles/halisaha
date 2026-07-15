@@ -1,24 +1,4 @@
-async function checkAndCancelExpiredPayments(db) {
-    try {
-        // Delete pending_payment reservations older than 10 minutes
-        await db.promise().query(
-            `DELETE FROM reservations 
-             WHERE status = 'pending_payment' AND created_at < NOW() - INTERVAL 10 MINUTE`
-        );
-
-        const [expiredGroups] = await db.promise().query(
-            `SELECT * FROM payment_groups 
-             WHERE status = 'active' AND deadline < NOW()`
-        );
-        for (const group of expiredGroups) {
-            await db.promise().query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
-            await db.promise().query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
-            console.log(`[Cron Sim] Cancelled expired reservation id ${group.reservation_id} due to payment group timeout.`);
-        }
-    } catch (e) {
-        console.error("Expired payment check failed:", e);
-    }
-}
+const { checkAndCancelExpiredPayments } = require('./payment');
 
 function initBusinessRoutes(app, db) {
     const fieldsData = require('../fieldsData');

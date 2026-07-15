@@ -1,5 +1,14 @@
 const crypto = require('crypto');
 const { beginTransaction, commitTransaction, rollbackTransaction } = require('../middleware/paymentLock');
+const { enqueueTelegramNotification } = require('../utils/telegram');
+const { requireAuthenticatedActor } = require('../middleware/businessAuth');
+const { acquireSlotLock } = require('../utils/slotLock');
+
+function canAccessReservation(actor, reservation) {
+    return actor.role === 'admin'
+        || (actor.role === 'business' && actor.fieldKey === reservation.fieldKey)
+        || (actor.role === 'user' && actor.userId === Number(reservation.user_id));
+}
 
 async function checkAndCancelExpiredPayments(db) {
     try {
@@ -10,13 +19,40 @@ async function checkAndCancelExpiredPayments(db) {
         );
 
         const [expiredGroups] = await db.promise().query(
-            `SELECT * FROM payment_groups 
-             WHERE status = 'active' AND deadline < NOW()`
+            `SELECT id FROM payment_groups WHERE status = 'active' AND deadline < NOW()`
         );
         for (const group of expiredGroups) {
-            await db.promise().query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
-            await db.promise().query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
-            console.log(`[Cron Sim] Cancelled expired reservation id ${group.reservation_id} due to payment group timeout.`);
+            const connection = await db.promise().getConnection();
+            try {
+                await connection.beginTransaction();
+                const [locked] = await connection.query(
+                    `SELECT * FROM payment_groups WHERE id = ? AND status = 'active' AND deadline < NOW() FOR UPDATE`,
+                    [group.id]
+                );
+                if (locked.length === 0) {
+                    await connection.rollback();
+                    continue;
+                }
+                const expired = locked[0];
+                await connection.query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [expired.id]);
+                const [cancelResult] = await connection.query(
+                    `UPDATE reservations SET status = 'cancelled', cancelled_at = NOW(),
+                     cancelled_by = 'system', cancellation_reason = 'Ortak ödeme süresi doldu'
+                     WHERE id = ? AND status != 'cancelled'`,
+                    [expired.reservation_id]
+                );
+                if (cancelResult.affectedRows === 1 && expired.paid_count > 0) {
+                    await enqueueTelegramNotification(connection, expired.reservation_id, 'cancelled', {
+                        cancellation_reason: 'İlk ödeme sonrası ikinci ödeme süresi doldu'
+                    });
+                }
+                await connection.commit();
+            } catch (error) {
+                await connection.rollback().catch(() => {});
+                throw error;
+            } finally {
+                connection.release();
+            }
         }
     } catch (e) {
         console.error("Expired payment check failed:", e);
@@ -30,12 +66,16 @@ function initPaymentRoutes(app, db) {
     };
 
     // Initialize split payment
-    app.post('/api/reservations/:id/payment/init', async (req, res) => {
+    app.post('/api/reservations/:id/payment/init', requireAuthenticatedActor, async (req, res) => {
         const reservationId = req.params.id;
         const connection = await db.promise().getConnection();
         
         try {
             await beginTransaction(connection);
+            const [existingGroups] = await connection.query(
+                `SELECT * FROM payment_groups WHERE reservation_id = ? AND status IN ('pending', 'active') FOR UPDATE`,
+                [reservationId]
+            );
             
             // Check if reservation exists and is active
             const [reservations] = await connection.query('SELECT * FROM reservations WHERE id = ? FOR UPDATE', [reservationId]);
@@ -45,7 +85,11 @@ function initPaymentRoutes(app, db) {
             }
             
             const reservation = reservations[0];
-            if (reservation.status !== 'active' && reservation.status !== 'blocked') {
+            if (!canAccessReservation(req.reservationActor, reservation)) {
+                await rollbackTransaction(connection);
+                return res.status(403).json({ success: false, message: 'Bu rezervasyon için ödeme başlatamazsınız.' });
+            }
+            if (!['pending_payment', 'active'].includes(reservation.status)) {
                 await rollbackTransaction(connection);
                 return res.status(400).json({ success: false, message: 'Bu rezervasyon aktif değil.' });
             }
@@ -56,7 +100,6 @@ function initPaymentRoutes(app, db) {
             }
 
             // Check if there is already an active payment group
-            const [existingGroups] = await connection.query('SELECT * FROM payment_groups WHERE reservation_id = ? AND status IN ("pending", "active")', [reservationId]);
             if (existingGroups.length > 0) {
                 await rollbackTransaction(connection);
                 return res.json({ 
@@ -87,16 +130,40 @@ function initPaymentRoutes(app, db) {
     });
 
     // Pay single (simulation)
-    app.post('/api/reservations/:id/payment/pay-single', async (req, res) => {
+    app.post('/api/reservations/:id/payment/pay-single', requireAuthenticatedActor, async (req, res) => {
         const reservationId = req.params.id;
         const connection = await db.promise().getConnection();
+        let releaseSlot = async () => {};
         
         try {
-            const [reservations] = await connection.query('SELECT * FROM reservations WHERE id = ?', [reservationId]);
+            await beginTransaction(connection);
+            const [paymentGroups] = await connection.query(
+                `SELECT id FROM payment_groups WHERE reservation_id = ? AND status IN ('pending', 'active') FOR UPDATE`,
+                [reservationId]
+            );
+            const [reservations] = await connection.query('SELECT * FROM reservations WHERE id = ? FOR UPDATE', [reservationId]);
             if (reservations.length === 0) {
+                await rollbackTransaction(connection);
                 return res.status(404).json({ success: false, message: 'Rezervasyon bulunamadı.' });
             }
             const reservation = reservations[0];
+            if (!canAccessReservation(req.reservationActor, reservation)) {
+                await rollbackTransaction(connection);
+                return res.status(403).json({ success: false, message: 'Bu rezervasyon için ödeme yapamazsınız.' });
+            }
+            if (reservation.status !== 'pending_payment') {
+                await rollbackTransaction(connection);
+                return res.status(409).json({ success: false, message: 'Bu rezervasyon ödeme kabul etmiyor.' });
+            }
+            if (reservation.payment_status === 'odendi') {
+                await rollbackTransaction(connection);
+                return res.json({ success: true, message: 'Ödeme daha önce tamamlanmış.' });
+            }
+            if (paymentGroups.length > 0) {
+                await rollbackTransaction(connection);
+                return res.status(409).json({ success: false, message: 'Bu rezervasyon için ortak ödeme başlatılmış.' });
+            }
+            releaseSlot = await acquireSlotLock(connection, reservation);
             
             // Check if slot is already occupied by another active/abone reservation
             const [activeRes] = await connection.query(
@@ -105,16 +172,20 @@ function initPaymentRoutes(app, db) {
                 [reservation.fieldKey, reservation.pitchNumber, reservation.play_date, reservation.dateText, reservation.hourText, reservationId]
             );
             if (activeRes.length > 0) {
+                await rollbackTransaction(connection);
                 return res.status(409).json({ success: false, message: 'Bu saat dilimi başka bir kullanıcı tarafından rezerve edilmiş.' });
             }
             
             await connection.query('UPDATE reservations SET payment_status = "odendi", status = "active" WHERE id = ?', [reservationId]);
-            
+            await enqueueTelegramNotification(connection, reservationId, 'paid', { payment_type: 'single' });
+            await commitTransaction(connection);
             res.json({ success: true, message: 'Ödeme başarılı!' });
         } catch (error) {
+            await rollbackTransaction(connection).catch(() => {});
             console.error('Pay single error:', error);
             res.status(500).json({ success: false, message: 'Ödeme işlemi başarısız oldu.' });
         } finally {
+            await releaseSlot();
             connection.release();
         }
     });
@@ -140,13 +211,6 @@ function initPaymentRoutes(app, db) {
             
             const group = groups[0];
             
-            // Check if expired
-            if (group.status === 'active' && group.deadline && new Date() > new Date(group.deadline)) {
-                await connection.query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
-                await connection.query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
-                group.status = 'expired';
-            }
-            
             res.json({ success: true, data: group });
         } catch (error) {
             console.error('Get share link error:', error);
@@ -164,6 +228,7 @@ function initPaymentRoutes(app, db) {
         const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         
         const connection = await db.promise().getConnection();
+        let releaseSlot = async () => {};
         
         try {
             await beginTransaction(connection);
@@ -186,10 +251,39 @@ function initPaymentRoutes(app, db) {
             if (group.status === 'expired' || (group.deadline && new Date() > new Date(group.deadline))) {
                 if (group.status !== 'expired') {
                     await connection.query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
-                    await connection.query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
+                    const [cancelResult] = await connection.query(
+                        `UPDATE reservations SET status = 'cancelled', cancelled_at = NOW(),
+                         cancelled_by = 'system', cancellation_reason = 'Ortak ödeme süresi doldu'
+                         WHERE id = ? AND status != 'cancelled'`,
+                        [group.reservation_id]
+                    );
+                    if (cancelResult.affectedRows === 1 && group.paid_count > 0) {
+                        await enqueueTelegramNotification(connection, group.reservation_id, 'cancelled', {
+                            cancellation_reason: 'İlk ödeme sonrası ikinci ödeme süresi doldu'
+                        });
+                    }
                 }
-                await rollbackTransaction(connection);
+                await commitTransaction(connection);
                 return res.status(400).json({ success: false, message: 'Ödeme süresi dolmuştur.' });
+            }
+
+            const [reservations] = await connection.query('SELECT * FROM reservations WHERE id = ? FOR UPDATE', [group.reservation_id]);
+            if (reservations.length === 0 || reservations[0].status === 'cancelled') {
+                await rollbackTransaction(connection);
+                return res.status(409).json({ success: false, message: 'Rezervasyon iptal edilmiş veya bulunamıyor.' });
+            }
+            const reservation = reservations[0];
+            if (group.paid_count === 0) {
+                releaseSlot = await acquireSlotLock(connection, reservation);
+                const [activeRes] = await connection.query(
+                    `SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ?
+                     AND (play_date = ? OR dateText = ?) AND hourText = ? AND status = 'active' AND id != ?`,
+                    [reservation.fieldKey, reservation.pitchNumber, reservation.play_date, reservation.dateText, reservation.hourText, reservation.id]
+                );
+                if (activeRes.length > 0) {
+                    await rollbackTransaction(connection);
+                    return res.status(409).json({ success: false, message: 'Bu saat dilimi başka bir rezervasyon tarafından alınmış.' });
+                }
             }
             
             // Insert payment share record
@@ -220,6 +314,7 @@ function initPaymentRoutes(app, db) {
                 
                 // Update reservation to paid
                 await connection.query('UPDATE reservations SET payment_status = "odendi" WHERE id = ?', [group.reservation_id]);
+                await enqueueTelegramNotification(connection, group.reservation_id, 'paid', { payment_type: 'shared' });
                 
                 await commitTransaction(connection);
                 res.json({ success: true, paid_count: 2, status: 'completed', message: 'Tüm ödemeler başarıyla alındı! Rezervasyon onaylandı.' });
@@ -233,9 +328,10 @@ function initPaymentRoutes(app, db) {
             console.error('Pay share error:', error);
             res.status(500).json({ success: false, message: 'Ödeme işlemi başarısız oldu.' });
         } finally {
+            await releaseSlot();
             connection.release();
         }
     });
 }
 
-module.exports = { initPaymentRoutes };
+module.exports = { initPaymentRoutes, checkAndCancelExpiredPayments };

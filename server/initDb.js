@@ -35,6 +35,7 @@ async function initDatabase(connection) {
         { check: "SHOW COLUMNS FROM pitch_settings LIKE 'field_count'",   alter: "ALTER TABLE pitch_settings ADD COLUMN field_count INT DEFAULT 1" },
         { check: "SHOW COLUMNS FROM pitch_settings LIKE 'average_rating'",alter: "ALTER TABLE pitch_settings ADD COLUMN average_rating DECIMAL(3,2) DEFAULT 0.00" },
         { check: "SHOW COLUMNS FROM pitch_settings LIKE 'last_login'",    alter: "ALTER TABLE pitch_settings ADD COLUMN last_login TIMESTAMP NULL DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM pitch_settings LIKE 'telegram_chat_id'", alter: "ALTER TABLE pitch_settings ADD COLUMN telegram_chat_id VARCHAR(50) DEFAULT NULL" },
         // subscriptions table
         { check: "SHOW COLUMNS FROM subscriptions LIKE 'dayOfWeek'",       alter: "ALTER TABLE subscriptions ADD COLUMN dayOfWeek VARCHAR(50) DEFAULT 'PAZARTESİ'" },
         { check: "SHOW COLUMNS FROM subscriptions LIKE 'user_id'",         alter: "ALTER TABLE subscriptions ADD COLUMN user_id INT DEFAULT NULL" },
@@ -47,6 +48,10 @@ async function initDatabase(connection) {
         { check: "SHOW COLUMNS FROM reservations LIKE 'status'",            alter: "ALTER TABLE reservations ADD COLUMN status VARCHAR(20) DEFAULT 'active'" },
         { check: "SHOW COLUMNS FROM reservations LIKE 'status'",            alter: "ALTER TABLE reservations MODIFY COLUMN status ENUM('pending_payment','active','completed','cancelled','postponed') DEFAULT 'active'" },
         { check: "SHOW COLUMNS FROM reservations LIKE 'type'",              alter: "ALTER TABLE reservations ADD COLUMN type VARCHAR(20) DEFAULT 'normal'" },
+        { check: "SHOW COLUMNS FROM reservations LIKE 'cancelled_at'",       alter: "ALTER TABLE reservations ADD COLUMN cancelled_at DATETIME DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM reservations LIKE 'cancelled_by'",       alter: "ALTER TABLE reservations ADD COLUMN cancelled_by VARCHAR(50) DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM reservations LIKE 'cancellation_reason'",alter: "ALTER TABLE reservations ADD COLUMN cancellation_reason VARCHAR(255) DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM reservations LIKE 'subscription_id'",    alter: "ALTER TABLE reservations ADD COLUMN subscription_id INT DEFAULT NULL" },
         // forum_posts table
         { check: "SHOW COLUMNS FROM forum_posts LIKE 'play_date'", alter: "ALTER TABLE forum_posts ADD COLUMN play_date DATE DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM forum_posts LIKE 'phone'",     alter: "ALTER TABLE forum_posts ADD COLUMN phone VARCHAR(20) DEFAULT NULL" },
@@ -64,7 +69,8 @@ async function initDatabase(connection) {
         
         // Split Payment Tables
         { check: "SHOW TABLES LIKE 'payment_groups'", alter: "CREATE TABLE payment_groups (id INT AUTO_INCREMENT PRIMARY KEY, reservation_id INT NOT NULL, share_code VARCHAR(8) NOT NULL UNIQUE, total_amount INT NOT NULL, share_amount INT NOT NULL, status ENUM('pending','active','completed','expired') DEFAULT 'pending', paid_count TINYINT DEFAULT 0, first_paid_at DATETIME NULL, deadline DATETIME NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX(share_code), INDEX(reservation_id), INDEX(status), FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
-        { check: "SHOW TABLES LIKE 'payment_shares'", alter: "CREATE TABLE payment_shares (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, payer_name VARCHAR(100), amount INT NOT NULL, paid_at DATETIME DEFAULT CURRENT_TIMESTAMP, ip_address VARCHAR(45), FOREIGN KEY (group_id) REFERENCES payment_groups(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" }
+        { check: "SHOW TABLES LIKE 'payment_shares'", alter: "CREATE TABLE payment_shares (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, payer_name VARCHAR(100), amount INT NOT NULL, paid_at DATETIME DEFAULT CURRENT_TIMESTAMP, ip_address VARCHAR(45), FOREIGN KEY (group_id) REFERENCES payment_groups(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
+        { check: "SHOW TABLES LIKE 'telegram_notification_outbox'", alter: "CREATE TABLE telegram_notification_outbox (id BIGINT AUTO_INCREMENT PRIMARY KEY, reservation_id INT NOT NULL, field_key VARCHAR(50) NOT NULL, chat_id_snapshot VARCHAR(50) NOT NULL, event_type VARCHAR(50) NOT NULL, payload JSON NOT NULL, status ENUM('pending','processing','sent','dead') NOT NULL DEFAULT 'pending', attempts INT NOT NULL DEFAULT 0, next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, last_error VARCHAR(500) DEFAULT NULL, locked_at DATETIME DEFAULT NULL, sent_at DATETIME DEFAULT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, UNIQUE KEY unique_reservation_event (reservation_id, event_type), INDEX idx_telegram_outbox_due (status, next_attempt_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" }
     ];
 
     for (const { check, alter } of migrations) {
@@ -81,6 +87,56 @@ async function initDatabase(connection) {
         } catch (err) {
             // Table might not exist yet, skip
         }
+    }
+
+    const criticalTelegramSchema = [
+        "SHOW COLUMNS FROM pitch_settings LIKE 'telegram_chat_id'",
+        "SHOW COLUMNS FROM reservations LIKE 'cancelled_at'",
+        "SHOW COLUMNS FROM reservations LIKE 'cancelled_by'",
+        "SHOW COLUMNS FROM reservations LIKE 'cancellation_reason'",
+        "SHOW COLUMNS FROM reservations LIKE 'subscription_id'",
+        "SHOW TABLES LIKE 'telegram_notification_outbox'"
+    ];
+    for (const check of criticalTelegramSchema) {
+        const [rows] = await connection.query(check);
+        if (rows.length === 0) {
+            throw new Error(`Kritik Telegram migration doğrulaması başarısız: ${check}`);
+        }
+    }
+
+    await connection.query(
+        `UPDATE reservations r
+         JOIN subscriptions s ON s.fieldKey = r.fieldKey
+          AND s.pitchNumber = r.pitchNumber AND s.hourText = r.hourText
+          AND s.dayOfWeek = ELT(DAYOFWEEK(r.play_date), 'PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ')
+         SET r.subscription_id = s.id
+         WHERE r.type = 'abone' AND r.subscription_id IS NULL AND r.play_date IS NOT NULL`
+    );
+    await connection.query(
+        `UPDATE reservations r
+         JOIN (
+           SELECT subscription_id, play_date, MIN(id) AS keep_id
+           FROM reservations
+           WHERE subscription_id IS NOT NULL AND play_date IS NOT NULL
+           GROUP BY subscription_id, play_date HAVING COUNT(*) > 1
+         ) duplicates ON duplicates.subscription_id = r.subscription_id
+          AND duplicates.play_date = r.play_date AND r.id != duplicates.keep_id
+         SET r.status = 'cancelled', r.cancelled_at = NOW(), r.cancelled_by = 'migration',
+             r.cancellation_reason = 'Mükerrer abonelik rezervasyonu', r.subscription_id = NULL`
+    );
+    const [subscriptionIndex] = await connection.query(
+        "SHOW INDEX FROM reservations WHERE Key_name = 'unique_subscription_occurrence'"
+    );
+    if (subscriptionIndex.length === 0) {
+        await connection.query(
+            'ALTER TABLE reservations ADD UNIQUE KEY unique_subscription_occurrence (subscription_id, play_date)'
+        );
+    }
+    const [verifiedSubscriptionIndex] = await connection.query(
+        "SHOW INDEX FROM reservations WHERE Key_name = 'unique_subscription_occurrence'"
+    );
+    if (verifiedSubscriptionIndex.length === 0) {
+        throw new Error('Kritik abonelik occurrence indeksi oluşturulamadı');
     }
 
     // Existing databases may have an older ENUM for reservation status.

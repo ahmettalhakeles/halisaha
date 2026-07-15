@@ -697,6 +697,13 @@
                             <label>HARİTA KOORDİNATLARI (Google Maps)</label>
                             <input type="text" id="businessSettingCoordinates" class="form-control" placeholder="Örn: 40.6558,35.8272">
                         </div>
+                        <div class="form-group">
+                            <label>TELEGRAM CHAT ID</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="businessSettingTelegramChatId" class="form-control" placeholder="Örn: 111222333" style="flex: 1;">
+                                <button type="button" id="btnTestTelegram" onclick="testTelegramConnection()" style="background-color: var(--warning-orange); color: #000; border: none; padding: 0 15px; border-radius: 8px; font-weight: 700; cursor: pointer;">Test Et</button>
+                            </div>
+                        </div>
                     </div>
                     
                     <button class="action-btn" onclick="saveAllBusinessSettings()" style="max-width: 300px;">BİLGİLERİ KAYDET</button>
@@ -740,6 +747,6 @@
         </div>
     </div>
 
-    <script src="script.min.js?v=1.1.9" defer></script>
+    <script src="script.min.js?v=1.2.0" defer></script>
 </body>
 </html>

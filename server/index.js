@@ -130,25 +130,6 @@ initBlacklistRoutes(app, db);
 initAdminRoutes(app, db);
 initPaymentRoutes(app, db);
 
-// DB baglantisini baslat + migration
-(async () => {
-    try {
-        // Run minifier
-        const { runMinify } = require('./minify');
-        await runMinify();
-
-        const conn = await db.promise().getConnection();
-        console.log('MySQL veritabanina basariyla baglanildi!');
-
-        const { initDatabase } = require('./initDb');
-        await initDatabase(conn);
-
-        conn.release();
-    } catch (err) {
-        console.error('MySQL baglanti hatasi:', err.message);
-    }
-})();
-
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('Sunucu Hatasi:', err);
@@ -156,7 +137,9 @@ app.use((err, req, res, next) => {
 });
 
 // Cron job: weekly subscriptions
-const dayNames = ["PAZAR","PAZARTESI","SALI","CARSAMBA","PERSEMBE","CUMA","CUMARTESI"];
+const dayNames = ["PAZAR", "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ"];
+const { enqueueTelegramNotification, startTelegramOutboxWorker } = require('./utils/telegram');
+const { acquireSlotLock } = require('./utils/slotLock');
 async function processWeeklySubscriptions() {
     const now = new Date();
     const todayName = dayNames[now.getDay()];
@@ -169,17 +152,63 @@ async function processWeeklySubscriptions() {
         const dd = String(now.getDate()).padStart(2, '0');
         const play_date = `${yyyy}-${mm}-${dd}`;
         for (const sub of subs) {
-            const [existing] = await db.promise().query('SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND (play_date = ? OR dateText = ?) AND hourText = ? AND type = ?', [sub.fieldKey, sub.pitchNumber, play_date, dateText, sub.hourText, 'abone']);
-            if (existing.length > 0) continue;
-            await db.promise().query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, 0, "odenmedi", "active", "abone")', [sub.fieldKey, sub.pitchNumber, dateText, play_date, sub.hourText, sub.subscriberName, sub.user_id]);
+            const connection = await db.promise().getConnection();
+            let releaseSlot = async () => {};
+            try {
+                await connection.beginTransaction();
+                const slot = { fieldKey: sub.fieldKey, pitchNumber: sub.pitchNumber, play_date, dateText, hourText: sub.hourText };
+                releaseSlot = await acquireSlotLock(connection, slot);
+                const [existing] = await connection.query(
+                    `SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ?
+                     AND (play_date = ? OR dateText = ?) AND hourText = ? AND status != 'cancelled' FOR UPDATE`,
+                    [sub.fieldKey, sub.pitchNumber, play_date, dateText, sub.hourText]
+                );
+                if (existing.length > 0) {
+                    await connection.rollback();
+                    continue;
+                }
+                const [insertResult] = await connection.query(
+                    `INSERT INTO reservations
+                     (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id,
+                      reservation_price, payment_status, status, type, subscription_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'odenmedi', 'active', 'abone', ?)`,
+                    [sub.fieldKey, sub.pitchNumber, dateText, play_date, sub.hourText, sub.subscriberName, sub.user_id, sub.id]
+                );
+                await enqueueTelegramNotification(connection, insertResult.insertId, 'subscription_created');
+                await connection.commit();
+            } catch (error) {
+                await connection.rollback().catch(() => {});
+                throw error;
+            } finally {
+                await releaseSlot();
+                connection.release();
+            }
         }
     } catch (err) {
         console.error('Cron: Abonelik hatasi:', err);
     }
 }
-processWeeklySubscriptions().catch(err => console.error('Cron baslatma hatasi:', err));
-setInterval(processWeeklySubscriptions, 60 * 60 * 1000);
 
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Sunucu http://0.0.0.0:${port} adresinde calisiyor!`);
+async function start() {
+    const { runMinify } = require('./minify');
+    const { initDatabase } = require('./initDb');
+    await runMinify();
+    const connection = await db.promise().getConnection();
+    try {
+        console.log('MySQL veritabanina basariyla baglanildi!');
+        await initDatabase(connection);
+    } finally {
+        connection.release();
+    }
+    startTelegramOutboxWorker(db);
+    await processWeeklySubscriptions();
+    setInterval(() => processWeeklySubscriptions().catch(err => console.error('Cron hatasi:', err)), 60 * 60 * 1000);
+    app.listen(port, '0.0.0.0', () => {
+        console.log(`Sunucu http://0.0.0.0:${port} adresinde calisiyor!`);
+    });
+}
+
+start().catch(err => {
+    console.error('Uygulama baslatilamadi:', err.message);
+    process.exit(1);
 });

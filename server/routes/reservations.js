@@ -1,27 +1,9 @@
-async function checkAndCancelExpiredPayments(db) {
-    try {
-        // Delete pending_payment reservations older than 10 minutes
-        await db.promise().query(
-            `DELETE FROM reservations 
-             WHERE status = 'pending_payment' AND created_at < NOW() - INTERVAL 10 MINUTE`
-        );
-
-        const [expiredGroups] = await db.promise().query(
-            `SELECT * FROM payment_groups 
-             WHERE status = 'active' AND deadline < NOW()`
-        );
-        for (const group of expiredGroups) {
-            await db.promise().query('UPDATE payment_groups SET status = "expired" WHERE id = ?', [group.id]);
-            await db.promise().query('UPDATE reservations SET status = "cancelled" WHERE id = ?', [group.reservation_id]);
-            console.log(`[Cron Sim] Cancelled expired reservation id ${group.reservation_id} due to payment group timeout.`);
-        }
-    } catch (e) {
-        console.error("Expired payment check failed:", e);
-    }
-}
+const { checkAndCancelExpiredPayments } = require('./payment');
 
 function initReservationRoutes(app, db) {
     const { resLimitPerMin, resLimitPerSec } = require('../middleware/rateLimiter');
+    const { requireAuthenticatedActor } = require('../middleware/businessAuth');
+    const { enqueueTelegramNotification } = require('../utils/telegram');
 
     // Get all reservations
     app.get('/api/reservations', async (req, res) => {
@@ -78,23 +60,66 @@ function initReservationRoutes(app, db) {
     });
 
     // Cancel reservation
-    app.delete('/api/reservations/:id', (req, res) => {
+    app.delete('/api/reservations/:id', requireAuthenticatedActor, async (req, res) => {
         const { id } = req.params;
-        db.query('DELETE FROM reservations WHERE id = ?', [id], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Rezervasyon iptal edilemedi!' });
+        const connection = await db.promise().getConnection();
+        try {
+            await connection.beginTransaction();
+            await connection.query(
+                `SELECT id FROM payment_groups WHERE reservation_id = ?
+                 AND status IN ('pending', 'active') FOR UPDATE`,
+                [id]
+            );
+            const [rows] = await connection.query('SELECT * FROM reservations WHERE id = ? FOR UPDATE', [id]);
+            if (rows.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ success: false, message: 'Rezervasyon bulunamadı!' });
+            }
+            const reservation = rows[0];
+            const actor = req.reservationActor;
+            const allowed = actor.role === 'admin'
+                || (actor.role === 'business' && actor.fieldKey === reservation.fieldKey)
+                || (actor.role === 'user' && actor.userId === Number(reservation.user_id));
+            if (!allowed) {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Bu rezervasyonu iptal edemezsiniz!' });
+            }
+            if (reservation.status === 'cancelled') {
+                await connection.rollback();
+                return res.json({ success: true, message: 'Rezervasyon daha önce iptal edilmiş.' });
+            }
+            await connection.query(
+                `UPDATE payment_groups SET status = 'expired'
+                 WHERE reservation_id = ? AND status IN ('pending', 'active')`,
+                [id]
+            );
+            const cancelledBy = actor.role === 'user' ? `user:${actor.userId}` : actor.role;
+            const reason = String(req.body?.reason || 'Rezervasyon iptal edildi').slice(0, 255);
+            await connection.query(
+                `UPDATE reservations SET status = 'cancelled', cancelled_at = NOW(),
+                 cancelled_by = ?, cancellation_reason = ? WHERE id = ?`,
+                [cancelledBy, reason, id]
+            );
+            await enqueueTelegramNotification(connection, id, 'cancelled', { cancellation_reason: reason });
+            await connection.commit();
             res.json({ success: true, message: 'Rezervasyon başarıyla iptal edildi!' });
-        });
+        } catch (error) {
+            await connection.rollback().catch(() => {});
+            console.error('Reservation cancel error:', error);
+            res.status(500).json({ success: false, message: 'Rezervasyon iptal edilemedi!' });
+        } finally {
+            connection.release();
+        }
     });
 
     // Update reservation
     app.put('/api/reservations/:id', (req, res) => {
         const { id } = req.params;
-        const { reservation_price, payment_status, dateText, hourText, pitchNumber } = req.body;
+        const { reservation_price, dateText, hourText, pitchNumber } = req.body;
         const updates = [];
         const values = [];
         
         if (reservation_price !== undefined) { updates.push('reservation_price = ?'); values.push(reservation_price); }
-        if (payment_status !== undefined) { updates.push('payment_status = ?'); values.push(payment_status); }
         if (dateText !== undefined) { 
             updates.push('dateText = ?'); 
             values.push(dateText); 
@@ -211,16 +236,42 @@ function initReservationRoutes(app, db) {
 
 
     // Update payment status
-    app.put('/api/reservations/:id/payment', (req, res) => {
+    app.put('/api/reservations/:id/payment', requireAuthenticatedActor, async (req, res) => {
         const { id } = req.params;
         const { payment_status } = req.body;
         if (!['odenmedi', 'odendi'].includes(payment_status)) {
             return res.status(400).json({ success: false, message: 'Geçersiz ödeme durumu!' });
         }
-        db.query('UPDATE reservations SET payment_status = ? WHERE id = ?', [payment_status, id], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        const connection = await db.promise().getConnection();
+        try {
+            await connection.beginTransaction();
+            const [rows] = await connection.query('SELECT * FROM reservations WHERE id = ? FOR UPDATE', [id]);
+            if (rows.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ success: false, message: 'Rezervasyon bulunamadı!' });
+            }
+            const reservation = rows[0];
+            const actor = req.reservationActor;
+            const allowed = actor.role === 'admin' || (actor.role === 'business' && actor.fieldKey === reservation.fieldKey);
+            if (!allowed) {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Ödeme durumunu değiştiremezsiniz!' });
+            }
+            if (reservation.payment_status !== payment_status) {
+                await connection.query('UPDATE reservations SET payment_status = ? WHERE id = ?', [payment_status, id]);
+                if (payment_status === 'odendi') {
+                    await enqueueTelegramNotification(connection, id, 'paid', { payment_type: 'manual' });
+                }
+            }
+            await connection.commit();
             res.json({ success: true, message: 'Ödeme durumu güncellendi!' });
-        });
+        } catch (error) {
+            await connection.rollback().catch(() => {});
+            console.error('Manual payment update error:', error);
+            res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+        } finally {
+            connection.release();
+        }
     });
 }
 

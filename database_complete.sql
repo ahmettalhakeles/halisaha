@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS reservations (
   id INT NOT NULL AUTO_INCREMENT,
   fieldKey VARCHAR(50) NOT NULL,
   dateText VARCHAR(50) NOT NULL,
+  play_date DATE DEFAULT NULL,
   hourText VARCHAR(50) NOT NULL,
   user_name VARCHAR(100) NOT NULL,
   pitchNumber INT NOT NULL DEFAULT 1,
@@ -33,7 +34,32 @@ CREATE TABLE IF NOT EXISTS reservations (
   user_id INT DEFAULT NULL,
   type VARCHAR(20) DEFAULT 'normal',
   status VARCHAR(20) DEFAULT 'active',
-  PRIMARY KEY (id)
+  cancelled_at DATETIME DEFAULT NULL,
+  cancelled_by VARCHAR(50) DEFAULT NULL,
+  cancellation_reason VARCHAR(255) DEFAULT NULL,
+  subscription_id INT DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_subscription_occurrence (subscription_id, play_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS telegram_notification_outbox (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  reservation_id INT NOT NULL,
+  field_key VARCHAR(50) NOT NULL,
+  chat_id_snapshot VARCHAR(50) NOT NULL,
+  event_type VARCHAR(50) NOT NULL,
+  payload JSON NOT NULL,
+  status ENUM('pending','processing','sent','dead') NOT NULL DEFAULT 'pending',
+  attempts INT NOT NULL DEFAULT 0,
+  next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_error VARCHAR(500) DEFAULT NULL,
+  locked_at DATETIME DEFAULT NULL,
+  sent_at DATETIME DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_reservation_event (reservation_id, event_type),
+  KEY idx_telegram_outbox_due (status, next_attempt_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS reservation_details (
@@ -164,6 +190,7 @@ CREATE TABLE IF NOT EXISTS pitch_settings (
   total_reservations INT DEFAULT 0,
   last_login TIMESTAMP NULL DEFAULT NULL,
   average_rating DECIMAL(3,2) DEFAULT 0.00,
+  telegram_chat_id VARCHAR(50) DEFAULT NULL,
   PRIMARY KEY (fieldKey)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

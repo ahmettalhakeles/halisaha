@@ -1,5 +1,18 @@
 function initPitchRoutes(app, db) {
     const fieldsData = require('../fieldsData');
+    const rateLimit = require('express-rate-limit');
+    const { requireBusinessOrAdmin, requireMatchingField } = require('../middleware/businessAuth');
+    const { callTelegram } = require('../utils/telegram');
+    const publicSettingsColumns = `fieldKey, isClosed, isDeleted, openingHour, closingHour,
+        disabledHours, aboneHours, pricing, field_count, total_reservations,
+        last_login, average_rating`;
+    const telegramTestLimiter = rateLimit({
+        windowMs: 60 * 1000,
+        limit: 5,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { success: false, message: 'Çok fazla Telegram test isteği gönderdiniz. Lütfen bekleyin.' }
+    });
 
     // Get field info (from static data)
     app.get('/api/fields', (req, res) => {
@@ -46,7 +59,7 @@ function initPitchRoutes(app, db) {
 
     // Get all pitch settings
     app.get('/api/pitch-settings', (req, res) => {
-        db.query('SELECT * FROM pitch_settings WHERE isDeleted = 0', (err, results) => {
+        db.query(`SELECT ${publicSettingsColumns} FROM pitch_settings WHERE isDeleted = 0`, (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             res.json({ success: true, data: results });
         });
@@ -55,11 +68,62 @@ function initPitchRoutes(app, db) {
     // Get single pitch settings
     app.get('/api/pitch-settings/:fieldKey', (req, res) => {
         const { fieldKey } = req.params;
-        db.query('SELECT * FROM pitch_settings WHERE fieldKey = ? AND isDeleted = 0', [fieldKey], (err, results) => {
+        db.query(`SELECT ${publicSettingsColumns} FROM pitch_settings WHERE fieldKey = ? AND isDeleted = 0`, [fieldKey], (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             if (results.length === 0) return res.status(404).json({ success: false, message: 'Saha bulunamadı!' });
             res.json({ success: true, data: results[0] });
         });
+    });
+
+    app.get('/api/pitch-settings/:fieldKey/telegram', requireBusinessOrAdmin, requireMatchingField, (req, res) => {
+        db.query(
+            'SELECT telegram_chat_id FROM pitch_settings WHERE fieldKey = ? AND isDeleted = 0',
+            [req.params.fieldKey],
+            (err, results) => {
+                if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                if (results.length === 0) return res.status(404).json({ success: false, message: 'Saha bulunamadı!' });
+                res.json({ success: true, data: { telegram_chat_id: results[0].telegram_chat_id } });
+            }
+        );
+    });
+
+    app.put('/api/pitch-settings/:fieldKey/telegram', requireBusinessOrAdmin, requireMatchingField, (req, res) => {
+        const rawChatId = req.body.telegram_chat_id;
+        const chatId = rawChatId === null || rawChatId === undefined || String(rawChatId).trim() === ''
+            ? null
+            : String(rawChatId).trim();
+        if (chatId !== null && (chatId.length > 50 || !/^-?\d+$/.test(chatId))) {
+            return res.status(400).json({ success: false, message: 'Telegram Chat ID yalnızca rakamlardan oluşmalıdır.' });
+        }
+        db.query(
+            'UPDATE pitch_settings SET telegram_chat_id = ? WHERE fieldKey = ? AND isDeleted = 0',
+            [chatId, req.params.fieldKey],
+            (err, result) => {
+                if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Saha bulunamadı!' });
+                res.json({ success: true, message: chatId ? 'Telegram ayarı kaydedildi.' : 'Telegram bildirimi kapatıldı.' });
+            }
+        );
+    });
+
+    app.post('/api/pitch-settings/:fieldKey/test-telegram', requireBusinessOrAdmin, requireMatchingField, telegramTestLimiter, async (req, res) => {
+        const chatId = String(req.body.telegram_chat_id || '').trim();
+        if (!chatId || chatId.length > 50 || !/^-?\d+$/.test(chatId)) {
+            return res.status(400).json({ success: false, message: 'Geçerli bir Telegram Chat ID giriniz.' });
+        }
+        try {
+            await callTelegram(chatId, 'test', {});
+            res.json({ success: true, message: 'Test mesajı başarıyla gönderildi.' });
+        } catch (error) {
+            if (error.status === 403) {
+                await db.promise().query(
+                    'UPDATE pitch_settings SET telegram_chat_id = NULL WHERE fieldKey = ? AND telegram_chat_id = ?',
+                    [req.params.fieldKey, chatId]
+                );
+            }
+            const status = error.status === 429 ? 429 : 502;
+            res.status(status).json({ success: false, message: `Telegram testi başarısız: ${error.message}` });
+        }
     });
 
     // Update pitch settings

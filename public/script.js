@@ -1034,6 +1034,17 @@ async function loadBusinessDashboard() {
     document.getElementById('businessSettingCleats').value = field.cleats || "Krampon Kiralanmaz";
     document.getElementById('businessSettingShower').value = field.shower || "Duş Yok";
     document.getElementById('businessSettingMarket').value = field.market || "Market Yok";
+    try {
+        const telegramResponse = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}/telegram`, {
+            headers: getAuthHeaders()
+        });
+        const telegramResult = await telegramResponse.json();
+        if (telegramResult.success) {
+            document.getElementById('businessSettingTelegramChatId').value = telegramResult.data.telegram_chat_id || '';
+        }
+    } catch (error) {
+        console.error('Telegram ayarı yüklenemedi:', error);
+    }
     onAdminFieldCountChange();
     await loadBusinessReservations();
     await loadBusinessSubscriptions();
@@ -2002,7 +2013,7 @@ async function saveSubscription() {
 
     try {
         const response = await fetch('/api/subscriptions', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: getAuthHeaders(),
             body: JSON.stringify({ fieldKey: currentBusinessFieldKey, pitchNumber: pitchNum, dayOfWeek, hourText: hour, subscriberName: name, subscriberPhone: phone, user_id: currentUser?.id || null })
         });
         const result = await response.json();
@@ -2024,7 +2035,7 @@ async function deleteSubscription(id) {
     const confirmed = await showConfirmModal("Bu haftalık aboneliği silmek istediğinize emin misiniz?");
     if (!confirmed) return;
     try {
-        const response = await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
+        const response = await fetch(`/api/subscriptions/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
         const result = await response.json();
         if (result.success) {
             alert("Abonelik başarıyla silindi ve saat boşa çıkarıldı!");
@@ -3106,7 +3117,7 @@ async function initSplitPayment() {
     document.getElementById('btnPaySingle').disabled = true;
 
     try {
-        const res = await fetch(`/api/reservations/${latestReservationId}/payment/init`, { method: 'POST' });
+        const res = await fetch(`/api/reservations/${latestReservationId}/payment/init`, { method: 'POST', headers: getAuthHeaders() });
         const result = await res.json();
         
         if (result.success) {
@@ -3162,7 +3173,7 @@ setTimeout(() => {
             setTimeout(async () => {
                 try {
                     if (currentPaymentType === 'single') {
-                        const res = await fetch(`/api/reservations/${currentPaymentReservationId}/payment/pay-single`, { method: 'POST' });
+                        const res = await fetch(`/api/reservations/${currentPaymentReservationId}/payment/pay-single`, { method: 'POST', headers: getAuthHeaders() });
                         const result = await res.json();
                         
                         closeModal('paymentSimulationModal');
@@ -4569,6 +4580,7 @@ async function saveAllBusinessSettings() {
     const cleats = document.getElementById('businessSettingCleats').value;
     const shower = document.getElementById('businessSettingShower').value;
     const market = document.getElementById('businessSettingMarket').value;
+    const telegramChatId = document.getElementById('businessSettingTelegramChatId').value.trim();
     
     if (!phone) {
         alert("Lütfen telefon numarasını giriniz!");
@@ -4583,6 +4595,10 @@ async function saveAllBusinessSettings() {
     const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
     if (!coordRegex.test(coordinates)) {
         alert("Lütfen geçerli bir koordinat formatı giriniz! Örn: 40.6558,35.8272");
+        return;
+    }
+    if (telegramChatId && !/^-?\d+$/.test(telegramChatId)) {
+        alert('Telegram Chat ID yalnızca rakamlardan oluşmalıdır!');
         return;
     }
     
@@ -4617,6 +4633,21 @@ async function saveAllBusinessSettings() {
             body: JSON.stringify({ phone, hasService, coordinates, refreshments, cleats, shower, market })
         });
         const result = await response.json();
+        if (!result.success) {
+            alert("Hata: " + result.message);
+            return;
+        }
+
+        const telegramResponse = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}/telegram`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ telegram_chat_id: telegramChatId || null })
+        });
+        const telegramResult = await telegramResponse.json();
+        if (!telegramResult.success) {
+            alert('Telegram ayarı kaydedilemedi: ' + telegramResult.message);
+            return;
+        }
         
         if (result.success) {
             // Lokal fieldsData güncelle
@@ -4650,6 +4681,34 @@ async function saveAllBusinessSettings() {
     }
 }
 
+async function testTelegramConnection() {
+    const input = document.getElementById('businessSettingTelegramChatId');
+    const button = document.getElementById('btnTestTelegram');
+    const telegramChatId = input.value.trim();
+    if (!telegramChatId || !/^-?\d+$/.test(telegramChatId)) {
+        alert('Test için geçerli bir Telegram Chat ID giriniz!');
+        return;
+    }
+    button.disabled = true;
+    const oldText = button.textContent;
+    button.textContent = 'Test ediliyor...';
+    try {
+        const response = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}/test-telegram`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ telegram_chat_id: telegramChatId })
+        });
+        const result = await response.json();
+        alert(result.message || (result.success ? 'Test mesajı gönderildi.' : 'Telegram testi başarısız.'));
+    } catch (error) {
+        console.error('Telegram test hatası:', error);
+        alert('Telegram test isteği gönderilemedi!');
+    } finally {
+        button.disabled = false;
+        button.textContent = oldText;
+    }
+}
+
 async function loadDailyHoursList() {
     try {
         const response = await fetch('/api/all-daily-hours');
@@ -4667,7 +4726,8 @@ async function cancelMySubscription(id) {
     if (!confirmed) return;
     try {
         const response = await fetch(`/api/subscriptions/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: getAuthHeaders()
         });
         const result = await response.json();
         if (result.success) {
