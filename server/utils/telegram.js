@@ -22,9 +22,11 @@ function buildMessage(eventType, payload = {}) {
     }
 
     const title = {
-        paid: payload.payment_type === 'shared' ? '✅ Ortak ödeme tamamlandı' : '✅ Ödeme tamamlandı',
+        paid: payload.payment_type === 'shared' ? '✅ Ortak ödeme tamamlandı' : (payload.payment_type === 'manual_cash' ? '✅ Ödeme tamamlandı (Elden Nakit)' : '✅ Ödeme tamamlandı'),
         subscription_created: '📅 Abonelik rezervasyonu oluşturuldu',
-        cancelled: '❌ Rezervasyon iptal edildi'
+        cancelled: '❌ Rezervasyon iptal edildi',
+        pending_share: '⏳ Ortak ödeme başladı (İlk ödeme alındı, 2. kişi bekleniyor)',
+        manual_created: '📝 Yeni Manuel Rezervasyon Eklendi'
     }[eventType];
     if (!title) throw new Error(`Desteklenmeyen Telegram olay türü: ${eventType}`);
 
@@ -37,8 +39,11 @@ function buildMessage(eventType, payload = {}) {
         `<b>Müşteri:</b> ${escapeHtml(payload.user_name || '-')}`
     ];
     if (payload.user_phone) lines.push(`<b>Telefon:</b> ${escapeHtml(payload.user_phone)}`);
-    if (eventType === 'paid') lines.push(`<b>Tutar:</b> ${escapeHtml(formatMoney(payload.reservation_price))}`);
+    if (eventType === 'paid' || eventType === 'pending_share' || eventType === 'manual_created') lines.push(`<b>Tutar:</b> ${escapeHtml(formatMoney(payload.reservation_price))}`);
     if (payload.payment_type === 'shared') lines.push('<b>Ödeme:</b> İki tarafın ödemesi tamamlandı');
+    if (eventType === 'pending_share') lines.push('<b>Ödeme:</b> İlk ödeme alındı, ikinci kişinin ödemesi bekleniyor.');
+    if (eventType === 'manual_created') lines.push('<b>Ödeme Durumu:</b> ÖDENMEDİ (Nakit Borç)');
+    if (eventType === 'paid' && payload.payment_type === 'manual_cash') lines.push('<b>Ödeme Durumu:</b> ÖDENDİ (Elden Nakit)');
     if (eventType === 'cancelled' && payload.cancellation_reason) {
         lines.push(`<b>Neden:</b> ${escapeHtml(payload.cancellation_reason)}`);
     }
@@ -88,7 +93,7 @@ async function getNotificationSnapshot(connection, reservationId) {
     const [rows] = await connection.query(
         `SELECT r.id, r.fieldKey AS field_key, r.pitchNumber AS pitch_number,
                 r.dateText AS date_text, r.play_date, r.hourText AS hour_text,
-                r.user_name, r.reservation_price, u.phone AS user_phone,
+                r.user_name, r.reservation_price, COALESCE(r.customer_phone, u.phone) AS user_phone,
                 COALESCE(po.name, r.fieldKey) AS field_name, ps.telegram_chat_id
          FROM reservations r
          LEFT JOIN users u ON u.id = r.user_id

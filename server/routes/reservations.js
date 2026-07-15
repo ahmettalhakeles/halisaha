@@ -1,4 +1,5 @@
 const { checkAndCancelExpiredPayments } = require('./payment');
+const { acquireSlotLock } = require('../utils/slotLock');
 
 function initReservationRoutes(app, db) {
     const { resLimitPerMin, resLimitPerSec } = require('../middleware/rateLimiter');
@@ -21,7 +22,7 @@ function initReservationRoutes(app, db) {
     });
 
     // Create reservation
-    app.post('/api/reservations', resLimitPerMin, resLimitPerSec, (req, res) => {
+    app.post('/api/reservations', resLimitPerMin, resLimitPerSec, async (req, res) => {
         const { fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status } = req.body;
         if (!fieldKey || !pitchNumber || (!dateText && !play_date) || !hourText || !user_name) {
             return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
@@ -30,33 +31,62 @@ function initReservationRoutes(app, db) {
         const playDateVal = play_date || parseTurkishDateString(dateText);
         const displayDateText = dateText || (play_date ? new Date(play_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR') : '');
 
-        db.query('SELECT id, name, phone, status FROM users WHERE id = ?', [user_id], (errUser, userResult) => {
-            if (errUser) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            if (userResult.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
-            if (userResult[0].status === 'globally_banned') return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
+        const connection = await db.promise().getConnection();
+        try {
+            await connection.beginTransaction();
+
+            const [userResult] = await connection.query('SELECT id, name, phone, status FROM users WHERE id = ?', [user_id]);
+            if (userResult.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
+            }
+            if (userResult[0].status === 'globally_banned') {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
+            }
 
             const userPhone = userResult[0].phone;
+            const [blacklistResults] = await connection.query('SELECT COUNT(*) AS cnt FROM field_blacklists WHERE phone_number = ? AND fieldKey = ?', [userPhone, fieldKey]);
+            if (blacklistResults[0].cnt > 0) {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Bu sahada kara listeye alındınız! Rezervasyon yapamazsınız.' });
+            }
 
-            db.query('SELECT COUNT(*) AS cnt FROM field_blacklists WHERE phone_number = ? AND fieldKey = ?', [userPhone, fieldKey], (errBlacklist, blacklistResults) => {
-                if (errBlacklist) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-                if (blacklistResults[0].cnt > 0) return res.status(403).json({ success: false, message: 'Bu sahada kara listeye alındınız! Rezervasyon yapamazsınız.' });
+            const dummyReservation = { fieldKey, pitchNumber, play_date: playDateVal, hourText };
+            const releaseLock = await acquireSlotLock(connection, dummyReservation);
 
-                db.query('SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND (play_date = ? OR dateText = ?) AND hourText = ?', [fieldKey, pitchNumber, playDateVal, displayDateText, hourText], (errCheck, existing) => {
-                    if (errCheck) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-                    if (existing.length > 0) {
-                        if (existing[0].status === 'active') return res.status(409).json({ success: false, message: 'Bu saat dilimi zaten dolu!' });
-                        if (existing[0].status === 'blocked') return res.status(409).json({ success: false, message: 'Bu saat dilimi işletme tarafından engellenmiş!' });
-                        if (existing[0].status === 'blocked_yuksek') return res.status(409).json({ success: false, message: 'Bu saat dilimi yoğunluk nedeniyle kullanılamıyor!' });
-                        if (existing[0].type === 'abone') return res.status(409).json({ success: false, message: 'Bu saat dilimi abonelik için ayrılmış!' });
-                    }
+            try {
+                const [existing] = await connection.query(
+                    'SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status != "cancelled" FOR UPDATE',
+                    [fieldKey, pitchNumber, playDateVal, hourText]
+                );
 
-                    db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")', [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert, insertResult) => {
-                        if (errInsert) return res.status(500).json({ success: false, message: 'Rezervasyon oluşturulamadı!' });
-                        res.json({ success: true, message: 'Rezervasyon başarıyla oluşturuldu!', id: insertResult.insertId });
-                    });
-                });
-            });
-        });
+                if (existing.length > 0) {
+                    await connection.rollback();
+                    if (existing[0].status === 'active') return res.status(409).json({ success: false, message: 'Bu saat dilimi zaten dolu!' });
+                    if (existing[0].status === 'blocked') return res.status(409).json({ success: false, message: 'Bu saat dilimi işletme tarafından engellenmiş!' });
+                    if (existing[0].status === 'blocked_yuksek') return res.status(409).json({ success: false, message: 'Bu saat dilimi yoğunluk nedeniyle kullanılamıyor!' });
+                    if (existing[0].type === 'abone') return res.status(409).json({ success: false, message: 'Bu saat dilimi abonelik için ayrılmış!' });
+                    return res.status(409).json({ success: false, message: 'Bu saat dilimi kullanılamıyor!' });
+                }
+
+                const [insertResult] = await connection.query(
+                    'INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")',
+                    [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi']
+                );
+
+                await connection.commit();
+                res.json({ success: true, message: 'Rezervasyon başarıyla oluşturuldu!', id: insertResult.insertId });
+            } finally {
+                await releaseLock();
+            }
+        } catch (error) {
+            await connection.rollback().catch(() => {});
+            console.error('Reservation create error:', error);
+            res.status(500).json({ success: false, message: 'Rezervasyon oluşturulamadı!' });
+        } finally {
+            connection.release();
+        }
     });
 
     // Cancel reservation
@@ -143,7 +173,7 @@ function initReservationRoutes(app, db) {
     });
 
     // Reserve specific hours
-    app.post('/api/reserve-specific-hours', (req, res) => {
+    app.post('/api/reserve-specific-hours', async (req, res) => {
         const { fieldKey, pitchNumber, dateText, play_date, hours, user_name, user_id, reservation_price, payment_status } = req.body;
         if (!fieldKey || !pitchNumber || (!dateText && !play_date) || !hours || !hours.length || !user_name) {
             return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
@@ -152,42 +182,65 @@ function initReservationRoutes(app, db) {
         const playDateVal = play_date || parseTurkishDateString(dateText);
         const displayDateText = dateText || (play_date ? new Date(play_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR') : '');
 
-        db.query('SELECT id, phone, status FROM users WHERE id = ?', [user_id], (errUser, userResult) => {
-            if (errUser) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-            if (userResult.length === 0) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
-            if (userResult[0].status === 'globally_banned') return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
+        const connection = await db.promise().getConnection();
+        try {
+            await connection.beginTransaction();
+
+            const [userResult] = await connection.query('SELECT id, phone, status FROM users WHERE id = ?', [user_id]);
+            if (userResult.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
+            }
+            if (userResult[0].status === 'globally_banned') {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
+            }
 
             const userPhone = userResult[0].phone;
-            db.query('SELECT COUNT(*) AS cnt FROM field_blacklists WHERE phone_number = ? AND fieldKey = ?', [userPhone, fieldKey], (errBlacklist, blacklistResults) => {
-                if (errBlacklist) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-                if (blacklistResults[0].cnt > 0) return res.status(403).json({ success: false, message: 'Bu sahada kara listeye alındınız!' });
+            const [blacklistResults] = await connection.query('SELECT COUNT(*) AS cnt FROM field_blacklists WHERE phone_number = ? AND fieldKey = ?', [userPhone, fieldKey]);
+            if (blacklistResults[0].cnt > 0) {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Bu sahada kara listeye alındınız!' });
+            }
 
-                const promises = hours.map(hour => {
-                    return new Promise((resolve, reject) => {
-                        db.query('SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND (play_date = ? OR dateText = ?) AND hourText = ?', [fieldKey, pitchNumber, playDateVal, displayDateText, hour], (errCheck, existing) => {
-                            if (errCheck) return reject(errCheck);
-                            if (existing.length > 0) return resolve({ conflict: true, hour });
-                            db.query('INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")', [fieldKey, pitchNumber, displayDateText, playDateVal, hour, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi'], (errInsert) => {
-                                if (errInsert) return reject(errInsert);
-                                resolve({ conflict: false, hour });
-                            });
-                        });
-                    });
-                });
+            const conflicts = [];
+            let succeeded = 0;
 
-                Promise.all(promises).then(results => {
-                    const conflicts = results.filter(r => r.conflict).map(r => r.hour);
-                    const succeeded = results.filter(r => !r.conflict).length;
-                    res.json({
-                        success: true,
-                        message: conflicts.length > 0 ? `${succeeded} saat başarıyla rezerve edildi. ${conflicts.length} saat dolu olduğu için atlandı.` : 'Tüm saatler başarıyla rezerve edildi!',
-                        conflicts
-                    });
-                }).catch(err => {
-                    res.status(500).json({ success: false, message: 'Rezervasyon hatası!' });
-                });
+            for (const hour of hours) {
+                const dummyReservation = { fieldKey, pitchNumber, play_date: playDateVal, hourText: hour };
+                const releaseLock = await acquireSlotLock(connection, dummyReservation);
+                try {
+                    const [existing] = await connection.query(
+                        'SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status != "cancelled" FOR UPDATE',
+                        [fieldKey, pitchNumber, playDateVal, hour]
+                    );
+                    if (existing.length > 0) {
+                        conflicts.push(hour);
+                    } else {
+                        await connection.query(
+                            'INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")',
+                            [fieldKey, pitchNumber, displayDateText, playDateVal, hour, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi']
+                        );
+                        succeeded++;
+                    }
+                } finally {
+                    await releaseLock();
+                }
+            }
+
+            await connection.commit();
+            res.json({
+                success: true,
+                message: conflicts.length > 0 ? `${succeeded} saat başarıyla rezerve edildi. ${conflicts.length} saat dolu olduğu için atlandı.` : 'Tüm saatler başarıyla rezerve edildi!',
+                conflicts
             });
-        });
+        } catch (error) {
+            await connection.rollback().catch(() => {});
+            console.error('Reserve specific hours error:', error);
+            res.status(500).json({ success: false, message: 'Rezervasyon hatası!' });
+        } finally {
+            connection.release();
+        }
     });
 
     // Get user reservations

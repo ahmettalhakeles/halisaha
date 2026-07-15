@@ -304,6 +304,7 @@ function initPaymentRoutes(app, db) {
                 
                 // Set reservation to active
                 await connection.query('UPDATE reservations SET status = "active" WHERE id = ?', [group.reservation_id]);
+                await enqueueTelegramNotification(connection, group.reservation_id, 'pending_share');
                 
                 await commitTransaction(connection);
                 res.json({ success: true, paid_count: 1, status: 'active', message: 'İlk ödeme başarıyla alındı. İkinci kişinin ödemesi bekleniyor.' });

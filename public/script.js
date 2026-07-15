@@ -1846,11 +1846,19 @@ function renderBusinessHoursGrid() {
                 const nextDate = getNextCalendarDayText(dateText);
                 taken = currentBusinessReservations.find(r => r.dateText === nextDate && r.pitchNumber === p && r.hourText === hour && r.status !== 'cancelled');
             }
+            const turkishDateText = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '';
             if (taken) {
                 box.classList.add(taken.type === 'abone' ? 'abone' : 'booked');
                 box.textContent = hour;
                 box.title = `${taken.user_name} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.type === 'abone' ? ' | ABONE' : ''}`;
                 box.onclick = () => {
+                    selectedBusinessGridHour = null;
+                    selectedBusinessGridPitch = null;
+                    selectedBusinessGridDateYMD = null;
+                    document.querySelectorAll('.business-hour-box').forEach(b => b.classList.remove('selected'));
+                    const addArea = document.getElementById('businessGridAddReservationArea');
+                    if (addArea) addArea.style.display = 'none';
+
                     selectedBusinessGridResId = taken.id;
                     const info = document.getElementById('businessGridSelectedInfo');
                     if (info) {
@@ -1861,6 +1869,51 @@ function renderBusinessHoursGrid() {
                 };
             } else {
                 box.textContent = hour;
+                
+                let disabledHours = pitch.disabledHours || [];
+                try { if (typeof disabledHours === 'string') disabledHours = JSON.parse(disabledHours || '[]'); } catch(e) { disabledHours = []; }
+                const isHourDisabled = disabledHours.includes(hour);
+                
+                let closedDays = [];
+                try { if (typeof pitch.closedDays === 'string') closedDays = JSON.parse(pitch.closedDays || '[]'); else closedDays = pitch.closedDays || []; } catch(e) {}
+                const isClosedDay = closedDays.includes(newPlayDate?.getDay());
+                const isFieldClosed = pitch.isClosed || isClosedDay;
+
+                const isPast = isReservationPast(turkishDateText, hour);
+                const isSelectable = !isPast && !isHourDisabled && !isFieldClosed;
+
+                if (isHourDisabled) {
+                    box.classList.add('disabled-hour');
+                    box.title = "KAPALI / ENGELLENMİŞ SAAT";
+                }
+
+                if (isSelectable) {
+                    box.classList.add('business-empty');
+                    if (selectedBusinessGridHour === hour && selectedBusinessGridPitch === p && selectedBusinessGridDateYMD === dateText) {
+                        box.classList.add('selected');
+                    }
+                    box.onclick = () => {
+                        selectedBusinessGridResId = null;
+                        const info = document.getElementById('businessGridSelectedInfo');
+                        if (info) info.style.display = 'none';
+
+                        selectedBusinessGridHour = hour;
+                        selectedBusinessGridPitch = p;
+                        selectedBusinessGridDateYMD = dateText;
+
+                        document.querySelectorAll('.business-hour-box').forEach(b => b.classList.remove('selected'));
+                        box.classList.add('selected');
+
+                        const addArea = document.getElementById('businessGridAddReservationArea');
+                        if (addArea) {
+                            addArea.style.display = 'block';
+                            document.getElementById('bizGridAddDetail').textContent = `SAHA ${p} | ${turkishDateText} | ${hour}`;
+                        }
+                    };
+                } else {
+                    box.style.opacity = '0.4';
+                    box.style.cursor = 'not-allowed';
+                }
             }
             grid.appendChild(box);
         });
@@ -6715,6 +6768,132 @@ function togglePasswordVisibility(inputId, btn) {
     } else {
         input.type = 'password';
         btn.innerText = 'GÖSTER';
+    }
+}
+
+// MANUEL REZERVASYON EKLEME & NAKİT TAKİBİ
+var selectedBusinessGridHour = null;
+var selectedBusinessGridPitch = null;
+var selectedBusinessGridDateYMD = null;
+
+function openAddReservationModal() {
+    if (!selectedBusinessGridHour || !selectedBusinessGridPitch || !selectedBusinessGridDateYMD) {
+        alert("Lütfen önce grid üzerinden boş bir saat seçiniz!");
+        return;
+    }
+    document.getElementById('addResPitchNumber').value = selectedBusinessGridPitch;
+    document.getElementById('addResDateText').value = selectedBusinessGridDateYMD;
+    document.getElementById('addResHourText').value = selectedBusinessGridHour;
+    document.getElementById('addResCustomerName').value = '';
+    document.getElementById('addResCustomerPhone').value = '';
+    
+    const pitch = pitchObjectsList.find(po => po.fieldKey === currentBusinessFieldKey && po.pitchNumber === selectedBusinessGridPitch) || fieldsData[currentBusinessFieldKey];
+    const slotStart = selectedBusinessGridHour.split(' - ')[0];
+    const [h] = slotStart.split(':').map(Number);
+    const isDay = (h >= 6 && h < 17);
+    const morningPrice = pitch ? Number(pitch.morningPrice || 2500) : 2500;
+    const eveningPrice = pitch ? Number(pitch.eveningPrice || 3000) : 3000;
+    const defaultPrice = isDay ? morningPrice : eveningPrice;
+    
+    document.getElementById('addResAmount').value = defaultPrice;
+    document.getElementById('addResPaymentStatus').value = 'odenmedi';
+    openModal('addReservationModal');
+}
+
+function closeAddReservationModal() {
+    closeModal('addReservationModal');
+    // Clear selection classes and hide area
+    selectedBusinessGridHour = null;
+    selectedBusinessGridPitch = null;
+    selectedBusinessGridDateYMD = null;
+    document.querySelectorAll('.business-hour-box').forEach(b => b.classList.remove('selected'));
+    const addArea = document.getElementById('businessGridAddReservationArea');
+    if (addArea) addArea.style.display = 'none';
+}
+
+function normalizePhoneNumber(phone) {
+    let cleaned = String(phone || '').replace(/\D/g, '');
+    if (cleaned.startsWith('90')) {
+        cleaned = cleaned.slice(2);
+    } else if (cleaned.startsWith('0')) {
+        // already has 0
+    } else {
+        cleaned = '0' + cleaned;
+    }
+    if (cleaned.startsWith('05') && cleaned.length === 11) {
+        return cleaned;
+    }
+    if (cleaned.length === 10 && cleaned.startsWith('5')) {
+        return '0' + cleaned;
+    }
+    return cleaned;
+}
+
+async function submitBusinessReservation() {
+    const customerName = document.getElementById('addResCustomerName').value.trim();
+    const rawPhone = document.getElementById('addResCustomerPhone').value.trim();
+    const reservationPrice = parseInt(document.getElementById('addResAmount').value);
+    const paymentStatus = document.getElementById('addResPaymentStatus').value;
+    
+    if (!customerName || customerName.length < 2 || customerName.length > 100) {
+        alert("Müşteri adı 2 ile 100 karakter arasında olmalıdır!");
+        return;
+    }
+    const customerPhone = normalizePhoneNumber(rawPhone);
+    if (!customerPhone || customerPhone.length !== 11 || !customerPhone.startsWith('05')) {
+        alert("Geçersiz telefon numarası! Lütfen geçerli bir cep telefonu giriniz.");
+        return;
+    }
+    if (isNaN(reservationPrice) || reservationPrice < 0) {
+        alert("Rezervasyon tutarı negatif olamaz!");
+        return;
+    }
+    
+    const btn = document.getElementById('btnSubmitBusinessReservation');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = 'Kaydediliyor...';
+    
+    try {
+        const response = await fetch(`/api/business-reservations/${currentBusinessFieldKey}/manual`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                scheduleDate: selectedBusinessGridDateYMD,
+                hourText: selectedBusinessGridHour,
+                pitchNumber: selectedBusinessGridPitch,
+                customerName,
+                customerPhone,
+                reservationPrice,
+                paymentStatus
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert("Rezervasyon başarıyla eklendi!");
+            closeAddReservationModal();
+            
+            selectedBusinessGridHour = null;
+            selectedBusinessGridPitch = null;
+            selectedBusinessGridDateYMD = null;
+            const addArea = document.getElementById('businessGridAddReservationArea');
+            if (addArea) addArea.style.display = 'none';
+            
+            await loadBusinessReservations();
+            await loadBusinessStats();
+            renderBusinessHoursGrid();
+            if (typeof loadBusinessDebts === 'function') {
+                await loadBusinessDebts(currentDebtTimeFilter || 'all');
+            }
+        } else {
+            alert("Hata: " + result.message);
+        }
+    } catch (error) {
+        console.error("Manuel rezervasyon ekleme hatası:", error);
+        alert("Rezervasyon eklenirken bağlantı hatası oluştu!");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'REZERVASYONU KAYDET';
     }
 }
 

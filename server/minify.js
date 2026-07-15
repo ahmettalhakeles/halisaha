@@ -48,3 +48,7 @@ async function runMinify() {
 }
 
 module.exports = { runMinify };
+
+if (require.main === module) {
+    runMinify();
+}

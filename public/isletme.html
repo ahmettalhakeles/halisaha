@@ -374,6 +374,33 @@
                         <p class="stat-label">Haftalık</p>
                     </div>
                 </div>
+
+                <div class="stat-card glass cash-wide-card" style="margin-top: 25px; grid-column: 1 / -1; width: 100%;">
+                    <h3 style="color: var(--warning-orange); font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 15px;">
+                        💵 İŞLETME ELDEN NAKİT DETAYI
+                    </h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px; margin-top: -5px;">
+                        * Bu veriler genel gelir içindeki elden/nakit tahsil edilen manuel rezervasyonların alt kırılımıdır. Toplam ciroya tekrar eklenmemelidir.
+                    </p>
+                    <div class="cash-grid-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; text-align: center;">
+                        <div class="cash-sub-item">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; text-transform: uppercase;">Bugün Nakit</span>
+                            <strong id="cashToday" style="font-size: 1.25rem; color: var(--neon-green);">-</strong>
+                        </div>
+                        <div class="cash-sub-item">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; text-transform: uppercase;">Son 7 Gün Nakit</span>
+                            <strong id="cashLast7Days" style="font-size: 1.25rem; color: var(--neon-green);">-</strong>
+                        </div>
+                        <div class="cash-sub-item">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; text-transform: uppercase;">Bu Ay Nakit</span>
+                            <strong id="cashThisMonth" style="font-size: 1.25rem; color: var(--neon-green);">-</strong>
+                        </div>
+                        <div class="cash-sub-item">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; text-transform: uppercase;">Toplam Nakit</span>
+                            <strong id="cashTotal" style="font-size: 1.25rem; color: var(--neon-green);">-</strong>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- TAB 2: REZERVASYONLAR -->
@@ -387,6 +414,17 @@
                         <button class="btn-filter-res" id="bizGridFilterAbone" onclick="filterBusinessGrid('abone')" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">ABONE</button>
                     </div>
                     <div id="businessHoursGrid" class="hours-grid" style="margin-bottom:20px;"></div>
+                    <div id="businessGridAddReservationArea" style="display:none;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:15px;margin-bottom:20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <strong style="font-size:1.1rem;color:var(--warning-orange);">Seçili Saat Dilimi Boş</strong><br>
+                                <small id="bizGridAddDetail" style="color:var(--text-muted);"></small>
+                            </div>
+                            <div>
+                                <button class="action-btn" id="btnShowAddResModal" style="background:var(--warning-orange);color:#000;padding:8px 18px;font-size:0.8rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;" onclick="openAddReservationModal()">➕ REZERVASYON EKLE</button>
+                            </div>
+                        </div>
+                    </div>
                     <div id="businessGridSelectedInfo" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:15px;margin-bottom:20px;">
                         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                             <div>
@@ -744,6 +782,50 @@
                 </select>
             </div>
             <button class="action-btn" onclick="saveHourAction()">AYARLARI KAYDET</button>
+        </div>
+    </div>
+
+    <!-- Rezervasyon Ekleme Modalı -->
+    <div class="modal-overlay" id="addReservationModal" style="z-index: 1100;">
+        <div class="modal-card mini-modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>REZERVASYON EKLE</h2>
+                <button type="button" class="close-modal" onclick="closeAddReservationModal()">X</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Saha Numarası</label>
+                    <input type="text" id="addResPitchNumber" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Tarih</label>
+                    <input type="text" id="addResDateText" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Saat Dilimi</label>
+                    <input type="text" id="addResHourText" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Müşteri Adı Soyadı</label>
+                    <input type="text" id="addResCustomerName" class="form-control" placeholder="Müşteri Adı Soyadı">
+                </div>
+                <div class="form-group">
+                    <label>Telefon Numarası</label>
+                    <input type="text" id="addResCustomerPhone" class="form-control" placeholder="Örn: 05XXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>Rezervasyon Tutarı (TL)</label>
+                    <input type="number" id="addResAmount" class="form-control" placeholder="Örn: 2800">
+                </div>
+                <div class="form-group">
+                    <label>Ödeme Durumu</label>
+                    <select id="addResPaymentStatus" class="form-control">
+                        <option value="odenmedi">Ödenmedi (Nakit Borç)</option>
+                        <option value="odendi">Ödendi (Elden Nakit)</option>
+                    </select>
+                </div>
+                <button class="action-btn" id="btnSubmitBusinessReservation" onclick="submitBusinessReservation()" style="margin-top: 15px;">REZERVASYONU KAYDET</button>
+            </div>
         </div>
     </div>
 

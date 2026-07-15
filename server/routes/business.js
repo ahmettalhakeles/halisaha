@@ -1,7 +1,124 @@
 const { checkAndCancelExpiredPayments } = require('./payment');
+const { requireBusinessOrAdmin, requireMatchingField } = require('../middleware/businessAuth');
+const { acquireSlotLock } = require('../utils/slotLock');
+const { enqueueTelegramNotification } = require('../utils/telegram');
 
 function initBusinessRoutes(app, db) {
     const fieldsData = require('../fieldsData');
+
+    // POST /api/business-reservations/:fieldKey/manual
+    app.post('/api/business-reservations/:fieldKey/manual', requireBusinessOrAdmin, requireMatchingField, async (req, res) => {
+        const { fieldKey } = req.params;
+        const { scheduleDate, hourText, pitchNumber, customerName, customerPhone, reservationPrice, paymentStatus } = req.body;
+
+        if (!scheduleDate || !hourText || !pitchNumber || !customerName || !customerPhone || reservationPrice === undefined || !paymentStatus) {
+            return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
+        }
+
+        if (customerName.length < 2 || customerName.length > 100) {
+            return res.status(400).json({ success: false, message: 'Müşteri adı 2 ile 100 karakter arasında olmalıdır!' });
+        }
+
+        const normalizedPhone = normalizePhone(customerPhone);
+        if (!normalizedPhone || normalizedPhone.length !== 11 || !normalizedPhone.startsWith('05')) {
+            return res.status(400).json({ success: false, message: 'Geçersiz telefon numarası!' });
+        }
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduleDate)) {
+            return res.status(400).json({ success: false, message: 'Geçersiz tarih formatı (YYYY-MM-DD olmalı)!' });
+        }
+
+        const masterHoursList = [
+            "06:00 - 07:00", "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
+            "10:00 - 11:00", "11:00 - 12:00", "12:00 - 13:00", "13:00 - 14:00",
+            "14:00 - 15:00", "15:00 - 16:00", "16:00 - 17:00", "17:00 - 18:00",
+            "18:00 - 19:00", "19:00 - 20:00", "20:00 - 21:00", "21:00 - 22:00",
+            "22:00 - 23:00", "23:00 - 00:00",
+            "00:00 - 01:00", "01:00 - 02:00", "02:00 - 03:00", "03:00 - 04:00",
+            "04:00 - 05:00", "05:00 - 06:00"
+        ];
+        if (!masterHoursList.includes(hourText)) {
+            return res.status(400).json({ success: false, message: 'Geçersiz saat dilimi!' });
+        }
+
+        const price = Number(reservationPrice);
+        if (!Number.isInteger(price) || price < 0 || price > 100000) {
+            return res.status(400).json({ success: false, message: 'Geçersiz rezervasyon tutarı!' });
+        }
+
+        if (!['odendi', 'odenmedi'].includes(paymentStatus)) {
+            return res.status(400).json({ success: false, message: 'Geçersiz ödeme durumu!' });
+        }
+
+        const field = fieldsData[fieldKey];
+        if (!field) {
+            return res.status(400).json({ success: false, message: 'Geçersiz saha kodu!' });
+        }
+        const maxPitches = field.pitchCount || 1;
+        const pNum = Number(pitchNumber);
+        if (isNaN(pNum) || pNum < 1 || pNum > maxPitches) {
+            return res.status(400).json({ success: false, message: 'Geçersiz saha numarası!' });
+        }
+
+        const connection = await db.promise().getConnection();
+        try {
+            await connection.beginTransaction();
+
+            const [blacklist] = await connection.query(
+                'SELECT id FROM field_blacklists WHERE phone_number = ? AND fieldKey = ?',
+                [normalizedPhone, fieldKey]
+            );
+            if (blacklist.length > 0) {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Bu telefon numarası kara listede bulunuyor!' });
+            }
+
+            const playDate = getPlayDateFromScheduleDate(scheduleDate, hourText);
+            const dateText = getTurkishDateText(playDate);
+
+            const dummyReservation = { fieldKey, pitchNumber: pNum, play_date: playDate, hourText };
+            const releaseLock = await acquireSlotLock(connection, dummyReservation);
+
+            try {
+                const [conflict] = await connection.query(
+                    `SELECT id FROM reservations 
+                     WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status != 'cancelled' 
+                     FOR UPDATE`,
+                    [fieldKey, pNum, playDate, hourText]
+                );
+                if (conflict.length > 0) {
+                    await connection.rollback();
+                    return res.status(409).json({ success: false, message: 'Bu saat dilimi dolu!' });
+                }
+
+                const [insertResult] = await connection.query(
+                    `INSERT INTO reservations 
+                     (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, customer_phone, reservation_price, payment_status, status, type, payment_method) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'manual', 'cash')`,
+                    [fieldKey, pNum, dateText, playDate, hourText, customerName, normalizedPhone, price, paymentStatus]
+                );
+
+                const reservationId = insertResult.insertId;
+
+                if (paymentStatus === 'odendi') {
+                    await enqueueTelegramNotification(connection, reservationId, 'paid', { payment_type: 'manual_cash' });
+                } else {
+                    await enqueueTelegramNotification(connection, reservationId, 'manual_created');
+                }
+
+                await connection.commit();
+                res.json({ success: true, message: 'Rezervasyon başarıyla oluşturuldu!', id: reservationId });
+            } finally {
+                await releaseLock();
+            }
+        } catch (err) {
+            await connection.rollback().catch(() => {});
+            console.error('Manual reservation error:', err);
+            res.status(500).json({ success: false, message: 'Sunucu hatası: ' + err.message });
+        } finally {
+            connection.release();
+        }
+    });
 
     // Get match seekers with filters
     app.get('/api/weekly-schedule/:fieldKey', async (req, res) => {
@@ -91,7 +208,8 @@ function initBusinessRoutes(app, db) {
         const resSql = `
             SELECT r.*, 
                    r.user_name AS reserverName,
-                   u.phone AS reserverPhone,
+                   COALESCE(r.customer_phone, u.phone) AS reserverPhone,
+                   COALESCE(r.customer_phone, u.phone) AS user_phone,
                    r.dateText,
                    r.play_date,
                    r.hourText,
@@ -120,7 +238,7 @@ function initBusinessRoutes(app, db) {
         const { fieldKey } = req.params;
         const { filter } = req.query;
         
-        const sqlQuery = "SELECT * FROM reservations WHERE fieldKey = ? AND status != 'cancelled' ORDER BY play_date ASC, hourText ASC";
+        const sqlQuery = "SELECT r.*, COALESCE(r.customer_phone, u.phone) AS user_phone FROM reservations r LEFT JOIN users u ON r.user_id = u.id WHERE r.fieldKey = ? AND r.status != 'cancelled' ORDER BY r.play_date ASC, r.hourText ASC";
         db.query(sqlQuery, [fieldKey], (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             
@@ -414,7 +532,7 @@ function initBusinessRoutes(app, db) {
         const { fieldKey } = req.params;
 
         db.query(
-            `SELECT r.pitchNumber, r.hourText, r.created_at, r.dateText, r.play_date, r.reservation_price, r.payment_status, po.morningPrice, po.eveningPrice
+            `SELECT r.status, r.type, r.payment_method, r.pitchNumber, r.hourText, r.created_at, r.dateText, r.play_date, r.reservation_price, r.payment_status, po.morningPrice, po.eveningPrice
              FROM reservations r
              LEFT JOIN pitch_objects po ON r.fieldKey COLLATE utf8mb4_unicode_ci = po.fieldKey COLLATE utf8mb4_unicode_ci AND r.pitchNumber = po.pitchNumber
              WHERE r.fieldKey = ? AND r.status != 'cancelled'`,
@@ -428,7 +546,8 @@ function initBusinessRoutes(app, db) {
                     totalEarningsPaid: 0, totalEarningsUnpaid: 0,
                     todayEarningsPaid: 0, todayEarningsUnpaid: 0,
                     thisMonthEarningsPaid: 0, thisMonthEarningsUnpaid: 0,
-                    last7DaysEarningsPaid: 0, last7DaysEarningsUnpaid: 0 
+                    last7DaysEarningsPaid: 0, last7DaysEarningsUnpaid: 0,
+                    cashToday: 0, cashLast7Days: 0, cashThisMonth: 0, cashTotal: 0
                 };
 
                 const tzOffset = now.getTimezoneOffset() * 60000;
@@ -441,31 +560,51 @@ function initBusinessRoutes(app, db) {
                     const ePrice = Number(resRow.eveningPrice) || 0;
                     const slotStartHour = parseInt(resRow.hourText.split(' - ')[0]) || 0;
                     const isEvening = slotStartHour >= 17 || slotStartHour < 6;
-                    const price = Number(resRow.reservation_price || (isEvening ? ePrice : mPrice));
+                    const price = resRow.reservation_price !== null ? Number(resRow.reservation_price) : (isEvening ? ePrice : mPrice);
                     const isPaid = resRow.payment_status === 'odendi';
 
-                    const pStr = getPlayDateString(resRow.play_date, resRow.dateText, resRow.hourText, resRow.created_at);
+                    // Gelir getirmeyen statüleri (blocked, pending_payment, cancelled) ciroya/sayılara dahil etme
+                    const isIncomeGenerating = resRow.status !== 'blocked' && resRow.status !== 'blocked_yuksek' && resRow.status !== 'pending_payment' && resRow.status !== 'cancelled';
 
-                    stats.total++;
-                    if (isPaid) stats.totalEarningsPaid += price;
-                    else stats.totalEarningsUnpaid += price;
+                    if (isIncomeGenerating) {
+                        const pStr = getPlayDateString(resRow.play_date, resRow.dateText, resRow.hourText, resRow.created_at);
 
-                    if (pStr === todayStr) {
-                        stats.today++;
-                        if (isPaid) stats.todayEarningsPaid += price;
-                        else stats.todayEarningsUnpaid += price;
-                    }
+                        stats.total++;
+                        if (isPaid) stats.totalEarningsPaid += price;
+                        else stats.totalEarningsUnpaid += price;
 
-                    if (pStr && pStr >= startOf7DaysAgoStr && pStr <= todayStr) {
-                        stats.last7Days++;
-                        if (isPaid) stats.last7DaysEarningsPaid += price;
-                        else stats.last7DaysEarningsUnpaid += price;
-                    }
+                        if (pStr === todayStr) {
+                            stats.today++;
+                            if (isPaid) stats.todayEarningsPaid += price;
+                            else stats.todayEarningsUnpaid += price;
+                        }
 
-                    if (pStr && pStr >= startOfThisMonthStr && pStr <= todayStr) {
-                        stats.thisMonth++;
-                        if (isPaid) stats.thisMonthEarningsPaid += price;
-                        else stats.thisMonthEarningsUnpaid += price;
+                        if (pStr && pStr >= startOf7DaysAgoStr && pStr <= todayStr) {
+                            stats.last7Days++;
+                            if (isPaid) stats.last7DaysEarningsPaid += price;
+                            else stats.last7DaysEarningsUnpaid += price;
+                        }
+
+                        if (pStr && pStr >= startOfThisMonthStr && pStr <= todayStr) {
+                            stats.thisMonth++;
+                            if (isPaid) stats.thisMonthEarningsPaid += price;
+                            else stats.thisMonthEarningsUnpaid += price;
+                        }
+
+                        // Elden/Nakit hesabı: type='manual', payment_method='cash', payment_status='odendi'
+                        const isCash = resRow.type === 'manual' && resRow.payment_method === 'cash' && isPaid;
+                        if (isCash) {
+                            stats.cashTotal += price;
+                            if (pStr === todayStr) {
+                                stats.cashToday += price;
+                            }
+                            if (pStr && pStr >= startOf7DaysAgoStr && pStr <= todayStr) {
+                                stats.cashLast7Days += price;
+                            }
+                            if (pStr && pStr >= startOfThisMonthStr && pStr <= todayStr) {
+                                stats.cashThisMonth += price;
+                            }
+                        }
                     }
                 }
 
@@ -478,6 +617,11 @@ function initBusinessRoutes(app, db) {
                 stats.thisMonthEarningsPaid = parseFloat(stats.thisMonthEarningsPaid.toFixed(2));
                 stats.thisMonthEarningsUnpaid = parseFloat(stats.thisMonthEarningsUnpaid.toFixed(2));
                 
+                stats.cashToday = parseFloat(stats.cashToday.toFixed(2));
+                stats.cashLast7Days = parseFloat(stats.cashLast7Days.toFixed(2));
+                stats.cashThisMonth = parseFloat(stats.cashThisMonth.toFixed(2));
+                stats.cashTotal = parseFloat(stats.cashTotal.toFixed(2));
+
                 res.json({ success: true, data: stats });
             }
         );
@@ -651,4 +795,50 @@ function getPlayDateString(play_date, dateText, hourText, created_at) {
     }
     return null;
 }
+
+function normalizePhone(phone) {
+    let cleaned = String(phone || '').replace(/\D/g, '');
+    if (cleaned.startsWith('90')) {
+        cleaned = cleaned.slice(2);
+    } else if (cleaned.startsWith('0')) {
+        // already has 0
+    } else {
+        cleaned = '0' + cleaned;
+    }
+    if (cleaned.startsWith('05') && cleaned.length === 11) {
+        return cleaned;
+    }
+    if (cleaned.length === 10 && cleaned.startsWith('5')) {
+        return '0' + cleaned;
+    }
+    return cleaned;
+}
+
+function getPlayDateFromScheduleDate(scheduleDate, hourText) {
+    const d = new Date(scheduleDate);
+    if (hourText) {
+        const hourPart = hourText.split(' - ')[0];
+        const [h] = hourPart.split(':').map(Number);
+        if (h < 6) {
+            d.setDate(d.getDate() + 1);
+        }
+    }
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function getTurkishDateText(playDateStr) {
+    const parts = playDateStr.split('-');
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1;
+    const day = parseInt(parts[2]);
+    const months = [
+        "OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN",
+        "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"
+    ];
+    return `${day} ${months[month]}`;
+}
+
 module.exports = { initBusinessRoutes };

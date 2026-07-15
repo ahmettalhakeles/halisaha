@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS reservations (
   cancelled_by VARCHAR(50) DEFAULT NULL,
   cancellation_reason VARCHAR(255) DEFAULT NULL,
   subscription_id INT DEFAULT NULL,
+  customer_phone VARCHAR(20) DEFAULT NULL,
+  payment_method VARCHAR(20) DEFAULT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY unique_subscription_occurrence (subscription_id, play_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
