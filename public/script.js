@@ -725,7 +725,7 @@ function renderKontrolGrid(data, monday, isMobile) {
     const defaultClose = '01:00';
 
     const days = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
         const jsDay = d.getDay();
