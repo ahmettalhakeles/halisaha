@@ -1038,6 +1038,10 @@ async function loadBusinessDashboard() {
         const telegramResponse = await fetch(`/api/pitch-settings/${currentBusinessFieldKey}/telegram`, {
             headers: getAuthHeaders()
         });
+        if (telegramResponse.status === 401 || telegramResponse.status === 403) {
+            handleBusinessLogout();
+            return;
+        }
         const telegramResult = await telegramResponse.json();
         if (telegramResult.success) {
             document.getElementById('businessSettingTelegramChatId').value = telegramResult.data.telegram_chat_id || '';
@@ -1053,6 +1057,10 @@ async function loadBusinessDashboard() {
 async function loadBusinessStats() {
     try {
         const response = await fetch(`/api/stats-content/${currentBusinessFieldKey}`, { headers: getAuthHeaders() });
+        if (response.status === 401 || response.status === 403) {
+            handleBusinessLogout();
+            return;
+        }
         const result = await response.json();
         if (result.success) {
             const data = result.data;
@@ -6876,6 +6884,11 @@ async function submitBusinessReservation() {
                 paymentStatus
             })
         });
+        if (response.status === 401 || response.status === 403) {
+            closeAddReservationModal();
+            handleBusinessLogout();
+            return;
+        }
         const result = await response.json();
         if (result.success) {
             alert("Rezervasyon başarıyla eklendi!");
