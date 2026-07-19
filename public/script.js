@@ -174,23 +174,16 @@ function getAuthHeaders() {
     // İşletme token'ı: "Beni Hatırla" ise localStorage, değilse inMemoryBusinessToken
     const businessToken = localStorage.getItem('businessToken') || inMemoryBusinessToken;
     const adminToken = localStorage.getItem('adminToken');
-    
-    // Admin token sadece admin ve işletme sayfalarında ekle
-    if (isAdminPage && adminToken) {
-        headers['x-admin-token'] = adminToken;
-    }
-    
-    if (isBusinessPage) {
-        if (adminToken) {
-            // Admin is impersonating a business
-            headers['x-admin-token'] = adminToken;
-        } else if (businessToken) {
-            headers['Authorization'] = `Bearer ${businessToken}`;
-        }
-    } else if (!isAdminPage && userToken) {
-        // Normal kullanıcı sayfasında sadece kullanıcı token'ı ekle
-        headers['Authorization'] = `Bearer ${userToken}`;
-    }
+    const impersonateField = localStorage.getItem('adminImpersonateField');
+
+    Object.assign(headers, window.AuthContext.resolveAuthHeaders({
+        isBusinessPage,
+        isAdminPage,
+        adminToken,
+        businessToken,
+        userToken,
+        impersonateField
+    }));
     return headers;
 }
 
@@ -973,6 +966,12 @@ async function handleBusinessLogin() {
         alert("Sunucu hatası! Lütfen tekrar deneyin.");
         return;
     }
+
+    // A normal business login must not inherit a stale admin impersonation context.
+    localStorage.removeItem('adminImpersonateField');
+    document.body.classList.remove('admin-impersonating');
+    const impersonationBanner = document.getElementById('adminImpersonationBanner');
+    if (impersonationBanner) impersonationBanner.style.display = 'none';
 
     currentBusinessFieldKey = key;
     isBusinessLoggedIn = true;
