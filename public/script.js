@@ -6529,6 +6529,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
+    // Telefon numarası girişi sınırlaması (Sadece rakam ve max 11 hane)
+    const phoneInput = document.getElementById('addResCustomerPhone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '').substring(0, 11);
+        });
+    }
+    
     // Uygulama yüklendiğinde duyuruları kontrol et
     runWhenBrowserIsIdle(checkAnnouncements);
 });
