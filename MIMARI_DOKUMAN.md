@@ -196,14 +196,22 @@ Frontend dosyalari `public/` altindan statik olarak sunulur.
 | `public/script.js` | Ana kaynak JavaScript |
 | `public/script.min.js` | Minify edilmis ana JavaScript |
 | `public/payment-spinner.css` | Odeme arayuzu ek stili |
-| `public/js/*.js` | Sayfalarin ana scripte ek olarak yukledigi kucuk yardimci dosyalar |
+| `public/js/*.js` | Ozellik bazli yardimci JavaScript dosyalari |
 
 `public/js/` altindaki yardimci dosyalar:
 
 | Dosya | Alan |
 | --- | --- |
-| `auth-context.js` | Sayfaya gore dogru kullanici/isletme/admin token header'ini secme yardimcisi |
+| `auth.js` | Kullanici/isletme/admin oturum yardimcilari |
+| `bootstrap.js` | Baslangic durumu, global yardimcilar, Turnstile yukleme |
+| `business.js` | Isletme paneli davranislari |
+| `constants.js` | Paylasilan sabitler ve baslangic verileri |
+| `forum.js` | Oyuncu bulma ilanlari |
 | `main.js` | Ana ekran baslangic akisi |
+| `match.js` | Mac/takim arama akislarinin frontend mantigi |
+| `reservations.js` | Rezervasyon secimi, olusturma ve odeme arayuzu |
+| `reviews.js` | Yorumlar, profil, borc ve odeme durumu UI mantiklari |
+| `subscriptions.js` | Abonelik UI mantigi |
 
 HTML parcali build sistemi yoktur. Frontend kaynaklari `public/` altinda tutulur ve statik olarak sunulur.
 
