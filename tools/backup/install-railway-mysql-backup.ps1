@@ -118,7 +118,7 @@ else {
     Write-Host 'Dogrulanmis ilk yedek mevcut; tekrar alinmayacak.' -ForegroundColor Cyan
 }
 
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}" -SendSuccessNotification' -f $InstalledScript) -WorkingDirectory $InstallRoot
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}"' -f $InstalledScript) -WorkingDirectory $InstallRoot
 $trigger = New-ScheduledTaskTrigger -Daily -At '03:00'
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun -ExecutionTimeLimit (New-TimeSpan -Hours 2) -RestartCount 2 -RestartInterval (New-TimeSpan -Minutes 15)
 $principal = New-ScheduledTaskPrincipal -UserId $currentIdentity -LogonType Interactive -RunLevel Limited
