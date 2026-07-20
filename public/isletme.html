@@ -226,19 +226,21 @@
                 <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; margin-bottom: 20px;">
                     <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--warning-orange); font-family: 'Oswald', sans-serif;">İŞLETME GİRİŞİ</h2>
                 </div>
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">İŞLETME ADI / SAHA KEY</label>
-                    <input type="text" id="businessKey" class="form-control" placeholder="Örn: final, arena" style="padding: 12px;" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
-                </div>
-                <div class="form-group" style="margin-bottom: 25px;">
-                    <label style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">ŞİFRE</label>
-                    <input type="password" id="businessPassword" class="form-control" placeholder="İşletme şifresi" style="padding: 12px;" onkeypress="if(event.key === 'Enter') handleBusinessLogin()">
-                </div>
-                <button class="action-btn" onclick="handleBusinessLogin()" style="width: 100%; padding: 14px; background: var(--warning-orange); color: #000; font-weight: bold; font-size: 1rem; border-radius: 8px;">GİRİŞ YAP</button>
-                <div style="display:flex; align-items:center; gap:8px; margin-top:15px;">
-                    <input type="checkbox" id="businessRememberMe" style="width:16px; height:16px; cursor:pointer;">
-                    <label for="businessRememberMe" style="font-size:0.82rem; color:var(--text-muted); cursor:pointer; user-select:none;">Beni Hatırla</label>
-                </div>
+                <form id="businessLoginForm" autocomplete="on" onsubmit="event.preventDefault(); handleBusinessLogin();">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="businessKey" style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">İŞLETME ADI / SAHA KEY</label>
+                        <input type="text" id="businessKey" name="username" class="form-control" placeholder="Örn: final, arena" style="padding: 12px;" autocomplete="username">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label for="businessPassword" style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">ŞİFRE</label>
+                        <input type="password" id="businessPassword" name="password" class="form-control" placeholder="İşletme şifresi" style="padding: 12px;" autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="action-btn" style="width: 100%; padding: 14px; background: var(--warning-orange); color: #000; font-weight: bold; font-size: 1rem; border-radius: 8px;">GİRİŞ YAP</button>
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:15px;">
+                        <input type="checkbox" id="businessRememberMe" style="width:16px; height:16px; cursor:pointer;">
+                        <label for="businessRememberMe" style="font-size:0.82rem; color:var(--text-muted); cursor:pointer; user-select:none;">Beni Hatırla</label>
+                    </div>
+                </form>
             </div>
         </div>
 

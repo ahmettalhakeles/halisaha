@@ -143,9 +143,11 @@ async function initWeatherWidget() {
     const container = document.getElementById('weatherDisplay');
     if (!container) return;
     try {
-        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.6558&longitude=35.8272&daily=temperature_2m_max,temperature_2m_min,weathercode,sunrise,sunset&timezone=auto');
+        const response = await fetch('/api/weather');
         if (!response.ok) throw new Error("API hatası");
-        const data = await response.json();
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || "API hatası");
+        const data = result.data;
 
         const forecasts = [];
         const options = { weekday: 'short' };
@@ -177,16 +179,7 @@ async function initWeatherWidget() {
         }
     } catch (error) {
         console.error("Hava durumu yüklenemedi:", error);
-        const daysShort = [];
-        for (let i = 0; i < 7; i++) {
-            let d = new Date(); d.setDate(d.getDate() + i);
-            daysShort.push(d.toLocaleDateString('tr-TR', { weekday: 'short' }).toLocaleUpperCase('tr-TR'));
-        }
-        container.innerHTML = daysShort.map((day, idx) => {
-            const min = 12 + idx;
-            const max = 22 + idx * 2;
-            return `<div class="weather-day-item ${idx === 0 ? 'today' : ''}"><span>${idx === 0 ? 'BUGÜN' : day}</span><strong>${min}° / ${max}°C</strong><small>BULUTLU</small></div>`;
-        }).join('');
+        container.innerHTML = '<div class="weather-day-item"><span>HAVA</span><strong>-</strong><small>YÜKLENEMEDİ</small></div>';
     }
 }
 

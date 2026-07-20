@@ -15,6 +15,7 @@ test('password and simulated card fields have form and autocomplete semantics', 
     assert.match(indexHtml, /<form id="paymentSimulationForm"[\s\S]*?id="simCardCvv"[^>]*autocomplete="cc-csc"[\s\S]*?<\/form>/);
     assert.match(indexHtml, /id="simCardNumber"[^>]*autocomplete="cc-number"/);
     assert.match(indexHtml, /id="simCardExpiry"[^>]*autocomplete="cc-exp"/);
+    assert.match(businessHtml, /<form id="businessLoginForm"[\s\S]*?id="businessKey"[^>]*autocomplete="username"[\s\S]*?id="businessPassword"[^>]*autocomplete="current-password"[\s\S]*?<\/form>/);
 });
 
 test('Turnstile uses explicit Turkish configuration and clears stale tokens', () => {
