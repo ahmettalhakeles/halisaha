@@ -27,6 +27,9 @@ function initBusinessRoutes(app, db) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduleDate)) {
             return res.status(400).json({ success: false, message: 'Geçersiz tarih formatı (YYYY-MM-DD olmalı)!' });
         }
+        if (!isDateWithinTodayAndDays(scheduleDate, 30)) {
+            return res.status(400).json({ success: false, message: 'Rezervasyon en fazla 30 gün sonrası için yapılabilir!' });
+        }
 
         const masterHoursList = [
             "06:00 - 07:00", "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
@@ -100,11 +103,10 @@ function initBusinessRoutes(app, db) {
 
                 const reservationId = insertResult.insertId;
 
-                if (paymentStatus === 'odendi') {
-                    await enqueueTelegramNotification(connection, reservationId, 'paid', { payment_type: 'manual_cash' });
-                } else {
-                    await enqueueTelegramNotification(connection, reservationId, 'manual_created');
-                }
+                await enqueueTelegramNotification(connection, reservationId, 'manual_created', {
+                    payment_type: 'manual_cash',
+                    payment_status: paymentStatus
+                });
 
                 await connection.commit();
                 res.json({ success: true, message: 'Rezervasyon başarıyla oluşturuldu!', id: reservationId });
@@ -121,7 +123,7 @@ function initBusinessRoutes(app, db) {
     });
 
     // Get match seekers with filters
-    app.get('/api/weekly-schedule/:fieldKey', async (req, res) => {
+    app.get('/api/weekly-schedule/:fieldKey', requireBusinessOrAdmin, requireMatchingField, async (req, res) => {
         await checkAndCancelExpiredPayments(db);
         const { fieldKey } = req.params;
         const { weekStart, weekEnd, pitchNumber } = req.query;
@@ -194,7 +196,7 @@ function initBusinessRoutes(app, db) {
     });
 
     // Get business reservations (date-filtered)
-    app.get('/api/business-reservations/:fieldKey', (req, res) => {
+    app.get('/api/business-reservations/:fieldKey', requireBusinessOrAdmin, requireMatchingField, (req, res) => {
         const { fieldKey } = req.params;
         const { weekStart, weekEnd, pitchNumber } = req.query;
 
@@ -234,11 +236,11 @@ function initBusinessRoutes(app, db) {
     });
 
     // İşletme borç listesi
-    app.get('/api/business-debts/:fieldKey', (req, res) => {
+    app.get('/api/business-debts/:fieldKey', requireBusinessOrAdmin, requireMatchingField, (req, res) => {
         const { fieldKey } = req.params;
         const { filter } = req.query;
         
-        const sqlQuery = "SELECT r.*, COALESCE(r.customer_phone, u.phone) AS user_phone FROM reservations r LEFT JOIN users u ON r.user_id = u.id WHERE r.fieldKey = ? AND r.status != 'cancelled' ORDER BY r.play_date ASC, r.hourText ASC";
+        const sqlQuery = "SELECT r.*, COALESCE(r.customer_phone, u.phone) AS user_phone, CASE WHEN r.payment_method = 'cash' OR r.type IN ('manual', 'abone') THEN 'cash' ELSE 'online' END AS payment_type FROM reservations r LEFT JOIN users u ON r.user_id = u.id WHERE r.fieldKey = ? AND r.status != 'cancelled' AND r.status != 'pending_payment' ORDER BY r.play_date ASC, r.hourText ASC";
         db.query(sqlQuery, [fieldKey], (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             
@@ -541,13 +543,44 @@ function initBusinessRoutes(app, db) {
                 if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
 
                 const now = new Date();
+                const emptyPaymentStats = () => ({
+                    total: 0, today: 0, thisMonth: 0, last7Days: 0,
+                    totalPaid: 0, totalUnpaid: 0,
+                    todayPaid: 0, todayUnpaid: 0,
+                    thisMonthPaid: 0, thisMonthUnpaid: 0,
+                    last7DaysPaid: 0, last7DaysUnpaid: 0
+                });
                 const stats = { 
                     total: 0, today: 0, thisMonth: 0, last7Days: 0,
                     totalEarningsPaid: 0, totalEarningsUnpaid: 0,
                     todayEarningsPaid: 0, todayEarningsUnpaid: 0,
                     thisMonthEarningsPaid: 0, thisMonthEarningsUnpaid: 0,
-                    last7DaysEarningsPaid: 0, last7DaysEarningsUnpaid: 0,
-                    cashToday: 0, cashLast7Days: 0, cashThisMonth: 0, cashTotal: 0
+                    last7DaysEarningsPaid: 0, last7DaysEarningsUnpaid: 0
+                };
+                const grouped = {
+                    online: emptyPaymentStats(),
+                    cash: emptyPaymentStats(),
+                    combined: emptyPaymentStats()
+                };
+                const addToBucket = (bucket, price, isPaid, pStr) => {
+                    bucket.total++;
+                    if (isPaid) bucket.totalPaid += price;
+                    else bucket.totalUnpaid += price;
+                    if (pStr === todayStr) {
+                        bucket.today++;
+                        if (isPaid) bucket.todayPaid += price;
+                        else bucket.todayUnpaid += price;
+                    }
+                    if (pStr && pStr >= startOf7DaysAgoStr && pStr <= todayStr) {
+                        bucket.last7Days++;
+                        if (isPaid) bucket.last7DaysPaid += price;
+                        else bucket.last7DaysUnpaid += price;
+                    }
+                    if (pStr && pStr >= startOfThisMonthStr && pStr <= todayStr) {
+                        bucket.thisMonth++;
+                        if (isPaid) bucket.thisMonthPaid += price;
+                        else bucket.thisMonthUnpaid += price;
+                    }
                 };
 
                 const tzOffset = now.getTimezoneOffset() * 60000;
@@ -569,58 +602,45 @@ function initBusinessRoutes(app, db) {
                     if (isIncomeGenerating) {
                         const pStr = getPlayDateString(resRow.play_date, resRow.dateText, resRow.hourText, resRow.created_at);
 
-                        stats.total++;
-                        if (isPaid) stats.totalEarningsPaid += price;
-                        else stats.totalEarningsUnpaid += price;
-
-                        if (pStr === todayStr) {
-                            stats.today++;
-                            if (isPaid) stats.todayEarningsPaid += price;
-                            else stats.todayEarningsUnpaid += price;
-                        }
-
-                        if (pStr && pStr >= startOf7DaysAgoStr && pStr <= todayStr) {
-                            stats.last7Days++;
-                            if (isPaid) stats.last7DaysEarningsPaid += price;
-                            else stats.last7DaysEarningsUnpaid += price;
-                        }
-
-                        if (pStr && pStr >= startOfThisMonthStr && pStr <= todayStr) {
-                            stats.thisMonth++;
-                            if (isPaid) stats.thisMonthEarningsPaid += price;
-                            else stats.thisMonthEarningsUnpaid += price;
-                        }
-
-                        // Elden/Nakit hesabı: type='manual', payment_method='cash', payment_status='odendi'
-                        const isCash = resRow.type === 'manual' && resRow.payment_method === 'cash' && isPaid;
-                        if (isCash) {
-                            stats.cashTotal += price;
-                            if (pStr === todayStr) {
-                                stats.cashToday += price;
-                            }
-                            if (pStr && pStr >= startOf7DaysAgoStr && pStr <= todayStr) {
-                                stats.cashLast7Days += price;
-                            }
-                            if (pStr && pStr >= startOfThisMonthStr && pStr <= todayStr) {
-                                stats.cashThisMonth += price;
-                            }
-                        }
+                        const isCash = resRow.payment_method === 'cash' || resRow.type === 'manual' || resRow.type === 'abone';
+                        addToBucket(grouped.combined, price, isPaid, pStr);
+                        addToBucket(isCash ? grouped.cash : grouped.online, price, isPaid, pStr);
                     }
                 }
 
-                stats.totalEarningsPaid = parseFloat(stats.totalEarningsPaid.toFixed(2));
-                stats.totalEarningsUnpaid = parseFloat(stats.totalEarningsUnpaid.toFixed(2));
-                stats.todayEarningsPaid = parseFloat(stats.todayEarningsPaid.toFixed(2));
-                stats.todayEarningsUnpaid = parseFloat(stats.todayEarningsUnpaid.toFixed(2));
-                stats.last7DaysEarningsPaid = parseFloat(stats.last7DaysEarningsPaid.toFixed(2));
-                stats.last7DaysEarningsUnpaid = parseFloat(stats.last7DaysEarningsUnpaid.toFixed(2));
-                stats.thisMonthEarningsPaid = parseFloat(stats.thisMonthEarningsPaid.toFixed(2));
-                stats.thisMonthEarningsUnpaid = parseFloat(stats.thisMonthEarningsUnpaid.toFixed(2));
-                
-                stats.cashToday = parseFloat(stats.cashToday.toFixed(2));
-                stats.cashLast7Days = parseFloat(stats.cashLast7Days.toFixed(2));
-                stats.cashThisMonth = parseFloat(stats.cashThisMonth.toFixed(2));
-                stats.cashTotal = parseFloat(stats.cashTotal.toFixed(2));
+                const roundBucket = bucket => {
+                    for (const key of Object.keys(bucket)) {
+                        if (typeof bucket[key] === 'number' && !Number.isInteger(bucket[key])) {
+                            bucket[key] = parseFloat(bucket[key].toFixed(2));
+                        }
+                    }
+                    return bucket;
+                };
+                stats.total = grouped.combined.total;
+                stats.today = grouped.combined.today;
+                stats.thisMonth = grouped.combined.thisMonth;
+                stats.last7Days = grouped.combined.last7Days;
+                stats.totalEarningsPaid = grouped.combined.totalPaid;
+                stats.totalEarningsUnpaid = grouped.combined.totalUnpaid;
+                stats.todayEarningsPaid = grouped.combined.todayPaid;
+                stats.todayEarningsUnpaid = grouped.combined.todayUnpaid;
+                stats.thisMonthEarningsPaid = grouped.combined.thisMonthPaid;
+                stats.thisMonthEarningsUnpaid = grouped.combined.thisMonthUnpaid;
+                stats.last7DaysEarningsPaid = grouped.combined.last7DaysPaid;
+                stats.last7DaysEarningsUnpaid = grouped.combined.last7DaysUnpaid;
+                stats.cashToday = grouped.cash.todayPaid;
+                stats.cashTodayUnpaid = grouped.cash.todayUnpaid;
+                stats.cashLast7Days = grouped.cash.last7DaysPaid;
+                stats.cashLast7DaysUnpaid = grouped.cash.last7DaysUnpaid;
+                stats.cashThisMonth = grouped.cash.thisMonthPaid;
+                stats.cashThisMonthUnpaid = grouped.cash.thisMonthUnpaid;
+                stats.cashTotal = grouped.cash.totalPaid;
+                stats.cashTotalUnpaid = grouped.cash.totalUnpaid;
+                stats.paymentStats = {
+                    online: roundBucket(grouped.online),
+                    cash: roundBucket(grouped.cash),
+                    combined: roundBucket(grouped.combined)
+                };
 
                 res.json({ success: true, data: stats });
             }
@@ -673,7 +693,7 @@ function initBusinessRoutes(app, db) {
             ? ['all', 'businesses']
             : ['all', 'users'];
 
-        db.query("SELECT * FROM announcements WHERE status = 'active' AND target_audience IN (?) ORDER BY created_at DESC", [allowedTargets], (err, results) => {
+        db.query("SELECT * FROM announcements WHERE status = 'active' AND target_audience IN (?) AND created_at > DATE_SUB(NOW(), INTERVAL 168 HOUR) ORDER BY created_at DESC", [allowedTargets], (err, results) => {
             if (err) {
                 console.error("Announcements error:", err);
                 return res.status(500).json({ success: false, message: 'VeritabanÄ± hatasÄ±!' });
@@ -684,7 +704,7 @@ function initBusinessRoutes(app, db) {
 
     // Get announcements
     app.get('/api/announcements', (req, res) => {
-        db.query("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC", (err, results) => {
+        db.query("SELECT * FROM announcements WHERE status = 'active' AND created_at > DATE_SUB(NOW(), INTERVAL 168 HOUR) ORDER BY created_at DESC", (err, results) => {
             if (err) {
                 console.error("Announcements error:", err);
                 return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
@@ -832,6 +852,18 @@ function getPlayDateFromScheduleDate(scheduleDate, hourText) {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
+}
+
+function isDateWithinTodayAndDays(ymd, maxDays) {
+    const parts = String(ymd || '').split('-').map(Number);
+    if (parts.length !== 3 || parts.some(n => !Number.isInteger(n))) return false;
+    const candidate = new Date(parts[0], parts[1] - 1, parts[2]);
+    candidate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const max = new Date(today);
+    max.setDate(today.getDate() + maxDays);
+    return candidate >= today && candidate <= max;
 }
 
 function getTurkishDateText(playDateStr) {

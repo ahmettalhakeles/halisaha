@@ -16,17 +16,33 @@ function formatMoney(value) {
     return Number.isFinite(amount) ? `${amount.toLocaleString('tr-TR')} TL` : '0 TL';
 }
 
+function formatTelegramDate(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '-';
+    const ymd = raw.substring(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+        const [year, month, day] = ymd.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }).toLocaleUpperCase('tr-TR');
+    }
+    return raw;
+}
+
 function buildMessage(eventType, payload = {}) {
     if (eventType === 'test') {
         return '<b>✅ Telegram bağlantısı başarılı</b>\n\nHalı saha bildirimleri bu sohbete gönderilecektir.';
     }
 
+    const isManual = payload.payment_type === 'manual_cash' || payload.payment_type === 'manual' || payload.payment_method === 'cash' || payload.type === 'manual';
     const title = {
-        paid: payload.payment_type === 'shared' ? '✅ Ortak ödeme tamamlandı' : (payload.payment_type === 'manual_cash' ? '✅ Ödeme tamamlandı (Elden Nakit)' : '✅ Ödeme tamamlandı'),
+        paid: payload.payment_type === 'shared' ? '✅ Ortak ödeme tamamlandı' : (isManual ? '📝 Manuel rezervasyon yapıldı' : '✅ Online rezervasyon yapıldı'),
         subscription_created: '📅 Abonelik rezervasyonu oluşturuldu',
         cancelled: '❌ Rezervasyon iptal edildi',
         pending_share: '⏳ Ortak ödeme başladı (İlk ödeme alındı, 2. kişi bekleniyor)',
-        manual_created: '📝 Yeni Manuel Rezervasyon Eklendi'
+        manual_created: '📝 Manuel rezervasyon yapıldı'
     }[eventType];
     if (!title) throw new Error(`Desteklenmeyen Telegram olay türü: ${eventType}`);
 
@@ -34,7 +50,7 @@ function buildMessage(eventType, payload = {}) {
         `<b>${title}</b>`, '',
         `<b>İşletme:</b> ${escapeHtml(payload.field_name || payload.field_key || '-')}`,
         `<b>Saha:</b> ${escapeHtml(payload.pitch_number || '-')}`,
-        `<b>Tarih:</b> ${escapeHtml(payload.date_text || payload.play_date || '-')}`,
+        `<b>Tarih:</b> ${escapeHtml(formatTelegramDate(payload.date_text || payload.play_date))}`,
         `<b>Saat:</b> ${escapeHtml(payload.hour_text || '-')}`,
         `<b>Müşteri:</b> ${escapeHtml(payload.user_name || '-')}`
     ];
@@ -42,8 +58,12 @@ function buildMessage(eventType, payload = {}) {
     if (eventType === 'paid' || eventType === 'pending_share' || eventType === 'manual_created') lines.push(`<b>Tutar:</b> ${escapeHtml(formatMoney(payload.reservation_price))}`);
     if (payload.payment_type === 'shared') lines.push('<b>Ödeme:</b> İki tarafın ödemesi tamamlandı');
     if (eventType === 'pending_share') lines.push('<b>Ödeme:</b> İlk ödeme alındı, ikinci kişinin ödemesi bekleniyor.');
-    if (eventType === 'manual_created') lines.push('<b>Ödeme Durumu:</b> ÖDENMEDİ (Nakit Borç)');
+    if (eventType === 'manual_created') {
+        const paymentStatus = payload.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ';
+        lines.push(`<b>Ödeme Durumu:</b> ${paymentStatus} (Elden Nakit)`);
+    }
     if (eventType === 'paid' && payload.payment_type === 'manual_cash') lines.push('<b>Ödeme Durumu:</b> ÖDENDİ (Elden Nakit)');
+    if (eventType === 'paid' && payload.payment_type === 'single') lines.push('<b>Ödeme Durumu:</b> ÖDENDİ (Online)');
     if (eventType === 'cancelled' && payload.cancellation_reason) {
         lines.push(`<b>Neden:</b> ${escapeHtml(payload.cancellation_reason)}`);
     }

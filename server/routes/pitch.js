@@ -57,6 +57,31 @@ function initPitchRoutes(app, db) {
         });
     });
 
+    app.get('/api/active-fields', (req, res) => {
+        db.query(
+            `SELECT ps.fieldKey, COALESCE(po.name, ps.fieldKey) AS name
+             FROM pitch_settings ps
+             LEFT JOIN pitch_objects po ON po.fieldKey = ps.fieldKey AND po.pitchNumber = 1 AND po.isDeleted = 0
+             WHERE ps.isDeleted = 0 AND ps.isClosed = 0
+             ORDER BY name ASC`,
+            (err, results) => {
+                if (err) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                const seen = new Set();
+                const data = results
+                    .map(row => ({
+                        fieldKey: row.fieldKey,
+                        name: String(row.name || row.fieldKey).replace(/\s*-\s*SAHA\s*1/i, '')
+                    }))
+                    .filter(row => {
+                        if (seen.has(row.fieldKey)) return false;
+                        seen.add(row.fieldKey);
+                        return true;
+                    });
+                res.json({ success: true, data });
+            }
+        );
+    });
+
     // Get all pitch settings
     app.get('/api/pitch-settings', (req, res) => {
         db.query(`SELECT ${publicSettingsColumns} FROM pitch_settings WHERE isDeleted = 0`, (err, results) => {

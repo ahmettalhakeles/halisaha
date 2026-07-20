@@ -176,7 +176,7 @@ function initPaymentRoutes(app, db) {
                 return res.status(409).json({ success: false, message: 'Bu saat dilimi başka bir kullanıcı tarafından rezerve edilmiş.' });
             }
             
-            await connection.query('UPDATE reservations SET payment_status = "odendi", status = "active" WHERE id = ?', [reservationId]);
+            await connection.query('UPDATE reservations SET payment_status = "odendi", payment_method = "online", status = "active" WHERE id = ?', [reservationId]);
             await enqueueTelegramNotification(connection, reservationId, 'paid', { payment_type: 'single' });
             await commitTransaction(connection);
             res.json({ success: true, message: 'Ödeme başarılı!' });
@@ -303,7 +303,7 @@ function initPaymentRoutes(app, db) {
                 );
                 
                 // Set reservation to active
-                await connection.query('UPDATE reservations SET status = "active" WHERE id = ?', [group.reservation_id]);
+                await connection.query('UPDATE reservations SET payment_method = "online", status = "active" WHERE id = ?', [group.reservation_id]);
                 await enqueueTelegramNotification(connection, group.reservation_id, 'pending_share');
                 
                 await commitTransaction(connection);
@@ -314,7 +314,7 @@ function initPaymentRoutes(app, db) {
                 await connection.query('UPDATE payment_groups SET paid_count = 2, status = "completed" WHERE id = ?', [group.id]);
                 
                 // Update reservation to paid
-                await connection.query('UPDATE reservations SET payment_status = "odendi" WHERE id = ?', [group.reservation_id]);
+                await connection.query('UPDATE reservations SET payment_status = "odendi", payment_method = "online" WHERE id = ?', [group.reservation_id]);
                 await enqueueTelegramNotification(connection, group.reservation_id, 'paid', { payment_type: 'shared' });
                 
                 await commitTransaction(connection);

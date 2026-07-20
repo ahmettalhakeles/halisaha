@@ -17,6 +17,51 @@ test('shared paid message states that both payments are complete', () => {
     assert.match(message, /İki tarafın ödemesi tamamlandı/);
 });
 
+test('manual reservation messages keep the same title for paid and unpaid cash', () => {
+    const unpaid = buildMessage('manual_created', {
+        payment_type: 'manual_cash',
+        payment_status: 'odenmedi',
+        field_name: 'Çırağan',
+        pitch_number: 1,
+        play_date: '2026-07-23',
+        hour_text: '19:00 - 20:00',
+        user_name: 'Talha',
+        reservation_price: 2800
+    });
+    const paid = buildMessage('manual_created', {
+        payment_type: 'manual_cash',
+        payment_status: 'odendi',
+        field_name: 'Çırağan',
+        pitch_number: 1,
+        play_date: '2026-07-23',
+        hour_text: '20:00 - 21:00',
+        user_name: 'Talha',
+        reservation_price: 2800
+    });
+    assert.match(unpaid, /Manuel rezervasyon yapıldı/);
+    assert.match(paid, /Manuel rezervasyon yapıldı/);
+    assert.doesNotMatch(paid, /Ödeme tamamlandı/);
+    assert.match(unpaid, /ÖDENMEDİ \(Elden Nakit\)/);
+    assert.match(paid, /ÖDENDİ \(Elden Nakit\)/);
+    assert.match(paid, /23 TEMMUZ 2026/);
+});
+
+test('single online paid message uses online reservation title', () => {
+    const message = buildMessage('paid', {
+        payment_type: 'single',
+        field_name: 'Arena',
+        pitch_number: 1,
+        play_date: '2026-07-21',
+        hour_text: '19:00 - 20:00',
+        user_name: 'Berk',
+        reservation_price: 2800
+    });
+    assert.match(message, /Online rezervasyon yapıldı/);
+    assert.doesNotMatch(message, /Ödeme tamamlandı/);
+    assert.match(message, /ÖDENDİ \(Online\)/);
+    assert.match(message, /21 TEMMUZ 2026/);
+});
+
 test('first_paid is not a supported notification event', () => {
     assert.throws(() => buildMessage('first_paid', {}), /Desteklenmeyen/);
 });

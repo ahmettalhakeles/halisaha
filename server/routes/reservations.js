@@ -75,7 +75,7 @@ function initReservationRoutes(app, db) {
                 }
 
                 const [insertResult] = await connection.query(
-                    'INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")',
+                    'INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal", "online")',
                     [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, normalizedUserId, reservation_price || 0, payment_status || 'odenmedi']
                 );
 
@@ -290,7 +290,7 @@ function initReservationRoutes(app, db) {
                         conflicts.push(hour);
                     } else {
                         await connection.query(
-                            'INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")',
+                            'INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal", "online")',
                             [fieldKey, pitchNumber, displayDateText, playDateVal, hour, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi']
                         );
                         succeeded++;
@@ -383,9 +383,10 @@ function initReservationRoutes(app, db) {
                 return res.status(403).json({ success: false, message: 'Ödeme durumunu değiştiremezsiniz!' });
             }
             if (reservation.payment_status !== payment_status) {
-                await connection.query('UPDATE reservations SET payment_status = ? WHERE id = ?', [payment_status, id]);
+                const method = reservation.payment_method || (reservation.type === 'manual' || reservation.type === 'abone' ? 'cash' : 'online');
+                await connection.query('UPDATE reservations SET payment_status = ?, payment_method = ? WHERE id = ?', [payment_status, method, id]);
                 if (payment_status === 'odendi') {
-                    await enqueueTelegramNotification(connection, id, 'paid', { payment_type: 'manual' });
+                    await enqueueTelegramNotification(connection, id, 'paid', { payment_type: method === 'cash' ? 'manual_cash' : 'single' });
                 }
             }
             await connection.commit();

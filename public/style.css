@@ -191,7 +191,7 @@ header {
 
 .header-actions {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 15px;
 }
 
@@ -4962,6 +4962,7 @@ header {
 .header-actions {
     flex: 0 0 auto;
     gap: 6px;
+    align-items: flex-start;
 }
 
 .user-auth-zone {

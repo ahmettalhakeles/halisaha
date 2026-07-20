@@ -93,9 +93,9 @@ function initSubscriptionRoutes(app, db) {
             }
             const [insertResult] = await connection.query(
                 `INSERT INTO reservations
-                 (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id,
-                  reservation_price, payment_status, status, type, subscription_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'odenmedi', 'active', 'abone', ?)`,
+                  (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id,
+                   reservation_price, payment_status, status, type, subscription_id, payment_method)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'odenmedi', 'active', 'abone', ?, 'cash')`,
                 [fieldKey, pitchNumber, dateText, playDate, hourText, subscriberName, user_id || null, subscriptionResult.insertId]
             );
             await enqueueTelegramNotification(connection, insertResult.insertId, 'subscription_created');

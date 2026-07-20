@@ -17,6 +17,7 @@ test('Turnstile CSP permits script, frame and challenge network requests', () =>
     assert.ok(directiveValues('connectSrc').includes('https://challenges.cloudflare.com'));
 });
 
-test('CSP keeps existing weather API connection permission', () => {
-    assert.ok(directiveValues('connectSrc').includes('https://api.open-meteo.com'));
+test('CSP keeps weather requests server-side', () => {
+    assert.equal(directiveValues('connectSrc').includes('https://api.open-meteo.com'), false);
+    assert.match(serverIndex, /app\.get\('\/api\/weather'/);
 });

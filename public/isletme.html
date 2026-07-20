@@ -349,6 +349,7 @@
 
             <!-- TAB 1: İSTATİSTİKLER -->
             <div id="tab-stats" class="tab-content-zone">
+                <h3 class="section-subtitle" style="margin-bottom: 15px;">ONLINE ÖDEME</h3>
                 <div class="stats-grid">
                     <div class="stat-card glass">
                         <h3>TOPLAM REZERVASYON</h3>
@@ -378,7 +379,7 @@
 
                 <div class="stat-card glass cash-wide-card" style="margin-top: 25px; grid-column: 1 / -1; width: 100%;">
                     <h3 style="color: var(--warning-orange); font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 15px;">
-                        💵 İŞLETME ELDEN NAKİT DETAYI
+                        💵 NAKİT ÖDEME
                     </h3>
                     <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px; margin-top: -5px;">
                         * Bu veriler genel gelir içindeki elden/nakit tahsil edilen manuel rezervasyonların alt kırılımıdır. Toplam ciroya tekrar eklenmemelidir.
@@ -400,6 +401,33 @@
                             <span style="font-size: 0.75rem; color: var(--text-muted); display: block; text-transform: uppercase;">Toplam Nakit</span>
                             <strong id="cashTotal" style="font-size: 1.25rem; color: var(--neon-green);">-</strong>
                         </div>
+                    </div>
+                </div>
+                <h3 class="section-subtitle" style="margin: 25px 0 15px;">TOPLAM</h3>
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <h3>TOPLAM REZERVASYON</h3>
+                        <div class="stat-value" id="statCombinedTotal">-</div>
+                        <div class="stat-earnings" id="earnCombinedTotal">-</div>
+                        <p class="stat-label">Online + nakit</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>BU AY</h3>
+                        <div class="stat-value" id="statCombinedMonth">-</div>
+                        <div class="stat-earnings" id="earnCombinedMonth">-</div>
+                        <p class="stat-label">Online + nakit</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>BUGÜN</h3>
+                        <div class="stat-value" id="statCombinedToday">-</div>
+                        <div class="stat-earnings" id="earnCombinedToday">-</div>
+                        <p class="stat-label">Online + nakit</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>SON 7 GÜN</h3>
+                        <div class="stat-value" id="statCombinedLast7Days">-</div>
+                        <div class="stat-earnings" id="earnCombinedLast7Days">-</div>
+                        <p class="stat-label">Online + nakit</p>
                     </div>
                 </div>
             </div>
@@ -486,6 +514,11 @@
                         <button class="debt-filter-btn" id="debt-status-unpaid" onclick="setDebtStatusFilter('unpaid')">⚠️ ÖDENMEDİ</button>
                         <button class="debt-filter-btn" id="debt-status-paid" onclick="setDebtStatusFilter('paid')">✅ ÖDENDİ</button>
                         <button class="debt-filter-btn" id="debt-sort-toggle" onclick="toggleDebtSortOrder()" style="margin-left:auto;background:rgba(255,255,255,0.08);">⬇️ YENİDEN ESKİYE</button>
+                    </div>
+                    <div class="debt-payment-filter-bar" style="display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap;">
+                        <button class="debt-filter-btn active" id="debt-payment-all" onclick="setDebtPaymentFilter('all')">TÜM TİPLER</button>
+                        <button class="debt-filter-btn" id="debt-payment-online" onclick="setDebtPaymentFilter('online')">ONLINE</button>
+                        <button class="debt-filter-btn" id="debt-payment-cash" onclick="setDebtPaymentFilter('cash')">NAKİT</button>
                     </div>
                     
                     <div id="businessDebtsContainer" class="reservations-scroll"></div>

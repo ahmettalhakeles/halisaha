@@ -616,8 +616,8 @@ function getKontrolHourSlots(opening, closing) {
     const maxIter = 24;
     let iter = 0;
     while (iter < maxIter) {
+        if (iter > 0 && h % 24 === closeH) break;
         slots.push(`${String(h % 24).padStart(2, '0')}:00`);
-        if (h % 24 === closeH) break;
         h++;
         iter++;
     }
@@ -1079,37 +1079,61 @@ async function loadBusinessStats() {
         const result = await response.json();
         if (result.success) {
             const data = result.data;
-            document.getElementById('statTotal').innerText = data.total;
-            document.getElementById('earnTotal').innerHTML = `
-                <span style="color: var(--neon-green); display: block;">Ödenen: ${data.totalEarningsPaid || 0} TL</span>
-                <span style="color: #fca5a5; display: block; font-size: 0.9rem;">Ödenmeyen: ${data.totalEarningsUnpaid || 0} TL</span>
+            const stats = data.paymentStats || {};
+            const online = stats.online || {};
+            const cash = stats.cash || {};
+            const combined = stats.combined || {
+                total: data.total,
+                today: data.today,
+                thisMonth: data.thisMonth,
+                last7Days: data.last7Days,
+                totalPaid: data.totalEarningsPaid,
+                totalUnpaid: data.totalEarningsUnpaid,
+                todayPaid: data.todayEarningsPaid,
+                todayUnpaid: data.todayEarningsUnpaid,
+                thisMonthPaid: data.thisMonthEarningsPaid,
+                thisMonthUnpaid: data.thisMonthEarningsUnpaid,
+                last7DaysPaid: data.last7DaysEarningsPaid,
+                last7DaysUnpaid: data.last7DaysEarningsUnpaid
+            };
+            const renderEarnings = (paid, unpaid) => `
+                <span style="color: var(--neon-green); display: block;">Ödenen: ${paid || 0} TL</span>
+                <span style="color: #fca5a5; display: block; font-size: 0.9rem;">Ödenmeyen: ${unpaid || 0} TL</span>
             `;
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = value;
+            };
+            const setHtml = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = value;
+            };
+
+            setText('statTotal', online.total || 0);
+            setHtml('earnTotal', renderEarnings(online.totalPaid, online.totalUnpaid));
             
-            document.getElementById('statMonth').innerText = data.thisMonth;
-            document.getElementById('earnMonth').innerHTML = `
-                <span style="color: var(--neon-green); display: block;">Ödenen: ${data.thisMonthEarningsPaid || 0} TL</span>
-                <span style="color: #fca5a5; display: block; font-size: 0.9rem;">Ödenmeyen: ${data.thisMonthEarningsUnpaid || 0} TL</span>
-            `;
+            setText('statMonth', online.thisMonth || 0);
+            setHtml('earnMonth', renderEarnings(online.thisMonthPaid, online.thisMonthUnpaid));
             
-            document.getElementById('statToday').innerText = data.today;
-            document.getElementById('earnToday').innerHTML = `
-                <span style="color: var(--neon-green); display: block;">Ödenen: ${data.todayEarningsPaid || 0} TL</span>
-                <span style="color: #fca5a5; display: block; font-size: 0.9rem;">Ödenmeyen: ${data.todayEarningsUnpaid || 0} TL</span>
-            `;
+            setText('statToday', online.today || 0);
+            setHtml('earnToday', renderEarnings(online.todayPaid, online.todayUnpaid));
             
-            document.getElementById('statLast7Days').innerText = data.last7Days;
-            document.getElementById('earnLast7Days').innerHTML = `
-                <span style="color: var(--neon-green); display: block;">Ödenen: ${data.last7DaysEarningsPaid || 0} TL</span>
-                <span style="color: #fca5a5; display: block; font-size: 0.9rem;">Ödenmeyen: ${data.last7DaysEarningsUnpaid || 0} TL</span>
-            `;
-            const cashToday = document.getElementById('cashToday');
-            const cashLast7Days = document.getElementById('cashLast7Days');
-            const cashThisMonth = document.getElementById('cashThisMonth');
-            const cashTotal = document.getElementById('cashTotal');
-            if (cashToday) cashToday.innerText = `${data.cashToday || 0} TL`;
-            if (cashLast7Days) cashLast7Days.innerText = `${data.cashLast7Days || 0} TL`;
-            if (cashThisMonth) cashThisMonth.innerText = `${data.cashThisMonth || 0} TL`;
-            if (cashTotal) cashTotal.innerText = `${data.cashTotal || 0} TL`;
+            setText('statLast7Days', online.last7Days || 0);
+            setHtml('earnLast7Days', renderEarnings(online.last7DaysPaid, online.last7DaysUnpaid));
+
+            setText('cashToday', `Ödenen: ${cash.todayPaid || 0} TL / Ödenmeyen: ${cash.todayUnpaid || 0} TL`);
+            setText('cashLast7Days', `Ödenen: ${cash.last7DaysPaid || 0} TL / Ödenmeyen: ${cash.last7DaysUnpaid || 0} TL`);
+            setText('cashThisMonth', `Ödenen: ${cash.thisMonthPaid || 0} TL / Ödenmeyen: ${cash.thisMonthUnpaid || 0} TL`);
+            setText('cashTotal', `Ödenen: ${cash.totalPaid || 0} TL / Ödenmeyen: ${cash.totalUnpaid || 0} TL`);
+
+            setText('statCombinedTotal', combined.total || 0);
+            setHtml('earnCombinedTotal', renderEarnings(combined.totalPaid, combined.totalUnpaid));
+            setText('statCombinedMonth', combined.thisMonth || 0);
+            setHtml('earnCombinedMonth', renderEarnings(combined.thisMonthPaid, combined.thisMonthUnpaid));
+            setText('statCombinedToday', combined.today || 0);
+            setHtml('earnCombinedToday', renderEarnings(combined.todayPaid, combined.todayUnpaid));
+            setText('statCombinedLast7Days', combined.last7Days || 0);
+            setHtml('earnCombinedLast7Days', renderEarnings(combined.last7DaysPaid, combined.last7DaysUnpaid));
         }
     } catch (error) {
         console.error("İstatistikler yüklenemedi:", error);
@@ -2158,9 +2182,11 @@ async function initWeatherWidget() {
     const container = document.getElementById('weatherDisplay');
     if (!container) return;
     try {
-        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.6558&longitude=35.8272&daily=temperature_2m_max,temperature_2m_min,weathercode,sunrise,sunset&timezone=auto');
+        const response = await fetch('/api/weather');
         if (!response.ok) throw new Error("API hatası");
-        const data = await response.json();
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || "API hatası");
+        const data = result.data;
 
         const forecasts = [];
         const options = { weekday: 'short' };
@@ -2192,16 +2218,7 @@ async function initWeatherWidget() {
         }
     } catch (error) {
         console.error("Hava durumu yüklenemedi:", error);
-        const daysShort = [];
-        for (let i = 0; i < 5; i++) {
-            let d = new Date(); d.setDate(d.getDate() + i);
-            daysShort.push(d.toLocaleDateString('tr-TR', { weekday: 'short' }).toLocaleUpperCase('tr-TR'));
-        }
-        container.innerHTML = daysShort.map((day, idx) => {
-            const min = 12 + idx;
-            const max = 22 + idx * 2;
-            return `<div class="weather-day-item"><span>${day}</span><strong>${min}&deg;/${max}&deg;C</strong><small>BULUTLU</small></div>`;
-        }).join('');
+        container.innerHTML = '<div class="weather-day-item"><span>HAVA</span><strong>-</strong><small>YÜKLENEMEDİ</small></div>';
     }
 }
 
@@ -2342,20 +2359,7 @@ function initDateDropdowns() {
         });
     }
 
-    // Populate active pitches for player ad
-    const forumFieldSelect = document.getElementById('forumFieldName');
-    if (forumFieldSelect) {
-        forumFieldSelect.innerHTML = '<option value="">Seçiniz (Opsiyonel)</option>';
-        Object.keys(fieldsData).forEach(key => {
-            const f = fieldsData[key];
-            if (f && f.isDeleted !== true) {
-                const opt = document.createElement('option');
-                opt.value = f.name;
-                opt.textContent = f.name;
-                forumFieldSelect.appendChild(opt); 
-            }
-        });
-    }
+    populateForumActiveFields();
 
     const forumHourSelect = document.getElementById('forumHour');
     masterHoursList.forEach(h => {
@@ -2379,6 +2383,25 @@ function initDateDropdowns() {
             let opt = document.createElement('option'); opt.value = h; opt.text = h;
             filterHour.appendChild(opt);
         });
+    }
+}
+
+async function populateForumActiveFields() {
+    const forumFieldSelect = document.getElementById('forumFieldName');
+    if (!forumFieldSelect) return;
+    forumFieldSelect.innerHTML = '<option value="">Seçiniz (Opsiyonel)</option>';
+    try {
+        const response = await fetch('/api/active-fields');
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || 'Aktif sahalar yüklenemedi');
+        (result.data || []).forEach(field => {
+            const opt = document.createElement('option');
+            opt.value = field.name;
+            opt.textContent = field.name;
+            forumFieldSelect.appendChild(opt);
+        });
+    } catch (error) {
+        console.error('Aktif saha listesi yüklenemedi:', error);
     }
 }
 
@@ -2771,28 +2794,7 @@ async function onDateOrFieldChange() {
     currentSelectedHourBtn = null;
     if (!currentSelectedPitchNumber) return;
 
-    // Fetch weekly schedule for this field to get all reservations
-    let weeklyReservations = [];
-    try {
-        const parts = dateText.split('-');
-        const selectDate = new Date(parts[0], parts[1] - 1, parts[2]);
-        const day = selectDate.getDay();
-        const diffToPzt = (day === 0) ? -6 : 1 - day;
-        const monday = new Date(selectDate);
-        monday.setDate(selectDate.getDate() + diffToPzt);
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        
-        const weekStart = formatDateYMD(monday);
-        const weekEnd = formatDateYMD(sunday);
-        const resp = await fetch(`/api/weekly-schedule/${currentSelectedFieldKey}?weekStart=${weekStart}&weekEnd=${weekEnd}`);
-        const scheduleResult = await resp.json();
-        if (scheduleResult.success) {
-            weeklyReservations = scheduleResult.reservations || [];
-        }
-    } catch(e) {
-        console.error("Weekly schedule fetch failed for customer view:", e);
-    }
+    let weeklyReservations = Array.isArray(userReservations) ? userReservations : [];
 
     const pitch = pitchObjectsList.find(p => p.fieldKey === currentSelectedFieldKey && p.pitchNumber === currentSelectedPitchNumber) || field;
     const morningPrice = pitch.morningPrice || 2500;
@@ -4886,6 +4888,7 @@ async function cancelMyReservation(id) {
 }
 
 let currentDebtStatusFilter = 'all';
+let currentDebtPaymentFilter = 'all';
 let currentDebtTimeFilter = 'all';
 let currentDebtSortOrder = 'desc';
 
@@ -4909,6 +4912,16 @@ function setDebtStatusFilter(status) {
     loadBusinessDebts(currentDebtTimeFilter);
 }
 
+function setDebtPaymentFilter(type) {
+    currentDebtPaymentFilter = type;
+    document.querySelectorAll('.debt-payment-filter-bar button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activeBtn = document.getElementById(`debt-payment-${type}`);
+    if (activeBtn) activeBtn.classList.add('active');
+    loadBusinessDebts(currentDebtTimeFilter);
+}
+
 async function loadBusinessDebts(filter = 'all') {
     currentDebtTimeFilter = filter;
     document.querySelectorAll('.debt-filter-bar button').forEach(btn => {
@@ -4925,6 +4938,12 @@ async function loadBusinessDebts(filter = 'all') {
         const result = await response.json();
         if (result.success) {
             let debts = result.data;
+
+            if (currentDebtPaymentFilter === 'online') {
+                debts = debts.filter(r => (r.payment_type || 'online') === 'online');
+            } else if (currentDebtPaymentFilter === 'cash') {
+                debts = debts.filter(r => r.payment_type === 'cash');
+            }
 
             // Calculate totals
             let totalPaid = 0;
@@ -4956,8 +4975,8 @@ async function loadBusinessDebts(filter = 'all') {
 
             // Sıralama
             debts.sort((a, b) => {
-                const dateA = parseTurkishDateString(a.dateText);
-                const dateB = parseTurkishDateString(b.dateText);
+                const dateA = parseTurkishDateString(getReservationDateValue(a));
+                const dateB = parseTurkishDateString(getReservationDateValue(b));
                 const timeA = a.hourText.split(' - ')[0];
                 const timeB = b.hourText.split(' - ')[0];
                 const cmp = dateA - dateB || timeA.localeCompare(timeB);
@@ -4982,7 +5001,7 @@ async function loadBusinessDebts(filter = 'all') {
                     <div class="admin-res-item" style="border-left: 4px solid ${isPaid ? 'var(--neon-green)' : '#ef4444'};">
                         <div class="admin-res-info">
                             <strong>${r.user_name}</strong> ${r.user_phone ? `(${r.user_phone})` : ''}<br>
-                            <small style="color: var(--text-muted);">SAHA ${r.pitchNumber} | ${formatReservationDate(r)} | ${r.hourText}</small>
+                            <small style="color: var(--text-muted);">SAHA ${r.pitchNumber} | ${formatReservationDate(r)} | ${r.hourText} | ${(r.payment_type === 'cash') ? 'NAKİT' : 'ONLINE'}</small>
                             <div style="font-weight: bold; margin-top: 4px; color: ${isPaid ? 'var(--neon-green)' : '#fca5a5'};">
                                 Ücret: ${price} TL | ${isPaid ? 'ÖDENDİ' : 'ÖDENMEDİ'}
                             </div>

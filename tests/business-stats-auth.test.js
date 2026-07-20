@@ -44,6 +44,20 @@ function createStatsHandlers(db) {
     return handlers;
 }
 
+function createBusinessRouteHandlers(db, routePath) {
+    let handlers;
+    const app = {
+        post() {},
+        put() {},
+        delete() {},
+        get(path, ...routeHandlers) {
+            if (path === routePath) handlers = routeHandlers;
+        }
+    };
+    initBusinessRoutes(app, db);
+    return handlers;
+}
+
 function businessAuthHeader(fieldKey) {
     const token = jwt.sign({ role: 'business', fieldKey }, process.env.JWT_SECRET);
     return { authorization: `Bearer ${token}` };
@@ -99,6 +113,46 @@ test('stats content rejects another business field', async () => {
     assert.equal(queried, false);
 });
 
+test('business debts rejects requests without authentication', async () => {
+    let queried = false;
+    const handlers = createBusinessRouteHandlers({
+        query() {
+            queried = true;
+            throw new Error('database should not be queried');
+        }
+    }, '/api/business-debts/:fieldKey');
+    const response = createResponse();
+
+    await runHandlers(handlers, {
+        params: { fieldKey: 'final' },
+        query: { filter: 'all' },
+        headers: {}
+    }, response);
+
+    assert.equal(response.statusCode, 401);
+    assert.equal(queried, false);
+});
+
+test('weekly schedule rejects another business field', async () => {
+    let queried = false;
+    const handlers = createBusinessRouteHandlers({
+        query() {
+            queried = true;
+            throw new Error('database should not be queried');
+        }
+    }, '/api/weekly-schedule/:fieldKey');
+    const response = createResponse();
+
+    await runHandlers(handlers, {
+        params: { fieldKey: 'final' },
+        query: { weekStart: formatYmd(0), weekEnd: formatYmd(6) },
+        headers: businessAuthHeader('arena')
+    }, response);
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(queried, false);
+});
+
 test('stats content includes paid manual cash totals', async () => {
     const today = formatYmd(0);
     const handlers = createStatsHandlers({
@@ -117,6 +171,19 @@ test('stats content includes paid manual cash totals', async () => {
                 payment_status: 'odendi',
                 morningPrice: 1000,
                 eveningPrice: 1500
+            }, {
+                status: 'active',
+                type: 'manual',
+                payment_method: 'cash',
+                pitchNumber: 1,
+                hourText: '21:00 - 22:00',
+                created_at: new Date(),
+                dateText: today,
+                play_date: today,
+                reservation_price: 800,
+                payment_status: 'odenmedi',
+                morningPrice: 1000,
+                eveningPrice: 1500
             }]);
         }
     });
@@ -133,4 +200,8 @@ test('stats content includes paid manual cash totals', async () => {
     assert.equal(response.body.data.cashLast7Days, 1200);
     assert.equal(response.body.data.cashThisMonth, 1200);
     assert.equal(response.body.data.cashTotal, 1200);
+    assert.equal(response.body.data.cashTodayUnpaid, 800);
+    assert.equal(response.body.data.paymentStats.cash.totalPaid, 1200);
+    assert.equal(response.body.data.paymentStats.cash.totalUnpaid, 800);
+    assert.equal(response.body.data.paymentStats.combined.totalUnpaid, 800);
 });

@@ -41,7 +41,7 @@ app.use(helmet({
             scriptSrcAttr: ["'unsafe-inline'"],
             frameSrc: ["'self'", "https://challenges.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https://www.google.com", "https://www.gstatic.com"],
-            connectSrc: ["'self'", "https://api.open-meteo.com", "https://challenges.cloudflare.com"],
+            connectSrc: ["'self'", "https://challenges.cloudflare.com"],
             formAction: ["'self'"],
         },
     },
@@ -79,6 +79,35 @@ app.get('/api/config', (req, res) => {
         success: true,
         turnstileSiteKey: process.env.TURNSTILE_SITEKEY || '1x00000000000000000000AA'
     });
+});
+
+let weatherCache = { data: null, fetchedAt: 0 };
+const WEATHER_CACHE_MS = 30 * 60 * 1000;
+
+app.get('/api/weather', async (req, res) => {
+    const now = Date.now();
+    if (weatherCache.data && now - weatherCache.fetchedAt < WEATHER_CACHE_MS) {
+        return res.json({ success: true, data: weatherCache.data, cached: true });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.6558&longitude=35.8272&daily=temperature_2m_max,temperature_2m_min,weathercode,sunrise,sunset&timezone=auto', {
+            signal: controller.signal
+        });
+        if (!response.ok) throw new Error(`Open-Meteo HTTP ${response.status}`);
+        const data = await response.json();
+        weatherCache = { data, fetchedAt: now };
+        res.json({ success: true, data, cached: false });
+    } catch (error) {
+        if (weatherCache.data) {
+            return res.json({ success: true, data: weatherCache.data, cached: true, stale: true });
+        }
+        res.status(502).json({ success: false, message: 'Hava durumu yüklenemedi.' });
+    } finally {
+        clearTimeout(timeout);
+    }
 });
 
 app.get('/favicon.ico', (req, res) => {
@@ -170,8 +199,8 @@ async function processWeeklySubscriptions() {
                 const [insertResult] = await connection.query(
                     `INSERT INTO reservations
                      (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id,
-                      reservation_price, payment_status, status, type, subscription_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'odenmedi', 'active', 'abone', ?)`,
+                      reservation_price, payment_status, status, type, subscription_id, payment_method)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'odenmedi', 'active', 'abone', ?, 'cash')`,
                     [sub.fieldKey, sub.pitchNumber, dateText, play_date, sub.hourText, sub.subscriberName, sub.user_id, sub.id]
                 );
                 await enqueueTelegramNotification(connection, insertResult.insertId, 'subscription_created');
