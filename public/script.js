@@ -5193,10 +5193,16 @@ function loadTurnstileConfig() {
 function renderTurnstileWidget() {
     if (typeof turnstile !== 'undefined' && turnstileSiteKey) {
         try {
+            latestTurnstileToken = "";
             if (turnstileWidgetId === null) {
                 turnstileWidgetId = turnstile.render('#bookingTurnstile', {
                     sitekey: turnstileSiteKey,
-                    callback: onTurnstileSuccess
+                    language: 'tr',
+                    theme: 'dark',
+                    callback: onTurnstileSuccess,
+                    'error-callback': onTurnstileError,
+                    'expired-callback': onTurnstileExpired,
+                    'timeout-callback': onTurnstileExpired
                 });
             } else {
                 turnstile.reset(turnstileWidgetId);
@@ -5239,6 +5245,15 @@ async function loadTurnstileScript() {
 }
 function onTurnstileSuccess(token) {
     latestTurnstileToken = token;
+}
+
+function onTurnstileError(errorCode) {
+    latestTurnstileToken = "";
+    console.warn("Turnstile doğrulaması tamamlanamadı:", errorCode);
+}
+
+function onTurnstileExpired() {
+    latestTurnstileToken = "";
 }
 
 

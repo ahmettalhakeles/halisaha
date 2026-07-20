@@ -406,32 +406,34 @@
     <!-- MODALLER -->
     <div class="modal-overlay" id="loginModal">
         <div class="modal-card mini-modal">
-            <div class="modal-header">
-                <h2>KULLANICI GIRISI</h2>
-                <button type="button" class="close-modal" data-click="closeModal-loginModal">X</button>
-            </div>
-            <div class="form-group">
-                <label for="loginEmail">MAIL ADRESI</label>
-                <input type="email" id="loginEmail" class="form-control" onkeypress="if(event.key === 'Enter') handleUserLogin()">
-            </div>
-            <div class="form-group">
-                <label for="loginPassword">SIFRE</label>
-                <div style="position: relative; display: flex; align-items: center;">
-                    <input type="password" id="loginPassword" class="form-control" style="padding-right: 70px;" onkeypress="if(event.key === 'Enter') handleUserLogin()">
-                    <button type="button" onclick="togglePasswordVisibility('loginPassword', this)" style="position: absolute; right: 10px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-weight: bold; outline: none; padding: 5px;">GÖSTER</button>
+            <form id="userLoginForm" autocomplete="on" onsubmit="event.preventDefault(); handleUserLogin();">
+                <div class="modal-header">
+                    <h2>KULLANICI GIRISI</h2>
+                    <button type="button" class="close-modal" data-click="closeModal-loginModal">X</button>
                 </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:15px;">
-                <input type="checkbox" id="userRememberMe" style="width:16px; height:16px; cursor:pointer;">
-                <label for="userRememberMe" style="font-size:0.82rem; color:var(--text-muted); cursor:pointer; user-select:none;">Beni Hatırla</label>
-            </div>
-            <button class="action-btn" onclick="handleUserLogin()">GIRIS YAP</button>
+                <div class="form-group">
+                    <label for="loginEmail">MAIL ADRESI</label>
+                    <input type="email" id="loginEmail" name="email" class="form-control" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">SIFRE</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="loginPassword" name="password" class="form-control" autocomplete="current-password" style="padding-right: 70px;">
+                        <button type="button" onclick="togglePasswordVisibility('loginPassword', this)" style="position: absolute; right: 10px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-weight: bold; outline: none; padding: 5px;">GÖSTER</button>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:15px;">
+                    <input type="checkbox" id="userRememberMe" style="width:16px; height:16px; cursor:pointer;">
+                    <label for="userRememberMe" style="font-size:0.82rem; color:var(--text-muted); cursor:pointer; user-select:none;">Beni Hatırla</label>
+                </div>
+                <button type="submit" class="action-btn">GIRIS YAP</button>
+            </form>
         </div>
     </div>
 
     <div class="modal-overlay" id="registerModal">
         <div class="modal-card mini-modal">
-            <form id="registerForm" onsubmit="handleUserRegister(event)">
+            <form id="registerForm" autocomplete="on" onsubmit="handleUserRegister(event)">
                 <div class="modal-header">
                     <h2>KAYIT OL</h2>
                     <button type="button" class="close-modal" data-click="closeModal-registerModal">X</button>
@@ -439,26 +441,26 @@
                 <div style="display: flex; gap: 10px;">
                     <div class="form-group" style="flex: 1;">
                         <label for="regFirstName">İSİM</label>
-                        <input type="text" id="regFirstName" class="form-control" required>
+                        <input type="text" id="regFirstName" name="given-name" class="form-control" autocomplete="given-name" required>
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label for="regLastName">SOYİSİM</label>
-                        <input type="text" id="regLastName" class="form-control" required>
+                        <input type="text" id="regLastName" name="family-name" class="form-control" autocomplete="family-name" required>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="regPhone">TELEFON NUMARASI</label>
-                    <input type="text" id="regPhone" class="form-control" placeholder="05XXXXXXXXX" maxlength="13" required>
+                    <input type="text" id="regPhone" name="phone" class="form-control" autocomplete="tel" placeholder="05XXXXXXXXX" maxlength="13" required>
                     <small class="help-text" style="color:var(--text-muted);">05 ile başlayan 11 haneli numara giriniz</small>
                 </div>
                 <div class="form-group">
                     <label for="regEmail">MAIL ADRESI</label>
-                    <input type="email" id="regEmail" class="form-control" required>
+                    <input type="email" id="regEmail" name="email" class="form-control" autocomplete="email" required>
                 </div>
                 <div class="form-group">
                     <label for="regPassword">SIFRE</label>
                     <div style="position: relative; display: flex; align-items: center;">
-                        <input type="password" id="regPassword" class="form-control" style="padding-right: 70px;" required>
+                        <input type="password" id="regPassword" name="new-password" class="form-control" autocomplete="new-password" style="padding-right: 70px;" required>
                         <button type="button" onclick="togglePasswordVisibility('regPassword', this)" style="position: absolute; right: 10px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-weight: bold; outline: none; padding: 5px;">GÖSTER</button>
                     </div>
                     <small class="help-text">EN AZ 6 HANELI, BUYUK HARF, RAKAM VE SEMBOL ICERMELIDIR.</small>
@@ -801,6 +803,7 @@
     <!-- KREDİ KARTI SİMÜLASYON MODALI -->
     <div class="modal-overlay" id="paymentSimulationModal" style="z-index: 2200;">
         <div class="modal-card" style="max-width: 450px; background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 25px;">
+            <form id="paymentSimulationForm" autocomplete="on" onsubmit="event.preventDefault(); document.getElementById('simPaySubmitBtn').click();">
             <div class="modal-header" style="border-bottom: 1px solid rgba(16, 185, 129, 0.2); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="color:var(--primary-green); font-size:1.3rem; font-weight:800; margin:0;">GÜVENLİ ÖDEME SİMÜLASYONU</h2>
                 <button type="button" class="close-modal" onclick="closeModal('paymentSimulationModal')" style="background:none; border:none; color:rgba(255,255,255,0.6); font-size:1.2rem; cursor:pointer;">X</button>
@@ -816,22 +819,22 @@
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <div class="form-group" style="margin: 0;">
                         <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;" for="simCardName">KART ÜZERİNDEKİ İSİM</label>
-                        <input type="text" id="simCardName" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="JOHN DOE" required>
+                        <input type="text" id="simCardName" name="cc-name" class="form-control" autocomplete="cc-name" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="JOHN DOE" required>
                     </div>
 
                     <div class="form-group" style="margin: 0;">
                         <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;" for="simCardNumber">KART NUMARASI</label>
-                        <input type="text" id="simCardNumber" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="1234 5678 1234 5678" maxlength="19" required>
+                        <input type="text" id="simCardNumber" name="cc-number" class="form-control" autocomplete="cc-number" inputmode="numeric" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="1234 5678 1234 5678" maxlength="19" required>
                     </div>
 
                     <div style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1; margin: 0;">
                             <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;" for="simCardExpiry">SON KULLANMA</label>
-                            <input type="text" id="simCardExpiry" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="MM/YY" maxlength="5" required>
+                            <input type="text" id="simCardExpiry" name="cc-exp" class="form-control" autocomplete="cc-exp" inputmode="numeric" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="MM/YY" maxlength="5" required>
                         </div>
                         <div class="form-group" style="flex: 1; margin: 0;">
                             <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 700;" for="simCardCvv">CVV</label>
-                            <input type="password" id="simCardCvv" class="form-control" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="123" maxlength="3" required>
+                            <input type="password" id="simCardCvv" name="cc-csc" class="form-control" autocomplete="cc-csc" inputmode="numeric" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="123" maxlength="3" required>
                         </div>
                     </div>
                 </div>
@@ -846,6 +849,7 @@
                     <span id="simPayBtnText">ÖDEMEYİ TAMAMLA</span>
                 </button>
             </div>
+            </form>
         </div>
     </div>
 
@@ -873,7 +877,7 @@
     </div>
 
     <script src="js/auth-context.js?v=1.0.0" defer></script>
-    <script src="script.min.js?v=1.2.1" defer></script>
+    <script src="script.min.js?v=1.2.2" defer></script>
     <script src="js/main.js?v=1.1.9" defer></script>
 </body>
 </html>
