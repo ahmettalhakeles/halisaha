@@ -843,7 +843,7 @@ function getTurkishDateText(playDateStr) {
         "OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN",
         "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"
     ];
-    return `${day} ${months[month]}`;
+    return `${day} ${months[month]} ${year}`;
 }
 
 module.exports = { initBusinessRoutes };

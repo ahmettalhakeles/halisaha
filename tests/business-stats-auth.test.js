@@ -49,6 +49,16 @@ function businessAuthHeader(fieldKey) {
     return { authorization: `Bearer ${token}` };
 }
 
+function formatYmd(offsetDays = 0) {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + offsetDays);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 test('stats content rejects requests without authentication', async () => {
     let queried = false;
     const handlers = createStatsHandlers({
@@ -87,4 +97,40 @@ test('stats content rejects another business field', async () => {
     assert.equal(response.statusCode, 403);
     assert.equal(response.body.success, false);
     assert.equal(queried, false);
+});
+
+test('stats content includes paid manual cash totals', async () => {
+    const today = formatYmd(0);
+    const handlers = createStatsHandlers({
+        query(sql, params, cb) {
+            assert.equal(params[0], 'final');
+            cb(null, [{
+                status: 'active',
+                type: 'manual',
+                payment_method: 'cash',
+                pitchNumber: 1,
+                hourText: '20:00 - 21:00',
+                created_at: new Date(),
+                dateText: today,
+                play_date: today,
+                reservation_price: 1200,
+                payment_status: 'odendi',
+                morningPrice: 1000,
+                eveningPrice: 1500
+            }]);
+        }
+    });
+    const response = createResponse();
+
+    await runHandlers(handlers, {
+        params: { fieldKey: 'final' },
+        headers: businessAuthHeader('final')
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.success, true);
+    assert.equal(response.body.data.cashToday, 1200);
+    assert.equal(response.body.data.cashLast7Days, 1200);
+    assert.equal(response.body.data.cashThisMonth, 1200);
+    assert.equal(response.body.data.cashTotal, 1200);
 });

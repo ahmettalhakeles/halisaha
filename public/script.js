@@ -587,6 +587,22 @@ function formatDateDM(date) {
     return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function formatDisplayDate(dateText, hourText = null) {
+    const date = hourText ? getActualPlayDate(dateText, hourText) : parseTurkishDateString(dateText);
+    if (!date) return dateText || '-';
+    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR');
+}
+
+function formatReservationDate(reservation) {
+    const playDate = reservation?.play_date ? getPlayDateStringYMD(String(reservation.play_date).substring(0, 10)) : '';
+    return playDate ? formatDisplayDate(playDate) : formatDisplayDate(reservation?.dateText, reservation?.hourText);
+}
+
+function getReservationDateValue(reservation) {
+    if (reservation?.play_date) return getPlayDateStringYMD(String(reservation.play_date).substring(0, 10));
+    return reservation?.dateText || '';
+}
+
 function changeKontrolWeek(dir) {
     kontrolWeekOffset += dir;
     loadWeeklySchedule();
@@ -841,7 +857,7 @@ function renderKontrolGrid(data, monday, isMobile) {
 function showKontrolReservationDetail(r) {
     const name = r.reserverName || r.user_name || '-';
     const phone = r.reserverPhone || r.user_phone || '-';
-    const date = r.dateText || '-';
+    const date = formatReservationDate(r);
     const hour = r.hourText || '-';
     const type = r.type === 'abone' ? '📋 Abonelik' : '⚽ Normal';
     const payStatus = r.payment_status === 'odendi' ? '✅ Ödendi' : '⚠️ Ödenmedi';
@@ -1086,6 +1102,14 @@ async function loadBusinessStats() {
                 <span style="color: var(--neon-green); display: block;">Ödenen: ${data.last7DaysEarningsPaid || 0} TL</span>
                 <span style="color: #fca5a5; display: block; font-size: 0.9rem;">Ödenmeyen: ${data.last7DaysEarningsUnpaid || 0} TL</span>
             `;
+            const cashToday = document.getElementById('cashToday');
+            const cashLast7Days = document.getElementById('cashLast7Days');
+            const cashThisMonth = document.getElementById('cashThisMonth');
+            const cashTotal = document.getElementById('cashTotal');
+            if (cashToday) cashToday.innerText = `${data.cashToday || 0} TL`;
+            if (cashLast7Days) cashLast7Days.innerText = `${data.cashLast7Days || 0} TL`;
+            if (cashThisMonth) cashThisMonth.innerText = `${data.cashThisMonth || 0} TL`;
+            if (cashTotal) cashTotal.innerText = `${data.cashTotal || 0} TL`;
         }
     } catch (error) {
         console.error("İstatistikler yüklenemedi:", error);
@@ -1693,7 +1717,7 @@ function renderBusinessReservations() {
                 <div class="res-card-header">
                     <div class="res-card-info">
                         <strong>${res.user_name}</strong> ${aboneBadge}
-                        <span class="res-card-meta">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} · ${res.dateText} · ${res.hourText}</span>
+                        <span class="res-card-meta">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} · ${formatReservationDate(res)} · ${res.hourText}</span>
                     </div>
                     <span class="res-card-arrow">▼</span>
                 </div>
@@ -1706,7 +1730,7 @@ function renderBusinessReservations() {
                         </select>
                         ` : `<input type="hidden" id="newPitch_${res.id}" value="1">`}
                         <select id="newDate_${res.id}" class="res-select">
-                            <option value="${res.dateText}">${res.dateText}</option>
+                            <option value="${getReservationDateValue(res)}">${formatReservationDate(res)}</option>
                             ${getNext30Days().map(day => `<option value="${day}">${day}</option>`).join('')}
                         </select>
                         <select id="newHour_${res.id}" class="res-select">
@@ -1732,7 +1756,7 @@ function renderBusinessReservations() {
                 <div class="res-card-header">
                     <div class="res-card-info">
                         <strong>${res.user_name}</strong>
-                        <span class="res-card-meta">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} · ${res.dateText} · ${res.hourText} · GEÇMİŞ</span>
+                        <span class="res-card-meta">${pitchCount > 1 ? `SAHA ${res.pitchNumber}` : 'TEK SAHA'} · ${formatReservationDate(res)} · ${res.hourText} · GEÇMİŞ</span>
                     </div>
                 </div>
                 <div class="res-card-body" style="display:none;">
@@ -1756,7 +1780,7 @@ function toggleResCard(el) {
 }
 
 function getNext30Days() {
-    const optionsFormat = { day: 'numeric', month: 'long' };
+    const optionsFormat = { day: 'numeric', month: 'long', year: 'numeric' };
     let days = [];
     for (let i = 0; i <= 30; i++) {
         let d = new Date();
@@ -1782,7 +1806,7 @@ function initBusinessGridDateSelect() {
     const sel = document.getElementById('businessGridDateSelect');
     if (!sel) return;
     sel.innerHTML = '';
-    const optionsFormat = { day: 'numeric', month: 'long' };
+    const optionsFormat = { day: 'numeric', month: 'long', year: 'numeric' };
     for (let i = 0; i <= 30; i++) {
         const d = new Date();
         d.setDate(d.getDate() + i);
@@ -1890,7 +1914,7 @@ function renderBusinessHoursGrid() {
                     if (info) {
                         info.style.display = 'block';
                         document.getElementById('bizGridSelName').textContent = `${taken.user_name}${taken.type === 'abone' ? ' (ABONE)' : ''}`;
-                        document.getElementById('bizGridSelDetail').textContent = `SAHA ${taken.pitchNumber} | ${taken.dateText} | ${taken.hourText} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.reservation_price ? ` | ${taken.reservation_price} TL` : ''}`;
+                        document.getElementById('bizGridSelDetail').textContent = `SAHA ${taken.pitchNumber} | ${formatReservationDate(taken)} | ${taken.hourText} | ${taken.payment_status === 'odendi' ? 'ÖDENDİ' : 'ÖDENMEDİ'}${taken.reservation_price ? ` | ${taken.reservation_price} TL` : ''}`;
                     }
                 };
             } else {
@@ -1951,7 +1975,7 @@ function quickBusinessWhatsApp() {
     const res = currentBusinessReservations.find(r => r.id === selectedBusinessGridResId);
     if (!res || !res.user_phone) { alert("Telefon numarası bulunamadı!"); return; }
     const phone = formatPhoneForWhatsApp(res.user_phone);
-    const msg = encodeURIComponent(`Merhaba ${res.user_name}, rezervasyonunuzla ilgili: ${res.dateText} ${res.hourText} - SAHA ${res.pitchNumber}`);
+    const msg = encodeURIComponent(`Merhaba ${res.user_name}, rezervasyonunuzla ilgili: ${formatReservationDate(res)} ${res.hourText} - SAHA ${res.pitchNumber}`);
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
 }
 
@@ -2302,7 +2326,7 @@ async function refreshCustomerPitchData() {
 function initDateDropdowns() {
     const customerPicker = document.getElementById('datePicker');
     const forumPicker = document.getElementById('forumDate');
-    const options = { day: 'numeric', month: 'long' };
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
 
     for (let i = 0; i <= 30; i++) {
         let d = new Date(); d.setDate(d.getDate() + i);
@@ -2711,7 +2735,7 @@ function getNextCalendarDayText(dateStr) {
     const d = parseTurkishDateString(dateStr);
     if (!d) return "";
     d.setDate(d.getDate() + 1);
-    const options = { day: 'numeric', month: 'long' };
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
     return d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
 }
 
@@ -3001,7 +3025,7 @@ async function completeBooking() {
 
     const field = fieldsData[currentSelectedFieldKey] || { name: currentSelectedFieldKey.toLocaleUpperCase('tr-TR'), address: "" };
     document.getElementById('bookingConfirmField').textContent = `${field.name.toLocaleUpperCase('tr-TR')} - SAHA ${currentSelectedPitchNumber}`;
-    document.getElementById('bookingConfirmDate').textContent = dateText;
+    document.getElementById('bookingConfirmDate').textContent = formatDisplayDate(dateText);
     document.getElementById('bookingConfirmHour').textContent = hour;
     document.getElementById('bookingConfirmPrice').textContent = `${price} TL`;
 
@@ -3045,7 +3069,7 @@ async function executePendingBooking() {
 
             document.getElementById('successFieldName').innerText = `${field.name.toLocaleUpperCase('tr-TR')} - SAHA ${data.pitchNumber}`;
             document.getElementById('successFieldAddress').innerText = field.address.toLocaleUpperCase('tr-TR');
-            document.getElementById('successBookingTime').innerText = `${data.dateText} | ${data.hourText}`;
+            document.getElementById('successBookingTime').innerText = `${formatDisplayDate(data.dateText)} | ${data.hourText}`;
             document.getElementById('successBookingPrice').innerText = `${data.reservation_price} TL`;
 
             latestReservationId = result.id;
@@ -4181,8 +4205,9 @@ function parseTurkishDateString(dateStr) {
     if (monthIdx === -1) return null;
     
     const today = new Date();
-    let year = today.getFullYear();
-    if (monthIdx < today.getMonth()) {
+    let year = parts.length >= 3 ? parseInt(parts[2]) : today.getFullYear();
+    if (isNaN(year)) return null;
+    if (parts.length < 3 && monthIdx < today.getMonth()) {
         year += 1;
     }
     
@@ -4323,7 +4348,7 @@ async function loadProfileReservations() {
                 <div class="profile-booking-item" id="prof-res-${r.id}" style="${r.type === 'abone' ? 'border: 2px solid #f59e0b; background:rgba(245,158,11,0.08);' : ''}">
                     <div class="profile-booking-details">
                         <h4>${field.name} - SAHA ${r.pitchNumber}${r.type === 'abone' ? ' <span style="background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:700;">ABONE</span>' : ''}</h4>
-                        <p>${r.dateText} | ${r.hourText}</p>
+                        <p>${formatReservationDate(r)} | ${r.hourText}</p>
                         ${paymentStatusHtml}
                     </div>
                     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
@@ -4352,7 +4377,7 @@ async function loadProfileReservations() {
                 <div class="profile-booking-item" style="opacity: 0.6; border-left: 3px solid ${r.type === 'abone' ? '#f59e0b' : '#64748b'};${r.type === 'abone' ? ' border: 2px solid #f59e0b; background:rgba(245,158,11,0.08);' : ''}">
                     <div class="profile-booking-details">
                         <h4 style="color:${r.type === 'abone' ? '#fbbf24' : 'var(--text-muted)'};">${field.name} - SAHA ${r.pitchNumber}${r.type === 'abone' ? ' <span style="background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:700;">ABONE</span>' : ''}</h4>
-                        <p>${r.dateText} | ${r.hourText}</p>
+                        <p>${formatReservationDate(r)} | ${r.hourText}</p>
                         <p style="font-size:0.7rem;color:var(--text-muted);">[GEÇMİŞ]</p>
                     </div>
                     <div class="profile-booking-price" style="color:${r.type === 'abone' ? '#fbbf24' : 'var(--text-muted)'};">${price} TL</div>
@@ -4393,7 +4418,7 @@ async function loadProfileReservations() {
                         <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
                             <div>
                                 <div style="font-weight:600;">${field.name} - SAHA ${r.pitchNumber}</div>
-                                <div style="font-size:0.8rem;color:var(--text-muted);">${r.dateText} | ${r.hourText}</div>
+                                <div style="font-size:0.8rem;color:var(--text-muted);">${formatReservationDate(r)} | ${r.hourText}</div>
                             </div>
                             <div style="font-weight:800;color:#fca5a5;font-size:1rem;">${price} TL</div>
                         </div>
@@ -4957,7 +4982,7 @@ async function loadBusinessDebts(filter = 'all') {
                     <div class="admin-res-item" style="border-left: 4px solid ${isPaid ? 'var(--neon-green)' : '#ef4444'};">
                         <div class="admin-res-info">
                             <strong>${r.user_name}</strong> ${r.user_phone ? `(${r.user_phone})` : ''}<br>
-                            <small style="color: var(--text-muted);">SAHA ${r.pitchNumber} | ${r.dateText} | ${r.hourText}</small>
+                            <small style="color: var(--text-muted);">SAHA ${r.pitchNumber} | ${formatReservationDate(r)} | ${r.hourText}</small>
                             <div style="font-weight: bold; margin-top: 4px; color: ${isPaid ? 'var(--neon-green)' : '#fca5a5'};">
                                 Ücret: ${price} TL | ${isPaid ? 'ÖDENDİ' : 'ÖDENMEDİ'}
                             </div>

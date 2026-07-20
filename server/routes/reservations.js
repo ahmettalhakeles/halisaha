@@ -33,7 +33,7 @@ function initReservationRoutes(app, db) {
         if (!playDateVal || !isDateWithinTodayAndDays(getDateOnlyString(playDateVal), 30)) {
             return res.status(400).json({ success: false, message: 'Rezervasyon en fazla 30 gün sonrası için yapılabilir!' });
         }
-        const displayDateText = dateText || (play_date ? new Date(play_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR') : '');
+        const displayDateText = getTurkishDateTextFromYMD(playDateVal);
 
         const connection = await db.promise().getConnection();
         try {
@@ -161,7 +161,7 @@ function initReservationRoutes(app, db) {
                 return res.status(400).json({ success: false, message: 'Rezervasyon en fazla 30 gün sonrasına ertelenebilir!' });
             }
             updates.push('dateText = ?'); 
-            values.push(dateText); 
+            values.push(getTurkishDateTextFromYMD(playDateStr));
             updates.push('play_date = ?');
             values.push(playDateStr);
         }
@@ -252,7 +252,7 @@ function initReservationRoutes(app, db) {
         if (!playDateVal || !isDateWithinTodayAndDays(getDateOnlyString(playDateVal), 30)) {
             return res.status(400).json({ success: false, message: 'Rezervasyon en fazla 30 gün sonrası için yapılabilir!' });
         }
-        const displayDateText = dateText || (play_date ? new Date(play_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR') : '');
+        const displayDateText = getTurkishDateTextFromYMD(playDateVal);
 
         const connection = await db.promise().getConnection();
         try {
@@ -503,6 +503,13 @@ function getDateOnlyString(value) {
     if (!value) return '';
     if (value instanceof Date) return formatDateYMD(value);
     return String(value).split('T')[0];
+}
+
+function getTurkishDateTextFromYMD(value) {
+    const [year, month, day] = getDateOnlyString(value).split('-').map(Number);
+    if (!year || !month || !day) return '';
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR');
 }
 
 function formatDateYMD(date) {

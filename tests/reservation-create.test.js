@@ -15,6 +15,13 @@ function formatYmd(offsetDays = 0) {
     return `${y}-${m}-${d}`;
 }
 
+function formatDisplayDate(ymd) {
+    const [year, month, day] = ymd.split('-').map(Number);
+    return new Date(year, month - 1, day)
+        .toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+        .toLocaleUpperCase('tr-TR');
+}
+
 function createReservationHandler(connection) {
     let handler;
     const app = {
@@ -392,5 +399,5 @@ test('reservation update commits an authorized available slot change', async () 
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.success, true);
     assert.equal(committed, true);
-    assert.deepEqual(updateParams, [newDate, newDate, '20:00 - 21:00', 1, '5']);
+    assert.deepEqual(updateParams, [formatDisplayDate(newDate), newDate, '20:00 - 21:00', 1, '5']);
 });
