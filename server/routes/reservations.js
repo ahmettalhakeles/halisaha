@@ -24,7 +24,8 @@ function initReservationRoutes(app, db) {
     // Create reservation
     app.post('/api/reservations', resLimitPerMin, resLimitPerSec, async (req, res) => {
         const { fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status } = req.body;
-        if (!fieldKey || !pitchNumber || (!dateText && !play_date) || !hourText || !user_name) {
+        const normalizedUserId = Number(user_id);
+        if (!fieldKey || !pitchNumber || (!dateText && !play_date) || !hourText || !user_name || !Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
             return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
         }
 
@@ -35,7 +36,7 @@ function initReservationRoutes(app, db) {
         try {
             await connection.beginTransaction();
 
-            const [userResult] = await connection.query('SELECT id, name, phone, status FROM users WHERE id = ?', [user_id]);
+            const [userResult] = await connection.query('SELECT id, phone, status FROM users WHERE id = ?', [normalizedUserId]);
             if (userResult.length === 0) {
                 await connection.rollback();
                 return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
@@ -72,7 +73,7 @@ function initReservationRoutes(app, db) {
 
                 const [insertResult] = await connection.query(
                     'INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal")',
-                    [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, user_id, reservation_price || 0, payment_status || 'odenmedi']
+                    [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, normalizedUserId, reservation_price || 0, payment_status || 'odenmedi']
                 );
 
                 await connection.commit();

@@ -4968,6 +4968,29 @@ header {
     gap: 6px;
 }
 
+#userLogoutSection {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.user-session-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.welcome-text {
+    max-width: 214px;
+    overflow: hidden;
+    color: var(--neon-green);
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .nav-btn {
     min-width: 104px;
     min-height: 40px;
@@ -5131,5 +5154,14 @@ header {
 
     .customer-tab-content {
         padding-top: 0;
+    }
+
+    .user-session-actions {
+        flex-direction: column;
+    }
+
+    .welcome-text {
+        max-width: 100%;
+        white-space: normal;
     }
 }

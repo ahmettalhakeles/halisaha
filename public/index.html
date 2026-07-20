@@ -6,7 +6,7 @@
     <title>KSK - KOLAY SAHA KIRALAMA</title>
     <meta name="description" content="KSK - Kolay Saha Kiralama. Amasya halı saha rezervasyon ve oyuncu arama platformu.">
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="style.min.css?v=1.1.9">
+    <link rel="stylesheet" href="style.min.css?v=1.1.10">
 </head>
 <body>
     <div id="toastContainer"></div>
@@ -89,9 +89,11 @@
 
             <!-- Çıkış Butonları -->
             <div id="userLogoutSection" class="user-auth-zone" style="display: none;">
-                <span id="welcomeText" style="font-weight: bold; color: var(--neon-green); margin-right: 10px; align-self: center;"></span>
-                <button class="nav-btn profile-nav-btn" data-click="openProfilePanel">PROFİLİM</button>
-                <button class="nav-btn red-btn" data-click="handleUserLogout">ÇIKIŞ</button>
+                <div class="user-session-actions">
+                    <button class="nav-btn profile-nav-btn" data-click="openProfilePanel">PROFİLİM</button>
+                    <button class="nav-btn red-btn" data-click="handleUserLogout">ÇIKIŞ</button>
+                </div>
+                <span id="welcomeText" class="welcome-text"></span>
             </div>
 
             <!-- Duyurular Butonu (Header'da sağ üstte) -->
