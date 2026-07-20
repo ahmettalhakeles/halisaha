@@ -41,7 +41,7 @@ app.use(helmet({
             scriptSrcAttr: ["'unsafe-inline'"],
             frameSrc: ["'self'", "https://challenges.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https://www.google.com", "https://www.gstatic.com"],
-            connectSrc: ["'self'", "https://api.open-meteo.com"],
+            connectSrc: ["'self'", "https://api.open-meteo.com", "https://challenges.cloudflare.com"],
             formAction: ["'self'"],
         },
     },
