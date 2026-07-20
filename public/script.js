@@ -1725,7 +1725,7 @@ function renderBusinessReservations() {
     const activeList = [];
     const pastList = [];
     filtered.forEach(res => {
-        if (isReservationPast(res.dateText, res.hourText)) pastList.push(res);
+        if (isReservationPast(res)) pastList.push(res);
         else activeList.push(res);
     });
 
@@ -4236,21 +4236,31 @@ function getTurkeyCurrentTime() {
 function parseReservationDateTime(dateText, hourText) {
     const resDate = parseTurkishDateString(dateText);
     if (!resDate) return null;
-    
-    const hourPart = hourText.split(' - ')[1] || hourText.split(' - ')[0];
-    const [h, m] = hourPart.split(':').map(Number);
-    
-    // If end hour is past midnight (00:00 to 05:59), the date is actually the next day
-    if (h < 6) {
-        resDate.setDate(resDate.getDate() + 1);
+
+    const [startPart, endPartRaw] = hourText.split(' - ');
+    const endPart = endPartRaw || startPart;
+    const [startH, startM] = startPart.split(':').map(Number);
+    const [endH, endM] = endPart.split(':').map(Number);
+    if ([startH, startM, endH, endM].some(v => Number.isNaN(v))) return null;
+
+    const startDate = new Date(resDate);
+    startDate.setHours(startH, startM, 0, 0);
+    const endDate = new Date(resDate);
+    endDate.setHours(endH, endM, 0, 0);
+    if (endDate <= startDate) {
+        endDate.setDate(endDate.getDate() + 1);
     }
-    
-    resDate.setHours(h, m, 0, 0);
-    return resDate;
+    return endDate;
 }
 
-function isReservationPast(dateText, hourText) {
-    const resDateTime = parseReservationDateTime(dateText, hourText);
+function isReservationPast(dateTextOrReservation, hourText) {
+    const dateText = typeof dateTextOrReservation === 'object' && dateTextOrReservation !== null
+        ? getReservationDateValue(dateTextOrReservation)
+        : dateTextOrReservation;
+    const effectiveHourText = typeof dateTextOrReservation === 'object' && dateTextOrReservation !== null
+        ? dateTextOrReservation.hourText
+        : hourText;
+    const resDateTime = parseReservationDateTime(dateText, effectiveHourText);
     if (!resDateTime) return false;
     return resDateTime < getTurkeyCurrentTime();
 }
@@ -4283,7 +4293,7 @@ async function loadProfileReservations() {
     const pastList = [];
     
     userRes.forEach(r => {
-        if (isReservationPast(r.dateText, r.hourText)) {
+        if (isReservationPast(r)) {
             pastList.push(r);
         } else {
             activeList.push(r);
@@ -4390,7 +4400,7 @@ async function loadProfileReservations() {
 
     // Render Debts
     if (debtsContainer) {
-        const unpaidList = userRes.filter(r => r.payment_status !== 'odendi' && r.pg_paid_count !== 1 && !isReservationPast(r.dateText, r.hourText));
+        const unpaidList = userRes.filter(r => r.payment_status !== 'odendi' && r.pg_paid_count !== 1 && !isReservationPast(r));
         const totalDebt = unpaidList.reduce((sum, r) => {
             const pitch = pitchObjectsList.find(p => p.fieldKey === r.fieldKey && p.pitchNumber === r.pitchNumber) || fieldsData[r.fieldKey] || {};
             const mp = pitch.morningPrice || 2500;

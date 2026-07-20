@@ -39,3 +39,10 @@ test('all main entry pages request the current minified script version', () => {
         assert.match(html, /script\.min\.js\?v=1\.2\.2/);
     }
 });
+
+test('reservation past check uses slot rollover instead of early-hour day bump', () => {
+    assert.match(scriptJs, /if \(endDate <= startDate\) \{\s*endDate\.setDate\(endDate\.getDate\(\) \+ 1\);/);
+    assert.doesNotMatch(scriptJs, /If end hour is past midnight[\s\S]*?if \(h < 6\)/);
+    assert.match(scriptJs, /if \(isReservationPast\(r\)\) \{/);
+    assert.match(scriptJs, /!isReservationPast\(r\)/);
+});

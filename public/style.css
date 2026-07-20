@@ -1000,10 +1000,10 @@ main {
 }
 
 .hour-btn.locked.my-own-slot {
-    background: rgba(16, 185, 129, 0.2) !important;
-    color: var(--neon-green) !important;
-    border: 1px solid var(--neon-green) !important;
-    box-shadow: 0 0 12px rgba(52, 211, 153, 0.2) !important;
+    background: rgba(127, 29, 29, 0.4) !important;
+    color: #fca5a5 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.18) !important;
 }
 
 .hour-btn.selected {
