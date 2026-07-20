@@ -1,6 +1,19 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const jwt = require('jsonwebtoken');
 const { initReservationRoutes } = require('../server/routes/reservations');
+
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_secret';
+
+function formatYmd(offsetDays = 0) {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + offsetDays);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
 
 function createReservationHandler(connection) {
     let handler;
@@ -38,13 +51,44 @@ function validRequest() {
         body: {
             fieldKey: 'final',
             pitchNumber: 1,
-            play_date: '2026-07-23',
+            play_date: formatYmd(3),
             hourText: '21:00 - 22:00',
             user_name: 'TEST USER',
             user_id: 7,
             reservation_price: 2800
         }
     };
+}
+
+async function runHandlers(handlers, req, res) {
+    for (const handler of handlers) {
+        let nextCalled = false;
+        await handler(req, res, () => {
+            nextCalled = true;
+        });
+        if (!nextCalled) break;
+    }
+}
+
+function createUpdateHandlers(connection) {
+    let handlers;
+    const app = {
+        get() {},
+        post() {},
+        delete() {},
+        put(path, ...routeHandlers) {
+            if (path === '/api/reservations/:id') handlers = routeHandlers;
+        }
+    };
+    const db = { promise: () => ({ getConnection: async () => connection }) };
+
+    initReservationRoutes(app, db);
+    return handlers;
+}
+
+function businessAuthHeader(fieldKey = 'final') {
+    const token = jwt.sign({ role: 'business', fieldKey }, process.env.JWT_SECRET);
+    return { authorization: `Bearer ${token}` };
 }
 
 test('reservation creation uses current user schema and commits an available slot', async () => {
@@ -171,4 +215,182 @@ test('reservation creation preserves the occupied-slot conflict response', async
     assert.equal(response.body.success, false);
     assert.equal(rolledBack, true);
     assert.equal(inserted, false);
+});
+
+test('reservation update rejects requests without authentication', async () => {
+    let requestedConnection = false;
+    const connection = {
+        async beginTransaction() {},
+        async commit() {},
+        async rollback() {},
+        release() {},
+        async query() {
+            requestedConnection = true;
+            throw new Error('connection should not be used');
+        }
+    };
+    const response = createResponse();
+    const handlers = createUpdateHandlers(connection);
+
+    await runHandlers(handlers, {
+        params: { id: '5' },
+        headers: {},
+        body: { dateText: formatYmd(2), hourText: '20:00 - 21:00' }
+    }, response);
+
+    assert.equal(response.statusCode, 401);
+    assert.equal(response.body.success, false);
+    assert.equal(requestedConnection, false);
+});
+
+test('reservation update rejects another business field', async () => {
+    let rolledBack = false;
+    const connection = {
+        async beginTransaction() {},
+        async commit() {},
+        async rollback() { rolledBack = true; },
+        release() {},
+        async query(sql) {
+            if (sql.startsWith('SELECT * FROM reservations')) {
+                return [[{
+                    id: 5,
+                    fieldKey: 'final',
+                    pitchNumber: 1,
+                    play_date: formatYmd(1),
+                    hourText: '19:00 - 20:00',
+                    user_id: 7,
+                    status: 'active'
+                }]];
+            }
+            throw new Error(`Unexpected query: ${sql}`);
+        }
+    };
+    const response = createResponse();
+    const handlers = createUpdateHandlers(connection);
+
+    await runHandlers(handlers, {
+        params: { id: '5' },
+        headers: businessAuthHeader('other-field'),
+        body: { dateText: formatYmd(2), hourText: '20:00 - 21:00' }
+    }, response);
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.body.success, false);
+    assert.equal(rolledBack, true);
+});
+
+test('reservation update rejects dates beyond 30 days', async () => {
+    let requestedConnection = false;
+    const connection = {
+        async beginTransaction() {},
+        async commit() {},
+        async rollback() {},
+        release() {},
+        async query() {
+            requestedConnection = true;
+            throw new Error('connection should not be used');
+        }
+    };
+    const response = createResponse();
+    const handlers = createUpdateHandlers(connection);
+
+    await runHandlers(handlers, {
+        params: { id: '5' },
+        headers: businessAuthHeader(),
+        body: { dateText: formatYmd(31), hourText: '20:00 - 21:00' }
+    }, response);
+
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(requestedConnection, false);
+});
+
+test('reservation update rejects an occupied target slot', async () => {
+    let rolledBack = false;
+    let updated = false;
+    const connection = {
+        async beginTransaction() {},
+        async commit() {},
+        async rollback() { rolledBack = true; },
+        release() {},
+        async query(sql) {
+            if (sql.startsWith('SELECT * FROM reservations')) {
+                return [[{
+                    id: 5,
+                    fieldKey: 'final',
+                    pitchNumber: 1,
+                    play_date: formatYmd(1),
+                    hourText: '19:00 - 20:00',
+                    user_id: 7,
+                    status: 'active'
+                }]];
+            }
+            if (sql.startsWith('SELECT GET_LOCK')) return [[{ acquired: 1 }]];
+            if (sql.startsWith('SELECT id, status, type FROM reservations')) {
+                return [[{ id: 9, status: 'active', type: 'normal' }]];
+            }
+            if (sql.startsWith('SELECT RELEASE_LOCK')) return [[{ released: 1 }]];
+            if (sql.startsWith('UPDATE reservations')) updated = true;
+            throw new Error(`Unexpected query: ${sql}`);
+        }
+    };
+    const response = createResponse();
+    const handlers = createUpdateHandlers(connection);
+
+    await runHandlers(handlers, {
+        params: { id: '5' },
+        headers: businessAuthHeader(),
+        body: { dateText: formatYmd(2), hourText: '20:00 - 21:00' }
+    }, response);
+
+    assert.equal(response.statusCode, 409);
+    assert.equal(response.body.success, false);
+    assert.equal(rolledBack, true);
+    assert.equal(updated, false);
+});
+
+test('reservation update commits an authorized available slot change', async () => {
+    let committed = false;
+    let updateParams;
+    const connection = {
+        async beginTransaction() {},
+        async commit() { committed = true; },
+        async rollback() {},
+        release() {},
+        async query(sql, params = []) {
+            if (sql.startsWith('SELECT * FROM reservations')) {
+                return [[{
+                    id: 5,
+                    fieldKey: 'final',
+                    pitchNumber: 1,
+                    play_date: formatYmd(1),
+                    hourText: '19:00 - 20:00',
+                    user_id: 7,
+                    status: 'active'
+                }]];
+            }
+            if (sql.startsWith('SELECT GET_LOCK')) return [[{ acquired: 1 }]];
+            if (sql.startsWith('SELECT id, status, type FROM reservations')) return [[]];
+            if (sql.startsWith('UPDATE reservations')) {
+                updateParams = params;
+                return [{ affectedRows: 1 }];
+            }
+            if (sql.startsWith('SELECT RELEASE_LOCK')) return [[{ released: 1 }]];
+            throw new Error(`Unexpected query: ${sql}`);
+        }
+    };
+    const response = createResponse();
+    const handlers = createUpdateHandlers(connection);
+    const newDate = formatYmd(2);
+
+    await runHandlers(handlers, {
+        params: { id: '5' },
+        headers: businessAuthHeader(),
+        body: { dateText: newDate, hourText: '20:00 - 21:00', pitchNumber: 1 }
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.success, true);
+    assert.equal(committed, true);
+    assert.deepEqual(updateParams, [newDate, newDate, '20:00 - 21:00', 1, '5']);
 });

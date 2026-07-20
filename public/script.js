@@ -1707,7 +1707,7 @@ function renderBusinessReservations() {
                         ` : `<input type="hidden" id="newPitch_${res.id}" value="1">`}
                         <select id="newDate_${res.id}" class="res-select">
                             <option value="${res.dateText}">${res.dateText}</option>
-                            ${getNext7Days().map(day => `<option value="${day}">${day}</option>`).join('')}
+                            ${getNext30Days().map(day => `<option value="${day}">${day}</option>`).join('')}
                         </select>
                         <select id="newHour_${res.id}" class="res-select">
                             <option value="${res.hourText}">${res.hourText}</option>
@@ -1755,10 +1755,10 @@ function toggleResCard(el) {
     }
 }
 
-function getNext7Days() {
+function getNext30Days() {
     const optionsFormat = { day: 'numeric', month: 'long' };
     let days = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i <= 30; i++) {
         let d = new Date();
         d.setDate(d.getDate() + i);
         let dateText = d.toLocaleDateString('tr-TR', optionsFormat).toLocaleUpperCase('tr-TR');
@@ -1783,7 +1783,7 @@ function initBusinessGridDateSelect() {
     if (!sel) return;
     sel.innerHTML = '';
     const optionsFormat = { day: 'numeric', month: 'long' };
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i <= 30; i++) {
         const d = new Date();
         d.setDate(d.getDate() + i);
         const dateText = d.toLocaleDateString('tr-TR', optionsFormat).toLocaleUpperCase('tr-TR');
@@ -2304,7 +2304,7 @@ function initDateDropdowns() {
     const forumPicker = document.getElementById('forumDate');
     const options = { day: 'numeric', month: 'long' };
 
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i <= 30; i++) {
         let d = new Date(); d.setDate(d.getDate() + i);
         let dateText = d.toLocaleDateString('tr-TR', options).toLocaleUpperCase('tr-TR');
         let ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

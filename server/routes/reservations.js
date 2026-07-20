@@ -30,6 +30,9 @@ function initReservationRoutes(app, db) {
         }
 
         const playDateVal = play_date || parseTurkishDateString(dateText);
+        if (!playDateVal || !isDateWithinTodayAndDays(getDateOnlyString(playDateVal), 30)) {
+            return res.status(400).json({ success: false, message: 'Rezervasyon en fazla 30 gün sonrası için yapılabilir!' });
+        }
         const displayDateText = dateText || (play_date ? new Date(play_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR') : '');
 
         const connection = await db.promise().getConnection();
@@ -144,7 +147,7 @@ function initReservationRoutes(app, db) {
     });
 
     // Update reservation
-    app.put('/api/reservations/:id', (req, res) => {
+    app.put('/api/reservations/:id', requireAuthenticatedActor, async (req, res) => {
         const { id } = req.params;
         const { reservation_price, dateText, hourText, pitchNumber } = req.body;
         const updates = [];
@@ -152,25 +155,90 @@ function initReservationRoutes(app, db) {
         
         if (reservation_price !== undefined) { updates.push('reservation_price = ?'); values.push(reservation_price); }
         if (dateText !== undefined) { 
+            const playDateStr = getPlayDateFromDateTextAndHour(dateText, hourText);
+            if (!playDateStr) return res.status(400).json({ success: false, message: 'Geçersiz tarih!' });
+            if (!isDateWithinTodayAndDays(playDateStr, 30)) {
+                return res.status(400).json({ success: false, message: 'Rezervasyon en fazla 30 gün sonrasına ertelenebilir!' });
+            }
             updates.push('dateText = ?'); 
             values.push(dateText); 
-            // Calculate and update play_date from dateText using existing helper
-            const playDateStr = parseTurkishDateString(dateText);
-            if (playDateStr) {
-                updates.push('play_date = ?');
-                values.push(playDateStr);
-            }
+            updates.push('play_date = ?');
+            values.push(playDateStr);
         }
         if (hourText !== undefined) { updates.push('hourText = ?'); values.push(hourText); }
         if (pitchNumber !== undefined) { updates.push('pitchNumber = ?'); values.push(pitchNumber); }
         
         if (updates.length === 0) return res.status(400).json({ success: false, message: 'Güncellenecek alan bulunamadı!' });
-        values.push(id);
-        
-        db.query(`UPDATE reservations SET ${updates.join(', ')} WHERE id = ?`, values, (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Güncelleme hatası!' });
+        const connection = await db.promise().getConnection();
+        try {
+            await connection.beginTransaction();
+            const [rows] = await connection.query('SELECT * FROM reservations WHERE id = ? FOR UPDATE', [id]);
+            if (rows.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ success: false, message: 'Rezervasyon bulunamadı!' });
+            }
+
+            const reservation = rows[0];
+            const actor = req.reservationActor;
+            const allowed = actor.role === 'admin'
+                || (actor.role === 'business' && actor.fieldKey === reservation.fieldKey)
+                || (actor.role === 'user' && actor.userId === Number(reservation.user_id));
+            if (!allowed) {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Bu rezervasyonu güncelleyemezsiniz!' });
+            }
+            if (reservation.status === 'cancelled') {
+                await connection.rollback();
+                return res.status(400).json({ success: false, message: 'İptal edilmiş rezervasyon güncellenemez!' });
+            }
+
+            const targetPlayDate = dateText !== undefined
+                ? getPlayDateFromDateTextAndHour(dateText, hourText !== undefined ? hourText : reservation.hourText)
+                : getDateOnlyString(reservation.play_date);
+            if ((dateText !== undefined || hourText !== undefined) && !isDateWithinTodayAndDays(targetPlayDate, 30)) {
+                await connection.rollback();
+                return res.status(400).json({ success: false, message: 'Rezervasyon en fazla 30 gün sonrasına ertelenebilir!' });
+            }
+            const targetPitchNumber = pitchNumber !== undefined ? pitchNumber : reservation.pitchNumber;
+            const targetHourText = hourText !== undefined ? hourText : reservation.hourText;
+            const slotChanged = String(targetPitchNumber) !== String(reservation.pitchNumber)
+                || targetPlayDate !== getDateOnlyString(reservation.play_date)
+                || targetHourText !== reservation.hourText;
+
+            let releaseLock = async () => {};
+            if (slotChanged) {
+                releaseLock = await acquireSlotLock(connection, {
+                    fieldKey: reservation.fieldKey,
+                    pitchNumber: targetPitchNumber,
+                    play_date: targetPlayDate,
+                    hourText: targetHourText
+                });
+                const [existing] = await connection.query(
+                    'SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status != "cancelled" AND id != ? FOR UPDATE',
+                    [reservation.fieldKey, targetPitchNumber, targetPlayDate, targetHourText, id]
+                );
+                if (existing.length > 0) {
+                    await connection.rollback();
+                    await releaseLock();
+                    return res.status(409).json({ success: false, message: 'Hedef saat dilimi kullanılamıyor!' });
+                }
+            }
+
+            try {
+                values.push(id);
+                await connection.query(`UPDATE reservations SET ${updates.join(', ')} WHERE id = ?`, values);
+                await connection.commit();
+            } finally {
+                await releaseLock();
+            }
             res.json({ success: true, message: 'Rezervasyon güncellendi!' });
-        });
+        } catch (error) {
+            await connection.rollback().catch(() => {});
+            console.error('Reservation update error:', error);
+            res.status(500).json({ success: false, message: 'Güncelleme hatası!' });
+        } finally {
+            connection.release();
+        }
     });
 
     // Reserve specific hours
@@ -181,6 +249,9 @@ function initReservationRoutes(app, db) {
         }
 
         const playDateVal = play_date || parseTurkishDateString(dateText);
+        if (!playDateVal || !isDateWithinTodayAndDays(getDateOnlyString(playDateVal), 30)) {
+            return res.status(400).json({ success: false, message: 'Rezervasyon en fazla 30 gün sonrası için yapılabilir!' });
+        }
         const displayDateText = dateText || (play_date ? new Date(play_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toLocaleUpperCase('tr-TR') : '');
 
         const connection = await db.promise().getConnection();
@@ -413,6 +484,44 @@ function parseTurkishDateString(dateStr) {
     const mm = String(monthIdx + 1).padStart(2, '0');
     const dd = String(day).padStart(2, '0');
     return `${year}-${mm}-${dd}`;
+}
+
+function getPlayDateFromDateTextAndHour(dateText, hourText) {
+    const playDateStr = parseTurkishDateString(dateText);
+    if (!playDateStr) return null;
+
+    const [year, month, day] = playDateStr.split('-').map(Number);
+    const playDate = new Date(year, month - 1, day);
+    const startHour = parseInt(String(hourText || '').split(' - ')[0], 10);
+    if (!Number.isNaN(startHour) && startHour < 6) {
+        playDate.setDate(playDate.getDate() + 1);
+    }
+    return formatDateYMD(playDate);
+}
+
+function getDateOnlyString(value) {
+    if (!value) return '';
+    if (value instanceof Date) return formatDateYMD(value);
+    return String(value).split('T')[0];
+}
+
+function formatDateYMD(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function isDateWithinTodayAndDays(dateStr, days) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + days);
+
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const targetDate = new Date(year, month - 1, day);
+    targetDate.setHours(0, 0, 0, 0);
+    return targetDate >= today && targetDate <= maxDate;
 }
 
 module.exports = { initReservationRoutes };

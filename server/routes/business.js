@@ -528,7 +528,7 @@ function initBusinessRoutes(app, db) {
     });
 
     // Stats content (detailed)
-    app.get('/api/stats-content/:fieldKey', (req, res) => {
+    app.get('/api/stats-content/:fieldKey', requireBusinessOrAdmin, requireMatchingField, (req, res) => {
         const { fieldKey } = req.params;
 
         db.query(
@@ -697,6 +697,10 @@ function initBusinessRoutes(app, db) {
 
 function getActualPlayDate(dateText, hourText) {
     if (!dateText) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
+        const [yyyy, mm, dd] = dateText.split('-');
+        return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+    }
     try {
         if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateText)) {
             const [dd, mm, yyyy] = dateText.split('.');
