@@ -1,0 +1,7 @@
+interface:
+  display_name: "Regression Guard"
+  short_description: "Kod degisikliklerinde regresyonlari yakalar"
+  default_prompt: "Use $regression-guard to implement this change without breaking existing behavior."
+
+policy:
+  allow_implicit_invocation: true

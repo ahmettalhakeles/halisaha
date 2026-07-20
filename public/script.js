@@ -1513,6 +1513,25 @@ async function saveOperatingHours() {
             });
             const result = await response.json();
             if (result.success) {
+                // Also update field-daily-hours for all days of the week to stay in sync
+                try {
+                    await fetch(`/api/field-daily-hours/${currentBusinessFieldKey}`, {
+                        method: 'PUT', headers: getAuthHeaders(),
+                        body: JSON.stringify({
+                            days: [
+                                { dayOfWeek: 0, openingHour: openHour, closingHour: closeHour },
+                                { dayOfWeek: 1, openingHour: openHour, closingHour: closeHour },
+                                { dayOfWeek: 2, openingHour: openHour, closingHour: closeHour },
+                                { dayOfWeek: 3, openingHour: openHour, closingHour: closeHour },
+                                { dayOfWeek: 4, openingHour: openHour, closingHour: closeHour },
+                                { dayOfWeek: 5, openingHour: openHour, closingHour: closeHour },
+                                { dayOfWeek: 6, openingHour: openHour, closingHour: closeHour }
+                            ]
+                        })
+                    });
+                } catch (errSync) {
+                    console.error("Daily hours sync error:", errSync);
+                }
                 alert("Genel çalışma saatleri başarıyla güncellendi!");
                 const existingPitch = pitchObjectsList.find(p => p.fieldKey === currentBusinessFieldKey && p.pitchNumber === pitchNum);
                 if (existingPitch) { existingPitch.openingHour = openHour; existingPitch.closingHour = closeHour; }
@@ -2296,6 +2315,21 @@ function initDateDropdowns() {
             opt.value = ymd; opt.text = dateText;
             opt.dataset.dayName = dayName;
             p.appendChild(opt);
+        });
+    }
+
+    // Populate active pitches for player ad
+    const forumFieldSelect = document.getElementById('forumFieldName');
+    if (forumFieldSelect) {
+        forumFieldSelect.innerHTML = '<option value="">Seçiniz (Opsiyonel)</option>';
+        Object.keys(fieldsData).forEach(key => {
+            const f = fieldsData[key];
+            if (f && f.isDeleted !== true) {
+                const opt = document.createElement('option');
+                opt.value = f.name;
+                opt.textContent = f.name;
+                forumFieldSelect.appendChild(opt); 
+            }
         });
     }
 
@@ -3358,11 +3392,13 @@ async function createForumPost() {
     const pos = document.getElementById('forumPosition').value;
     const payment = document.getElementById('forumPayment').value;
     const msg = document.getElementById('forumMessage').value.trim() || "EKİP TAMAMLANIYOR.";
+    const fieldNameSelect = document.getElementById('forumFieldName');
+    const fieldName = fieldNameSelect ? fieldNameSelect.value : '';
 
     try {
         const response = await fetch('/api/forum', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, msg, user_id: currentUser.id })
+            body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, msg, user_id: currentUser.id, fieldName })
         });
         const result = await response.json();
         if (result.success) {
@@ -3396,7 +3432,7 @@ function renderForumWall() {
     <div class="post-card" id="forum-post-${post.id}" style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; padding: 12px;">
         <!-- Tarih (Sol ?st) -->
         <div style="grid-column: 1; grid-row: 1; font-size: 0.85rem; color: var(--text-muted);">
-            ${post.dateText} - ${post.hourText}
+            ${post.dateText} - ${post.hourText}${post.fieldName ? ' | 🏟️ ' + post.fieldName : ''}
         </div>
         
         <!-- Aran?lan Mevki (Sa? ?st) -->
@@ -4165,14 +4201,9 @@ function getActualPlayDate(dateText, hourText) {
 }
 
 function getTurkeyCurrentTime() {
-    const tzString = 'Europe/Istanbul';
     const date = new Date();
-    try {
-        const trStr = date.toLocaleString('en-US', { timeZone: tzString });
-        return new Date(trStr);
-    } catch (e) {
-        return date;
-    }
+    const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+    return new Date(utc + (3 * 3600000));
 }
 
 function parseReservationDateTime(dateText, hourText) {

@@ -59,6 +59,7 @@ async function initDatabase(connection) {
         { check: "SHOW COLUMNS FROM forum_posts LIKE 'play_date'", alter: "ALTER TABLE forum_posts ADD COLUMN play_date DATE DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM forum_posts LIKE 'phone'",     alter: "ALTER TABLE forum_posts ADD COLUMN phone VARCHAR(20) DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM forum_posts LIKE 'user_id'",   alter: "ALTER TABLE forum_posts ADD COLUMN user_id INT DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM forum_posts LIKE 'fieldName'", alter: "ALTER TABLE forum_posts ADD COLUMN fieldName VARCHAR(100) DEFAULT NULL" },
         // player_reviews table
         { check: "SHOW COLUMNS FROM player_reviews LIKE 'player_id'", alter: "ALTER TABLE player_reviews ADD COLUMN player_id INT NOT NULL DEFAULT 0" },
         // reviews table

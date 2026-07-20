@@ -14,7 +14,7 @@ function initForumRoutes(app, db) {
 
     // Create forum post
     app.post('/api/forum', (req, res) => {
-        const { dateText, play_date, hourText, position, payment, phone, msg, user_id } = req.body;
+        const { dateText, play_date, hourText, position, payment, phone, msg, user_id, fieldName } = req.body;
         if ((!dateText && !play_date) || !hourText || !position || !payment) {
             return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
         }
@@ -36,8 +36,8 @@ function initForumRoutes(app, db) {
 
         function doInsert() {
             db.query(
-                'INSERT INTO forum_posts (dateText, play_date, hourText, position, payment, phone, msg, user_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [displayDateText, playDateVal, hourText, position, payment, phone || null, msg || null, user_id || null, 'aktif'],
+                'INSERT INTO forum_posts (dateText, play_date, hourText, position, payment, phone, msg, user_id, status, fieldName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [displayDateText, playDateVal, hourText, position, payment, phone || null, msg || null, user_id || null, 'aktif', fieldName || null],
                 (err, result) => {
                     if (err) return res.status(500).json({ success: false, message: 'İlan kaydedilemedi!' });
                     res.json({ success: true, message: 'İlan başarıyla yayınlandı!' });

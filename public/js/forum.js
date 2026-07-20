@@ -35,11 +35,13 @@ async function createForumPost() {
     const pos = document.getElementById('forumPosition').value;
     const payment = document.getElementById('forumPayment').value;
     const msg = document.getElementById('forumMessage').value.trim() || "EKİP TAMAMLANIYOR.";
+    const fieldNameSelect = document.getElementById('forumFieldName');
+    const fieldName = fieldNameSelect ? fieldNameSelect.value : '';
 
     try {
         const response = await fetch('/api/forum', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, msg, user_id: currentUser.id })
+            body: JSON.stringify({ dateText: date, hourText: hour, position: pos, payment, msg, user_id: currentUser.id, fieldName })
         });
         const result = await response.json();
         if (result.success) {
@@ -73,7 +75,7 @@ function renderForumWall() {
     <div class="post-card" id="forum-post-${post.id}" style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; padding: 12px;">
         <!-- Tarih (Sol Üst) -->
         <div style="grid-column: 1; grid-row: 1; font-size: 0.85rem; color: var(--text-muted);">
-            ${post.dateText} - ${post.hourText}
+            ${post.dateText} - ${post.hourText}${post.fieldName ? ' | 🏟️ ' + post.fieldName : ''}
         </div>
         
         <!-- Aranılan Mevki (Sağ Üst) -->

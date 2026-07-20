@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS forum_posts (
   payment VARCHAR(50) NOT NULL,
   user_id INT DEFAULT NULL,
   msg TEXT DEFAULT NULL,
+  fieldName VARCHAR(100) DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   status ENUM('aktif','bulundu','suresi_gecti') DEFAULT 'aktif',
   PRIMARY KEY (id)

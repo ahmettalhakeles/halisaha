@@ -71,6 +71,21 @@ function initDateDropdowns() {
         });
     }
 
+    // Populate active pitches for player ad
+    const forumFieldSelect = document.getElementById('forumFieldName');
+    if (forumFieldSelect) {
+        forumFieldSelect.innerHTML = '<option value="">Seçiniz (Opsiyonel)</option>';
+        Object.keys(fieldsData).forEach(key => {
+            const f = fieldsData[key];
+            if (f && f.isDeleted !== true) {
+                const opt = document.createElement('option');
+                opt.value = f.name;
+                opt.textContent = f.name;
+                forumFieldSelect.appendChild(opt);
+            }
+        });
+    }
+
     const forumHourSelect = document.getElementById('forumHour');
     masterHoursList.forEach(h => {
         let opt = document.createElement('option'); opt.value = h; opt.text = h;

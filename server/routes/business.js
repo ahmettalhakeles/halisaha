@@ -815,7 +815,8 @@ function normalizePhone(phone) {
 }
 
 function getPlayDateFromScheduleDate(scheduleDate, hourText) {
-    const d = new Date(scheduleDate);
+    const parts = scheduleDate.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
     if (hourText) {
         const hourPart = hourText.split(' - ')[0];
         const [h] = hourPart.split(':').map(Number);

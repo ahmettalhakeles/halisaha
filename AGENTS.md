@@ -38,3 +38,9 @@
 - Canlı site ve yayımdan önceki akış kontrolleri için Browser kullan.
 - Rezervasyon akışı, metrik veya yönetici paneli tasarımı anlaşılmadığında görselleştirme kullan.
 - Railway mevcut dağıtım hedefidir; alternatif bir barındırma platformuna geçiş önermeden önce kullanıcı onayı al.
+
+## Zorunlu regresyon korumasi
+
+- Her kod, yapilandirma, sema, API, frontend, backend, test, build veya deployment degisikliginde `.agents/skills/regression-guard/SKILL.md` skill'ini calismaya baslamadan once yukle ve uygula.
+- Skill otomatik secilmemisse `$regression-guard` acik cagrisini kullan; skill incelemesini testlerin yerine gecmis sayma.
+- Degisiklikten once etkilenen eski akislarin sozlesmelerini belirle; degisiklikten sonra ilgili basarili ve negatif senaryolari, `npm.cmd test` ve son diff incelemesini tamamla. `git diff --check` komutunu yalnizca commit/release oncesinde veya whitespace, merge ve format riski bulunan degisikliklerde calistir.
