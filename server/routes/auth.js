@@ -83,6 +83,7 @@ function initAuthRoutes(app, db) {
 
     // handleSocialAuthSuccess helper
     async function handleSocialAuthSuccess(email, name, provider, idCol, res) {
+        email = String(email || '').trim().toLowerCase();
         try {
             const [rows] = await db.promise().query('SELECT id, name, phone, email, status FROM users WHERE email = ?', [email]);
             if (rows.length > 0) {
@@ -109,7 +110,8 @@ function initAuthRoutes(app, db) {
 
     // Register
     app.post('/api/register', loginLimitPerSec, loginLimitPer15Min, cleanAndTrimBody, (req, res) => {
-        const { firstName, lastName, phone, email, password } = req.body;
+        const { firstName, lastName, phone, password } = req.body;
+        const email = String(req.body.email || '').trim().toLowerCase();
         if (!firstName || !lastName || !phone || !email || !password) {
             return res.status(400).json({ success: false, message: 'Tüm alanları doldurunuz!' });
         }
@@ -137,8 +139,15 @@ function initAuthRoutes(app, db) {
                 return res.status(403).json({ success: false, message: 'Bu telefon numarası suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
             }
 
-            const bcrypt = require('bcryptjs');
-            const hashedPassword = bcrypt.hashSync(password, 10);
+            db.execute('SELECT id, phone, email FROM users WHERE phone = ? OR email = ? LIMIT 1', [phone, email], (dupErr, dupRows) => {
+                if (dupErr) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
+                if (dupRows.length > 0) {
+                    const field = dupRows[0].email === email ? 'e-posta adresi' : 'telefon numarası';
+                    return res.status(409).json({ success: false, message: `Bu ${field} zaten kullanımda!` });
+                }
+
+                const bcrypt = require('bcryptjs');
+                const hashedPassword = bcrypt.hashSync(password, 10);
 
             const sqlQuery = 'INSERT INTO users (first_name, last_name, phone, email, password) VALUES (?, ?, ?, ?, ?)';
             db.execute(sqlQuery, [firstName, lastName, phone, email, hashedPassword], (err, result) => {
@@ -159,12 +168,14 @@ function initAuthRoutes(app, db) {
                     user: { id: result.insertId, first_name: firstName, last_name: lastName, email, phone, age: null, position: null, experience: null }
                 });
             });
+            });
         });
     });
 
     // Login
     app.post('/api/login', loginLimitPerSec, loginLimitPer15Min, cleanAndTrimBody, checkIpBlock, (req, res) => {
-        const { email, password } = req.body;
+        const { password } = req.body;
+        const email = String(req.body.email || '').trim().toLowerCase();
         const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
         if (!email || !password) {

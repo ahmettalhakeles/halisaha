@@ -108,6 +108,20 @@ async function initDatabase(connection) {
         }
     }
 
+    await normalizeAndUniquifyUserEmails(connection);
+    const [emailIndex] = await connection.query(
+        "SHOW INDEX FROM users WHERE Key_name = 'unique_email'"
+    );
+    if (emailIndex.length === 0) {
+        await connection.query('ALTER TABLE users ADD UNIQUE KEY unique_email (email)');
+    }
+    const [verifiedEmailIndex] = await connection.query(
+        "SHOW INDEX FROM users WHERE Key_name = 'unique_email'"
+    );
+    if (verifiedEmailIndex.length === 0) {
+        throw new Error('Kritik users.email unique indeksi oluşturulamadı');
+    }
+
     await connection.query(
         `UPDATE reservations r
          JOIN subscriptions s ON s.fieldKey = r.fieldKey
@@ -283,6 +297,39 @@ async function initDatabase(connection) {
     }
 
     console.log('Veritabanı migration tamamlandı.');
+}
+
+async function normalizeAndUniquifyUserEmails(connection) {
+    const [users] = await connection.query('SELECT id, email FROM users ORDER BY id ASC');
+    const seen = new Set();
+    for (const user of users) {
+        const normalized = String(user.email || '').trim().toLowerCase();
+        let nextEmail = normalized || `missing-email-${user.id}@archived.local`;
+        if (seen.has(nextEmail)) {
+            nextEmail = buildDuplicateEmail(nextEmail, user.id, seen);
+        }
+        seen.add(nextEmail);
+        if (nextEmail !== user.email) {
+            await connection.query('UPDATE users SET email = ? WHERE id = ?', [nextEmail, user.id]);
+        }
+    }
+}
+
+function buildDuplicateEmail(email, userId, seen) {
+    const fallback = `duplicate-${userId}@archived.local`;
+    const atIndex = email.indexOf('@');
+    if (atIndex <= 0) return fallback;
+
+    const local = email.slice(0, atIndex);
+    const domain = email.slice(atIndex + 1);
+    let candidate = `${local}+duplicate-${userId}@${domain}`;
+    if (candidate.length > 100) candidate = fallback;
+    let suffix = 1;
+    while (seen.has(candidate)) {
+        candidate = `duplicate-${userId}-${suffix}@archived.local`;
+        suffix++;
+    }
+    return candidate;
 }
 
 function parseLegacyPlayDate(dateText, hourText, createdAt) {
