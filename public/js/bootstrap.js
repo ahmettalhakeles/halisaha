@@ -569,7 +569,7 @@ function closeMobileMenu() {
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.header-actions .nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            if (window.innerWidth <= 768) {
+            if (window.innerWidth <= 900) {
                 closeMobileMenu();
             }
         });

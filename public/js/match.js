@@ -424,7 +424,7 @@ function switchCustomerTab(tabName) {
     });
     document.getElementById('customer-tab-btn-' + tabName).classList.add('active');
     
-    if (window.innerWidth <= 768) {
+    if (window.innerWidth <= 900) {
         ['playersFormContainer', 'matchesFormContainer', 'teamsFormContainer'].forEach(formId => {
             const form = document.getElementById(formId);
             if (form && form.style.display === 'block') {

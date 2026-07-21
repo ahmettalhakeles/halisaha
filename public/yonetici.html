@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#0b0f19">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <title>KSK - YÖNETİCİ PANELİ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.min.css?v=1.1.11">
+    <link rel="stylesheet" href="style.min.css?v=1.1.12">
     <style>
         /* Enable hamburger button on all screen sizes */
         .hamburger-btn {
@@ -53,18 +55,20 @@
             left: -100% !important;
             width: 280px !important;
             height: 100vh !important;
+            height: 100dvh !important;
             background: rgba(11, 15, 25, 0.98) !important;
-            backdrop-filter: blur(10px) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             border-right: 1px solid rgba(16, 185, 129, 0.2) !important;
             z-index: 9999 !important;
-            transition: left 0.3s ease !important;
+            transition: none !important;
             padding: 80px 20px 20px 20px !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
             align-items: stretch !important;
             gap: 10px !important;
             overflow-y: auto !important;
-            box-shadow: 5px 0 25px rgba(0,0,0,0.7) !important;
+            box-shadow: none !important;
             display: flex !important;
         }
 
@@ -101,6 +105,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             background: rgba(0, 0, 0, 0.5);
             z-index: 9998;
             display: none;
@@ -115,7 +120,7 @@
         }
 
         /* Desktop PC persistent sidebar styling */
-        @media (min-width: 769px) {
+        @media (min-width: 901px) {
             .hamburger-btn {
                 display: none !important;
             }
@@ -564,6 +569,6 @@
     </div>
 
     <script src="js/auth-context.js?v=1.0.0" defer></script>
-    <script src="script.min.js?v=1.2.2" defer></script>
+    <script src="script.min.js?v=1.2.3" defer></script>
 </body>
 </html>

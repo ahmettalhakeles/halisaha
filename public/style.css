@@ -1,4 +1,5 @@
 :root {
+    color-scheme: dark;
     --bg-color: #0b0f19;
     --card-bg: rgba(21, 31, 50, 0.7);
     --primary-green: #10b981;
@@ -109,7 +110,7 @@ header {
     }
 }
 
-@media (max-width: 768px), (prefers-reduced-motion: reduce) {
+@media (max-width: 900px), (prefers-reduced-motion: reduce) {
     body {
         background-attachment: scroll;
         background-size: auto;
@@ -2316,7 +2317,7 @@ main.business-mode {
     margin-top: 15px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .profile-layout-container {
         grid-template-columns: 1fr;
     }
@@ -3051,7 +3052,7 @@ main.business-mode {
 }
 
 /* --- MOBİL UYUMLULUK (RESPONSIVE) --- */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
 
     /* Genel Düzen: Kenar boşlukları ve tek sütun */
     body {
@@ -3226,7 +3227,7 @@ main.business-mode {
     display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .mobile-listing-header {
         display: flex;
         justify-content: space-between;
@@ -3325,7 +3326,7 @@ main.business-mode {
 }
 
 /* YEN� REZERVASYON MOB�L EKRANI ���N */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     header {
         position: relative !important;
         flex-direction: column !important;
@@ -3418,6 +3419,7 @@ main.business-mode {
         width: 80%;
         max-width: 300px;
         height: 100vh;
+        height: 100dvh;
         background: rgba(11, 15, 25, 0.95);
         backdrop-filter: blur(10px);
         border-right: 1px solid rgba(16, 185, 129, 0.2);
@@ -3949,7 +3951,7 @@ main.business-mode {
     font-weight: 700;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .admin-field-card {
         flex-direction: column;
         align-items: stretch;
@@ -4010,7 +4012,7 @@ body.business-mode .header-actions #userAuthSection {
     display: none !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     /* Mobilde klonlanmış işletme menüsünün gösterilmesini garanti et */
     #businessMobileMenuClone {
         display: block !important;
@@ -4034,13 +4036,13 @@ body.admin-impersonating #sunsetWidget {
 }
 
 /* PC Modundayken Hamburger İşletme Menü Klonunu Gizle */
-@media (min-width: 769px) {
+@media (min-width: 901px) {
     #businessMobileMenuClone {
         display: none !important;
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     #footerAuthBar {
         padding: 15px !important;
         justify-content: center !important;
@@ -4071,7 +4073,7 @@ body.admin-impersonating #sunsetWidget {
 }
 
 /* Admin istatistik kartları küçük ekran */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     /* Admin panel genel */
     #adminPanel {
         padding: 10px !important;
@@ -4570,7 +4572,7 @@ body.admin-impersonating #sunsetWidget {
 }
 
 /* Mobil Uyumlar */
-@media (max-width: 767px) {
+@media (max-width: 900px) {
     .kontrol-day-row-card {
         padding: 10px 6px;
         flex: 0 0 150px;
@@ -4608,7 +4610,7 @@ body.admin-impersonating #sunsetWidget {
 }
 
 /* Mobile Profile Card Optimizations */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .user-profile-card {
         width: 100% !important;
         height: 100% !important;
@@ -4679,7 +4681,7 @@ body.admin-impersonating #sunsetWidget {
 
 
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
     select,
     textarea,
@@ -4704,7 +4706,7 @@ body.admin-impersonating #sunsetWidget {
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     #userProfileModal {
         padding: 12px !important;
         align-items: center !important;
@@ -5123,7 +5125,7 @@ header {
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     header {
         width: calc(100% + 40px) !important;
         margin: -20px -20px 20px -20px !important;
@@ -5187,7 +5189,7 @@ header {
 }
 
 /* Android/mobile performance guard: avoid GPU-heavy glow, blur and endless paint work. */
-@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
     body {
         background: #0b0f19 !important;
         background-image: none !important;
@@ -5197,9 +5199,23 @@ header {
     *,
     *::before,
     *::after {
-        animation-duration: 0.001ms !important;
-        animation-iteration-count: 1 !important;
+        animation: none !important;
+        transition: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: none !important;
+        filter: none !important;
+        text-shadow: none !important;
         scroll-behavior: auto !important;
+    }
+
+    .spinner,
+    .btn-loading-spinner {
+        animation: spin 1s linear infinite !important;
+    }
+
+    .kontrol-spinner {
+        animation: kontrol-spin 0.8s linear infinite !important;
     }
 
     .glass,

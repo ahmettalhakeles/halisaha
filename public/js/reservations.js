@@ -204,7 +204,7 @@ function closeMobileFieldPanel() {
 }
 
 document.addEventListener('click', function(e) {
-    if (window.innerWidth <= 768 && currentSelectedFieldKey) {
+    if (window.innerWidth <= 900 && currentSelectedFieldKey) {
         const card = e.target.closest('.field-card');
         const panel = e.target.closest('.booking-panel');
         const fieldReviews = e.target.closest('.field-reviews-inline-container');
@@ -234,7 +234,7 @@ function selectField(key) {
     bookingPanel.style.display = 'block';
     
     // Mobil için accordion etkisi (Saha kartının altına taşı)
-    if (window.innerWidth <= 768 && card) {
+    if (window.innerWidth <= 900 && card) {
         const panel = document.getElementById('customerBookingPanel');
         panel.classList.add('mobile-open');
         card.parentNode.insertBefore(panel, card.nextSibling);

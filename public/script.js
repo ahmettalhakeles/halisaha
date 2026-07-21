@@ -7,6 +7,11 @@ let inMemoryBusinessFieldKey = null;
 const isBusinessPage = window.location.pathname.includes('isletme');
 const isAdminPage = window.location.pathname.includes('yonetici');
 const isUserPage = !isBusinessPage && !isAdminPage;
+const MOBILE_BREAKPOINT = 900;
+
+function isMobileViewport() {
+    return window.innerWidth <= MOBILE_BREAKPOINT;
+}
 
 const masterHoursList = [
     "06:00 - 07:00", "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
@@ -946,7 +951,7 @@ window.addEventListener('resize', () => {
     if (document.getElementById('tab-kontrol') && 
         document.getElementById('tab-kontrol').style.display !== 'none' &&
         kontrolScheduleData) {
-        renderKontrolGrid(kontrolScheduleData, kontrolScheduleData.monday, window.innerWidth < 768);
+        renderKontrolGrid(kontrolScheduleData, kontrolScheduleData.monday, isMobileViewport());
     }
 });
 
@@ -2411,7 +2416,7 @@ async function populateForumActiveFields() {
 function renderFieldsGrid() {
     const grid = document.getElementById('fieldsGrid');
     if (!grid) return;
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = isMobileViewport();
 
     grid.innerHTML = Object.keys(fieldsData).filter(key => !fieldsData[key].isDeleted && !fieldsData[key].isClosed).map(key => {
         const field = fieldsData[key];
@@ -2649,7 +2654,7 @@ function showPhotoGallery(fieldKey, startId) {
 // MOBİL KOMPAKT KART AÇ/KAPA
 // =======================================================
 function toggleMobileFieldCard(key) {
-    if (window.innerWidth > 768) {
+    if (!isMobileViewport()) {
         selectField(key);
         return;
     }
@@ -2682,7 +2687,7 @@ function closeMobileFieldPanel() {
 }
 
 document.addEventListener('click', function(e) {
-    if (window.innerWidth <= 768 && currentSelectedFieldKey) {
+    if (isMobileViewport() && currentSelectedFieldKey) {
         const card = e.target.closest('.field-card');
         const panel = e.target.closest('.booking-panel');
         const fieldReviews = e.target.closest('.field-reviews-inline-container');
@@ -2712,7 +2717,7 @@ function selectField(key) {
     bookingPanel.style.display = 'block';
     
     // Mobil i?in accordion etkisi (Saha kart?n?n alt?na ta??)
-    if (window.innerWidth <= 768 && card) {
+    if (isMobileViewport() && card) {
         const panel = document.getElementById('customerBookingPanel');
         panel.classList.add('mobile-open');
         panel.style.display = '';
@@ -3943,7 +3948,7 @@ function switchCustomerTab(tabName) {
         loadTeamSeekers();
     }
     
-    if (window.innerWidth <= 768) {
+    if (isMobileViewport()) {
         ['playersFormContainer', 'matchesFormContainer', 'teamsFormContainer'].forEach(formId => {
             const form = document.getElementById(formId);
             if (form && form.style.display === 'block') {
@@ -6631,7 +6636,7 @@ function closeMobileMenu() {
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.header-actions .nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            if (window.innerWidth <= 768) {
+            if (isMobileViewport()) {
                 closeMobileMenu();
             }
         });
