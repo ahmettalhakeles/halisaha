@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 const styleCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+const styleMinCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.min.css'), 'utf8');
 
 test('signed-in navbar places welcome text below the profile and logout actions', () => {
     const logoutSection = indexHtml.match(/<div id="userLogoutSection"[\s\S]*?<\/div>\s*<span id="welcomeText" class="welcome-text"><\/span>\s*<\/div>/);
@@ -18,4 +19,14 @@ test('signed-in navbar places welcome text below the profile and logout actions'
 test('own locked reservation slot uses the red occupied state', () => {
     assert.match(styleCss, /\.hour-btn\.locked\.my-own-slot\s*\{[\s\S]*?rgba\(127,\s*29,\s*29,\s*0\.4\)/);
     assert.match(styleCss, /\.hour-btn\.locked\.my-own-slot\s*\{[\s\S]*?color:\s*#fca5a5/);
+});
+
+test('mobile stylesheet disables heavy glow and blur effects on Android-class screens', () => {
+    assert.match(styleCss, /Android\/mobile performance guard/);
+    assert.match(styleCss, /@media \(max-width: 768px\), \(hover: none\) and \(pointer: coarse\)/);
+    assert.match(styleCss, /backdrop-filter:\s*none !important/);
+    assert.match(styleCss, /box-shadow:\s*none !important/);
+    assert.match(styleCss, /\.field-card::before\s*\{[\s\S]*?content:\s*none !important/);
+    assert.match(styleMinCss, /backdrop-filter:none!important/);
+    assert.match(styleMinCss, /box-shadow:none!important/);
 });

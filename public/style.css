@@ -5185,3 +5185,102 @@ header {
         white-space: normal;
     }
 }
+
+/* Android/mobile performance guard: avoid GPU-heavy glow, blur and endless paint work. */
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+    body {
+        background: #0b0f19 !important;
+        background-image: none !important;
+        animation: none !important;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+    }
+
+    .glass,
+    header,
+    .weather-container,
+    .header-actions,
+    .mobile-menu-overlay,
+    .field-card,
+    .booking-section,
+    .forum-form-container,
+    .modal-content,
+    .modal-card,
+    .tab-content-zone,
+    .customer-tab-content,
+    .business-tab-content,
+    .admin-tab-content,
+    .review-comment-card,
+    .profile-booking-item,
+    .reservation-item,
+    .debt-item {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .logo-area h1,
+    .section-title,
+    .booking-section h2,
+    .review-average-big,
+    .sunset-time-label,
+    .bottom-gradient-line,
+    h1,
+    h2,
+    h3 {
+        text-shadow: none !important;
+    }
+
+    .field-card,
+    .field-card.active,
+    .field-card.banned-card,
+    .weather-day-item,
+    .nav-btn,
+    .action-btn,
+    .tab-btn,
+    .modal-content,
+    .modal-card,
+    .bottom-gradient-line,
+    .sunset-svg-icon,
+    .football-logo,
+    .kontrol-status-dot,
+    .admin-field-card {
+        box-shadow: none !important;
+        filter: none !important;
+    }
+
+    .field-card::before {
+        content: none !important;
+    }
+
+    .field-card,
+    .field-card:hover,
+    .weather-day-item,
+    .nav-btn,
+    .action-btn,
+    .tab-btn,
+    .admin-field-card {
+        transform: none !important;
+        transition-property: background-color, border-color, color, opacity !important;
+        transition-duration: 0.12s !important;
+    }
+
+    .header-actions {
+        background: #0b0f19 !important;
+    }
+
+    .mobile-menu-overlay {
+        background: rgba(0, 0, 0, 0.45) !important;
+        transition: none !important;
+    }
+
+    .bottom-gradient-line {
+        height: 1px !important;
+        background: rgba(16, 185, 129, 0.35) !important;
+    }
+}
