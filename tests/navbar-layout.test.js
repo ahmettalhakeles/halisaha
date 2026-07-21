@@ -31,7 +31,7 @@ test('own locked reservation slot uses the red occupied state', () => {
 
 test('all main entry pages request the current minified stylesheet version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
-        assert.match(html, /style\.min\.css\?v=1\.1\.12/);
+        assert.match(html, /style\.min\.css\?v=1\.1\.13/);
         assert.match(html, /script\.min\.js\?v=1\.2\.3/);
     }
 });
@@ -40,13 +40,17 @@ test('mobile stylesheet disables heavy glow and blur effects on Android-class sc
     assert.match(styleCss, /Android\/mobile performance guard/);
     assert.match(styleCss, /@media \(max-width: 900px\), \(hover: none\) and \(pointer: coarse\)/);
     assert.match(styleCss, /\*::after\s*\{[\s\S]*?animation:\s*none !important/);
-    assert.match(styleCss, /\*::after\s*\{[\s\S]*?transition:\s*none !important/);
+    assert.match(styleCss, /\*::after\s*\{[\s\S]*?transition-property:\s*none !important/);
     assert.match(styleCss, /\*::after\s*\{[\s\S]*?backdrop-filter:\s*none !important/);
     assert.match(styleCss, /\*::after\s*\{[\s\S]*?box-shadow:\s*none !important/);
     assert.match(styleCss, /\.field-card::before\s*\{[\s\S]*?content:\s*none !important/);
     assert.match(styleCss, /height:\s*100dvh/);
     assert.match(styleCss, /\.btn-loading-spinner\s*\{[\s\S]*?animation:\s*spin 1s linear infinite !important/);
     assert.match(styleCss, /\.kontrol-spinner\s*\{[\s\S]*?animation:\s*kontrol-spin 0\.8s linear infinite !important/);
+    assert.match(styleCss, /\.header-actions\s*\{[\s\S]*?transition:\s*transform 0\.22s ease-out !important/);
+    assert.match(styleCss, /\.mobile-menu-overlay\s*\{[\s\S]*?transition:\s*opacity 0\.18s ease !important/);
+    assert.match(styleCss, /\.modal-overlay\.open \.modal-card,[\s\S]*?animation:\s*mobile-surface-enter 0\.2s ease-out both !important/);
+    assert.match(styleCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?transition:\s*none !important/);
     assert.match(styleMinCss, /backdrop-filter:none!important/);
     assert.match(styleMinCss, /box-shadow:none!important/);
 });
@@ -59,12 +63,15 @@ test('tablet layout uses one shared 900px JavaScript breakpoint', () => {
     assert.match(scriptMinJs, /MOBILE_BREAKPOINT=900/);
 });
 
-test('business and admin drawers cannot restore GPU-heavy mobile effects', () => {
+test('business and admin drawers use compositor motion without restoring blur', () => {
     for (const html of [businessHtml, adminHtml]) {
         assert.match(html, /\.header-actions\s*\{[\s\S]*?height:\s*100dvh !important/);
         assert.match(html, /\.header-actions\s*\{[\s\S]*?backdrop-filter:\s*none !important/);
-        assert.match(html, /\.header-actions\s*\{[\s\S]*?transition:\s*none !important/);
+        assert.match(html, /\.header-actions\s*\{[\s\S]*?transform:\s*translateX\(-100%\) !important/);
+        assert.match(html, /\.header-actions\s*\{[\s\S]*?transition:\s*transform 0\.22s ease-out !important/);
+        assert.match(html, /\.header-actions\.open\s*\{[\s\S]*?transform:\s*translateX\(0\) !important/);
         assert.match(html, /\.header-actions\s*\{[\s\S]*?box-shadow:\s*none !important/);
+        assert.match(html, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.header-actions,\s*\.mobile-menu-overlay\s*\{[\s\S]*?transition:\s*none !important/);
     }
 });
 

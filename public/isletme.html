@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.min.css?v=1.1.12">
+    <link rel="stylesheet" href="style.min.css?v=1.1.13">
     <style>
         /* Enable hamburger button on all screen sizes */
         .hamburger-btn {
@@ -52,7 +52,7 @@
         .header-actions {
             position: fixed !important;
             top: 0 !important;
-            left: -100% !important;
+            left: 0 !important;
             width: 280px !important;
             height: 100vh !important;
             height: 100dvh !important;
@@ -61,7 +61,8 @@
             -webkit-backdrop-filter: none !important;
             border-right: 1px solid rgba(16, 185, 129, 0.2) !important;
             z-index: 9999 !important;
-            transition: none !important;
+            transform: translateX(-100%) !important;
+            transition: transform 0.22s ease-out !important;
             padding: 80px 20px 20px 20px !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
@@ -75,6 +76,7 @@
         /* When open, show drawer */
         .header-actions.open {
             left: 0 !important;
+            transform: translateX(0) !important;
         }
 
         /* Close button inside drawer */
@@ -108,10 +110,15 @@
             height: 100dvh;
             background: rgba(0, 0, 0, 0.5);
             z-index: 9998;
-            display: none;
+            display: block;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease;
         }
         .mobile-menu-overlay.show {
             display: block;
+            opacity: 1;
+            pointer-events: auto;
         }
 
         /* Hide horizontal tabs */
@@ -138,6 +145,7 @@
                 position: fixed !important;
                 top: 0 !important;
                 left: 0 !important;
+                transform: none !important;
                 width: 280px !important;
                 height: 100vh !important;
                 background: rgba(11, 15, 25, 0.98) !important;
@@ -152,6 +160,14 @@
             }
             body.logged-in header {
                 margin-left: 290px !important;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .header-actions,
+            .mobile-menu-overlay {
+                transition: none !important;
+                animation: none !important;
             }
         }
     </style>
