@@ -376,7 +376,7 @@ function onDateOrFieldChange() {
         btn.dataset.hour = hour;
         const hStartCheck = parseInt(hour.split(':')[0]);
         const nextDateText = hStartCheck < 6 ? getNextCalendarDayText(dateText) : null;
-        const isTaken = userReservations.some(r => r.fieldKey === currentSelectedFieldKey && r.pitchNumber === currentSelectedPitchNumber && r.hourText === hour && (r.dateText === dateText || (nextDateText && r.dateText === nextDateText)));
+        const isTaken = userReservations.some(r => r.status !== 'pending_payment' && r.fieldKey === currentSelectedFieldKey && r.pitchNumber === currentSelectedPitchNumber && r.hourText === hour && (r.dateText === dateText || (nextDateText && r.dateText === nextDateText)));
 
         const hStart = parseInt(hour.split(':')[0]);
         const isNextDay = hStart < 6;
@@ -550,18 +550,6 @@ async function executePendingBooking() {
             const turnstileCont = document.getElementById('turnstileContainer');
             if (turnstileCont) turnstileCont.style.display = 'none';
 
-            userReservations.push({ 
-                id: result.id || Date.now(),
-                fieldKey: data.fieldKey, 
-                pitchNumber: data.pitchNumber, 
-                dateText: data.dateText, 
-                hourText: data.hourText, 
-                user_name: data.user_name,
-                user_id: data.user_id,
-                reservation_price: data.reservation_price,
-                payment_status: 'odenmedi'
-            });
-            
             const field = fieldsData[data.fieldKey] || { name: data.fieldKey.toLocaleUpperCase('tr-TR'), address: "" };
 
             document.getElementById('successFieldName').innerText = `${field.name.toLocaleUpperCase('tr-TR')} - SAHA ${data.pitchNumber}`;
@@ -571,6 +559,10 @@ async function executePendingBooking() {
 
             latestReservationId = result.id;
             resetPaymentUI();
+            const successTitle = document.getElementById('bookingSuccessTitle');
+            const successMessage = document.getElementById('bookingSuccessMessage');
+            if (successTitle) successTitle.innerText = 'ÖDEME ADIMI';
+            if (successMessage) successMessage.innerText = 'Ödeme tamamlanınca rezervasyonunuz kesinleşir.';
 
             openModal('bookingSuccessModal');
             onDateOrFieldChange();
@@ -620,18 +612,24 @@ async function paySingle() {
 
     setTimeout(async () => {
         try {
-            const res = await fetch(`/api/reservations/${latestReservationId}/payment/pay-single`, { method: 'POST' });
+            const res = await fetch(`/api/reservations/${latestReservationId}/payment/pay-single`, { method: 'POST', headers: getAuthHeaders() });
             const result = await res.json();
             
             const statusEl = document.getElementById('paymentStatus');
             statusEl.style.display = 'block';
             
             if (result.success) {
+                const successTitle = document.getElementById('bookingSuccessTitle');
+                const successMessage = document.getElementById('bookingSuccessMessage');
+                if (successTitle) successTitle.innerText = 'REZERVASYON ONAYLANDI!';
+                if (successMessage) successMessage.innerText = 'İyi Oyunlar!';
                 document.getElementById('paymentButtons').style.display = 'none';
                 statusEl.style.background = 'rgba(16,185,129,0.1)';
                 statusEl.style.color = 'var(--neon-green)';
                 statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
                 statusEl.innerHTML = '✓ Ödeme Başarılı!';
+                await loadReservationsFromServer();
+                onDateOrFieldChange();
             } else {
                 statusEl.style.background = 'rgba(239,68,68,0.1)';
                 statusEl.style.color = '#ef4444';

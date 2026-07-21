@@ -13,6 +13,7 @@ function initReservationRoutes(app, db) {
             SELECT r.*, pg.status AS pg_status, pg.paid_count AS pg_paid_count, pg.share_amount AS pg_share_amount
             FROM reservations r
             LEFT JOIN payment_groups pg ON r.id = pg.reservation_id
+            WHERE r.status != 'pending_payment'
             ORDER BY r.created_at DESC
         `;
         db.query(sqlQuery, (err, results) => {
@@ -61,7 +62,7 @@ function initReservationRoutes(app, db) {
 
             try {
                 const [existing] = await connection.query(
-                    'SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status != "cancelled" FOR UPDATE',
+                    'SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status NOT IN ("cancelled", "pending_payment") FOR UPDATE',
                     [fieldKey, pitchNumber, playDateVal, hourText]
                 );
 
@@ -214,7 +215,7 @@ function initReservationRoutes(app, db) {
                     hourText: targetHourText
                 });
                 const [existing] = await connection.query(
-                    'SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status != "cancelled" AND id != ? FOR UPDATE',
+                    'SELECT id, status, type FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status NOT IN ("cancelled", "pending_payment") AND id != ? FOR UPDATE',
                     [reservation.fieldKey, targetPitchNumber, targetPlayDate, targetHourText, id]
                 );
                 if (existing.length > 0) {
@@ -283,7 +284,7 @@ function initReservationRoutes(app, db) {
                 const releaseLock = await acquireSlotLock(connection, dummyReservation);
                 try {
                     const [existing] = await connection.query(
-                        'SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status != "cancelled" FOR UPDATE',
+                        'SELECT id FROM reservations WHERE fieldKey = ? AND pitchNumber = ? AND play_date = ? AND hourText = ? AND status NOT IN ("cancelled", "pending_payment") FOR UPDATE',
                         [fieldKey, pitchNumber, playDateVal, hour]
                     );
                     if (existing.length > 0) {

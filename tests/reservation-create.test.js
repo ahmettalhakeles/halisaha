@@ -38,6 +38,21 @@ function createReservationHandler(connection) {
     return handler;
 }
 
+function createListReservationsHandler(db) {
+    let handler;
+    const app = {
+        post() {},
+        put() {},
+        delete() {},
+        get(path, routeHandler) {
+            if (path === '/api/reservations') handler = routeHandler;
+        }
+    };
+
+    initReservationRoutes(app, db);
+    return handler;
+}
+
 function createResponse() {
     return {
         statusCode: 200,
@@ -222,6 +237,66 @@ test('reservation creation preserves the occupied-slot conflict response', async
     assert.equal(response.body.success, false);
     assert.equal(rolledBack, true);
     assert.equal(inserted, false);
+});
+
+test('reservation creation ignores unpaid pending rows when checking slot conflicts', async () => {
+    let committed = false;
+    let inserted = false;
+    const connection = {
+        async beginTransaction() {},
+        async commit() { committed = true; },
+        async rollback() {},
+        release() {},
+        async query(sql) {
+            if (sql.startsWith('SELECT id, phone, status FROM users')) {
+                return [[{ id: 7, phone: '05051234567', status: 'active' }]];
+            }
+            if (sql.startsWith('SELECT COUNT(*) AS cnt FROM field_blacklists')) return [[{ cnt: 0 }]];
+            if (sql.startsWith('SELECT GET_LOCK')) return [[{ acquired: 1 }]];
+            if (sql.startsWith('SELECT id, status, type FROM reservations')) {
+                assert.match(sql, /pending_payment/);
+                return [[]];
+            }
+            if (sql.startsWith('INSERT INTO reservations')) {
+                inserted = true;
+                return [{ insertId: 43 }];
+            }
+            if (sql.startsWith('SELECT RELEASE_LOCK')) return [[{ released: 1 }]];
+            throw new Error(`Unexpected query: ${sql}`);
+        }
+    };
+    const response = createResponse();
+
+    await createReservationHandler(connection)(validRequest(), response);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.id, 43);
+    assert.equal(inserted, true);
+    assert.equal(committed, true);
+});
+
+test('reservation list does not expose unpaid pending reservations', async () => {
+    let listSql = '';
+    const db = {
+        promise: () => ({
+            query: async (sql) => {
+                if (sql.startsWith('DELETE FROM reservations')) return [{}];
+                if (sql.startsWith('SELECT id FROM payment_groups')) return [[]];
+                throw new Error(`Unexpected promise query: ${sql}`);
+            }
+        }),
+        query(sql, callback) {
+            listSql = sql;
+            callback(null, []);
+        }
+    };
+    const response = createResponse();
+
+    await createListReservationsHandler(db)({}, response);
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, { success: true, data: [] });
+    assert.match(listSql, /r\.status != 'pending_payment'/);
 });
 
 test('reservation update rejects requests without authentication', async () => {

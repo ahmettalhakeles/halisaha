@@ -2857,7 +2857,7 @@ async function onDateOrFieldChange() {
         let myRes = null;
         const isTaken = weeklyReservations.some(r => {
             if (r.fieldKey !== currentSelectedFieldKey || r.pitchNumber !== currentSelectedPitchNumber || r.hourText !== hour) return false;
-            if (r.status === 'cancelled') return false;
+            if (r.status === 'cancelled' || r.status === 'pending_payment') return false;
             const rDateStr = getPlayDateStringYMD(r.play_date ? r.play_date.substring(0, 10) : r.dateText);
             const targetDateStr = getPlayDateStringYMD(dateText);
             const targetNextDateStr = nextDateText ? getPlayDateStringYMD(nextDateText) : '';
@@ -3055,18 +3055,6 @@ async function executePendingBooking() {
             const turnstileCont = document.getElementById('turnstileContainer');
             if (turnstileCont) turnstileCont.style.display = 'none';
 
-            userReservations.push({ 
-                id: result.id || Date.now(),
-                fieldKey: data.fieldKey, 
-                pitchNumber: data.pitchNumber, 
-                dateText: data.dateText, 
-                hourText: data.hourText, 
-                user_name: data.user_name,
-                user_id: data.user_id,
-                reservation_price: data.reservation_price,
-                payment_status: 'odenmedi'
-            });
-            
             const field = fieldsData[data.fieldKey] || { name: data.fieldKey.toLocaleUpperCase('tr-TR'), address: "" };
 
             document.getElementById('successFieldName').innerText = `${field.name.toLocaleUpperCase('tr-TR')} - SAHA ${data.pitchNumber}`;
@@ -3076,6 +3064,10 @@ async function executePendingBooking() {
 
             latestReservationId = result.id;
             resetPaymentUI();
+            const successTitle = document.getElementById('bookingSuccessTitle');
+            const successMessage = document.getElementById('bookingSuccessMessage');
+            if (successTitle) successTitle.innerText = 'ÖDEME ADIMI';
+            if (successMessage) successMessage.innerText = 'Ödeme tamamlanınca rezervasyonunuz kesinleşir.';
 
             openModal('bookingSuccessModal');
             onDateOrFieldChange();
@@ -3303,6 +3295,10 @@ setTimeout(() => {
                         statusEl.style.display = 'block';
                         
                         if (result.success) {
+                            const successTitle = document.getElementById('bookingSuccessTitle');
+                            const successMessage = document.getElementById('bookingSuccessMessage');
+                            if (successTitle) successTitle.innerText = 'REZERVASYON ONAYLANDI!';
+                            if (successMessage) successMessage.innerText = 'İyi Oyunlar!';
                             document.getElementById('paymentButtons').style.display = 'none';
                             statusEl.style.background = 'rgba(16,185,129,0.1)';
                             statusEl.style.color = 'var(--neon-green)';
@@ -3333,6 +3329,10 @@ setTimeout(() => {
                         statusEl.style.display = 'block';
                         
                         if (result.success) {
+                            const successTitle = document.getElementById('bookingSuccessTitle');
+                            const successMessage = document.getElementById('bookingSuccessMessage');
+                            if (successTitle) successTitle.innerText = 'PAYLAŞIMLI ÖDEME BAŞLADI';
+                            if (successMessage) successMessage.innerText = 'İkinci ödeme tamamlanınca rezervasyon kesinleşir.';
                             document.getElementById('paymentButtons').style.display = 'none';
                             document.getElementById('paymentShareInfo').style.display = 'block';
                             
@@ -3389,7 +3389,7 @@ async function loadReservationsFromServer() {
         const response = await fetch('/api/reservations');
         const result = await response.json();
         if (result.success) {
-            userReservations = result.data.filter(r => r.status !== 'cancelled');
+            userReservations = result.data.filter(r => r.status !== 'cancelled' && r.status !== 'pending_payment');
             if (currentSelectedFieldKey) onDateOrFieldChange();
         }
     } catch (error) { console.error("Dolu saatler veritabanından çekilemedi:", error); }
@@ -4286,7 +4286,8 @@ async function loadProfileReservations() {
     const userRes = userReservations.filter(r => 
         ((r.user_id && currentUser && parseInt(r.user_id) === parseInt(currentUser.id)) ||
         (r.user_name && currentUser && r.user_name.toLocaleUpperCase('tr-TR') === currentUser.name.toLocaleUpperCase('tr-TR'))) &&
-        r.status !== 'cancelled'
+        r.status !== 'cancelled' &&
+        r.status !== 'pending_payment'
     );
     
     const activeList = [];
