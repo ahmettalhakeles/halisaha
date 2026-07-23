@@ -365,7 +365,7 @@ TURNSTILE_EXPECTED_HOSTNAME=halisaha-production.up.railway.app
 TELEGRAM_BOT_TOKEN=...
 ```
 
-Production ortaminda `TURNSTILE_SITEKEY` ve `TURNSTILE_SECRET` zorunludur. `TURNSTILE_EXPECTED_HOSTNAME` verilmezse dogrulamada mevcut istek hostname'i kullanilir.
+Production ortaminda `TURNSTILE_SITEKEY` ile `TURNSTILE_SECRET` veya mevcut Railway uyumlulugu icin `TURNSTILE_SECRET_KEY` zorunludur. `TURNSTILE_EXPECTED_HOSTNAME` verilmezse dogrulamada mevcut istek hostname'i kullanilir.
 
 Gizli degerler `.env` veya Railway environment variables disinda tutulmamalidir.
 

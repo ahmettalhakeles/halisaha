@@ -5,7 +5,7 @@ if (!process.env.JWT_SECRET) {
     process.exit(1);
 }
 if (!hasRequiredTurnstileConfig()) {
-    console.error('FATAL ERROR: TURNSTILE_SITEKEY and TURNSTILE_SECRET must be defined in production.');
+    console.error('FATAL ERROR: TURNSTILE_SITEKEY and a Turnstile secret must be defined in production.');
     process.exit(1);
 }
 

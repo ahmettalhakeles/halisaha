@@ -5,11 +5,12 @@ const LOCAL_TEST_SECRET = '1x0000000000000000000000000000000AA';
 
 function getTurnstileSecret() {
     if (process.env.TURNSTILE_SECRET) return process.env.TURNSTILE_SECRET;
+    if (process.env.TURNSTILE_SECRET_KEY) return process.env.TURNSTILE_SECRET_KEY;
     return process.env.NODE_ENV === 'production' ? '' : LOCAL_TEST_SECRET;
 }
 
 function hasRequiredTurnstileConfig(env = process.env) {
-    return env.NODE_ENV !== 'production' || Boolean(env.TURNSTILE_SITEKEY && env.TURNSTILE_SECRET);
+    return env.NODE_ENV !== 'production' || Boolean(env.TURNSTILE_SITEKEY && (env.TURNSTILE_SECRET || env.TURNSTILE_SECRET_KEY));
 }
 
 async function verifyTurnstileToken({

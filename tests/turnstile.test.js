@@ -99,5 +99,6 @@ test('Turnstile validator rejects malformed tokens without a network request', a
 test('production requires both Turnstile keys while local development does not', () => {
     assert.equal(hasRequiredTurnstileConfig({ NODE_ENV: 'production' }), false);
     assert.equal(hasRequiredTurnstileConfig({ NODE_ENV: 'production', TURNSTILE_SITEKEY: 'site', TURNSTILE_SECRET: 'secret' }), true);
+    assert.equal(hasRequiredTurnstileConfig({ NODE_ENV: 'production', TURNSTILE_SITEKEY: 'site', TURNSTILE_SECRET_KEY: 'secret' }), true);
     assert.equal(hasRequiredTurnstileConfig({ NODE_ENV: 'development' }), true);
 });
