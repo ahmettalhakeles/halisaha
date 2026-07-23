@@ -186,6 +186,68 @@ test('register rejects duplicate phone when email is unique', async () => {
     assert.equal(queries.some(q => q.sql.startsWith('INSERT INTO users')), false);
 });
 
+test('resend verification reports delivery failure for an unverified account', async () => {
+    await withEnv('EMAIL_VERIFICATION_REQUIRED', 'true', async () => {
+        const connection = {
+            async query(sql, params) {
+                if (sql.startsWith('SELECT id, is_email_verified FROM users WHERE email')) {
+                    assert.deepEqual(params, ['berk@example.com']);
+                    return [[{ id: 7, is_email_verified: 0 }]];
+                }
+                if (sql.startsWith('SELECT last_sent_at FROM email_verification_tokens')) return [[]];
+                if (sql.startsWith('REPLACE INTO email_verification_tokens')) return [{}];
+                throw new Error(`unexpected query: ${sql}`);
+            },
+            release() {}
+        };
+        const { app, routes } = createAppForRoutes();
+        initAuthRoutes(app, createDb(connection), {
+            mailer: async () => {
+                throw new Error('mail provider down');
+            }
+        });
+        const response = createResponse();
+
+        await runHandlers(routes.get('POST /api/auth/resend-verification'), createRequest({
+            email: 'berk@example.com'
+        }), response);
+
+        assert.equal(response.statusCode, 503);
+        assert.equal(response.body.success, false);
+        assert.equal(response.body.code, 'EMAIL_DELIVERY_FAILED');
+    });
+});
+
+test('resend verification confirms delivery for an unverified account', async () => {
+    await withEnv('EMAIL_VERIFICATION_REQUIRED', 'true', async () => {
+        let sent = false;
+        const connection = {
+            async query(sql) {
+                if (sql.startsWith('SELECT id, is_email_verified FROM users WHERE email')) return [[{ id: 7, is_email_verified: 0 }]];
+                if (sql.startsWith('SELECT last_sent_at FROM email_verification_tokens')) return [[]];
+                if (sql.startsWith('REPLACE INTO email_verification_tokens')) return [{}];
+                throw new Error(`unexpected query: ${sql}`);
+            },
+            release() {}
+        };
+        const { app, routes } = createAppForRoutes();
+        initAuthRoutes(app, createDb(connection), {
+            mailer: async () => {
+                sent = true;
+            }
+        });
+        const response = createResponse();
+
+        await runHandlers(routes.get('POST /api/auth/resend-verification'), createRequest({
+            email: 'berk@example.com'
+        }), response);
+
+        assert.equal(response.statusCode, 200);
+        assert.equal(response.body.success, true);
+        assert.equal(sent, true);
+    });
+});
+
 test('google auth endpoint stays hidden until feature flag is enabled', async () => {
     const { app, routes } = createAppForRoutes();
     initAuthRoutes(app, createDb({ query() {}, release() {} }));

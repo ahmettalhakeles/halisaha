@@ -420,10 +420,21 @@ function initAuthRoutes(app, db, options = {}) {
             if (users.length === 0 || Number(users[0].is_email_verified) === 1) return res.json(generic);
             const [tokens] = await db.promise().query('SELECT last_sent_at FROM email_verification_tokens WHERE user_id = ?', [users[0].id]);
             if (tokens.length > 0 && secondsSince(tokens[0].last_sent_at) < EMAIL_RESEND_COOLDOWN_SECONDS) return res.json(generic);
-            await createAndSendVerification(db.promise(), users[0].id, email, req, mailer);
-            res.json(generic);
+            const mailState = await createAndSendVerification(db.promise(), users[0].id, email, req, mailer);
+            if (!mailState.sent) {
+                return res.status(503).json({
+                    success: false,
+                    code: 'EMAIL_DELIVERY_FAILED',
+                    message: 'Dogrulama e-postasi su anda gonderilemedi. Mail ayarlarini kontrol edip tekrar deneyin.'
+                });
+            }
+            res.json({ success: true, message: 'Dogrulama e-postasi gonderildi.' });
         } catch (err) {
-            res.json(generic);
+            res.status(503).json({
+                success: false,
+                code: 'EMAIL_DELIVERY_FAILED',
+                message: 'Dogrulama e-postasi su anda gonderilemedi. Mail ayarlarini kontrol edip tekrar deneyin.'
+            });
         }
     });
 

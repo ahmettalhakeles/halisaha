@@ -472,9 +472,22 @@ async function resendVerificationFromLogin() {
     const email = document.getElementById('loginEmail')?.value.trim();
     if (!email) return setEmailNotice('E-posta adresinizi yazın.', true);
     try {
-        await fetch('/api/auth/resend-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-        setEmailNotice('Hesap uygunsa doğrulama e-postası gönderildi.', true);
-    } catch (error) { setEmailNotice('Şu anda yeniden gönderilemedi. Lütfen tekrar deneyin.', true); }
+        const resend = document.getElementById('resendVerificationBtn');
+        if (resend) resend.disabled = true;
+        const response = await fetch('/api/auth/resend-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        let result = {};
+        try { result = await response.json(); } catch (_) {}
+        if (!response.ok || result.success === false) {
+            setEmailNotice(result.message || 'Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.', true);
+            return;
+        }
+        setEmailNotice(result.message || 'Doğrulama e-postası gönderildi.', true);
+    } catch (error) {
+        setEmailNotice('Şu anda yeniden gönderilemedi. Lütfen tekrar deneyin.', true);
+    } finally {
+        const resend = document.getElementById('resendVerificationBtn');
+        if (resend) resend.disabled = false;
+    }
 }
 
 async function loadAppConfig() {
@@ -3991,6 +4004,7 @@ async function submitPlayerReview() {
 // MODAL FONKSİYONLARI
 // =======================================================
 function openModal(id) {
+    if (id === 'loginModal' && typeof setEmailNotice === 'function') setEmailNotice('', false);
     document.getElementById(id).classList.add('open');
 }
 

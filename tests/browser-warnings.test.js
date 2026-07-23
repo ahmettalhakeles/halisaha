@@ -44,6 +44,13 @@ test('field rerenders preserve the mobile booking panel and refresh selected hou
     assert.match(scriptJs, /async function refreshSignedInUserUi[\s\S]*?renderFieldsGrid\(\)[\s\S]*?if \(currentSelectedFieldKey\) await onDateOrFieldChange\(\)/);
 });
 
+test('email verification resend UI only reports checked delivery state', () => {
+    assert.match(scriptJs, /function openModal\(id\) \{[\s\S]*?id === 'loginModal'[\s\S]*?setEmailNotice\('', false\)/);
+    assert.match(scriptJs, /async function resendVerificationFromLogin\(\)[\s\S]*?const response = await fetch\('\/api\/auth\/resend-verification'/);
+    assert.match(scriptJs, /if \(!response\.ok \|\| result\.success === false\) \{[\s\S]*?Doğrulama e-postası gönderilemedi/);
+    assert.match(scriptJs, /finally \{[\s\S]*?resend\.disabled = false/);
+});
+
 test('minified Turnstile output stays synchronized with the source configuration', () => {
     assert.match(scriptMinJs, /language:"tr"/);
     assert.match(scriptMinJs, /action:"reservation_create"/);
@@ -54,7 +61,7 @@ test('minified Turnstile output stays synchronized with the source configuration
 
 test('all main entry pages request the current minified script version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
-        assert.match(html, /script\.min\.js\?v=1\.3\.2/);
+        assert.match(html, /script\.min\.js\?v=1\.3\.3/);
     }
 });
 
