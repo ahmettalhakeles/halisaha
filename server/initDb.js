@@ -367,13 +367,13 @@ async function removeLegacySplitPaymentTables(connection) {
             "SELECT COUNT(*) AS count FROM payment_groups WHERE status IN ('pending', 'active')"
         );
         if (Number(activeGroups[0]?.count || 0) > 0) {
-            throw new Error('Aktif veya bekleyen ortak odeme grubu varken split payment tablolari kaldirilamaz.');
+            console.warn('Legacy split payment tables kept because active or pending payment groups still exist.');
+            return;
         }
         await connection.query('DROP TABLE IF EXISTS payment_shares');
         await connection.query('DROP TABLE IF EXISTS payment_groups');
         console.log('Legacy split payment tables removed.');
     } catch (err) {
-        if (err.message && err.message.includes('ortak odeme grubu')) throw err;
         console.error('Legacy split payment cleanup failed:', err.message);
     }
 }

@@ -16,6 +16,8 @@ test('users email is unique in base schema and startup migration', () => {
     assert.match(initDbJs, /normalizeAndUniquifyUserEmails\(connection\)/);
     assert.match(initDbJs, /dropUniquePhoneIndex\(connection\)/);
     assert.match(initDbJs, /removeLegacySplitPaymentTables\(connection\)/);
+    assert.match(initDbJs, /Legacy split payment tables kept because active or pending payment groups still exist/);
+    assert.doesNotMatch(initDbJs, /split payment tablolari kaldirilamaz/);
     assert.match(initDbJs, /ALTER TABLE users ADD UNIQUE KEY unique_email \(email\)/);
     assert.match(initDbJs, /SHOW INDEX FROM users WHERE Key_name = 'unique_email'/);
 });

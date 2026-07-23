@@ -180,7 +180,7 @@ Kritik migration davranislari:
 - `users.password` alanini Google hesaplari icin nullable yapar, `is_email_verified` alanini ekler.
 - `user_auth_identities` ve `email_verification_tokens` tablolarini idempotent olusturur.
 - Eski `unique_phone` indeksini kaldirir; telefon tekrari desteklenir, e-posta tekil kalir.
-- Aktif/bekleyen ortak odeme grubu yoksa eski split payment tablolarini kaldirir; varsa startup fail-closed durur.
+- Aktif/bekleyen ortak odeme grubu yoksa eski split payment tablolarini kaldirir; varsa tablolar korunur ve uygulama acilir.
 - Abonelik rezervasyonlarini `subscription_id` ile eslestirir.
 - Ayni abonelik/gun icin `unique_subscription_occurrence` indeksini dogrular.
 - Varsayilan isletme sifrelerini yalnizca hala default durumdaysa seeder.
@@ -245,7 +245,7 @@ Tek odeme:
 Ortak odeme:
 
 - v5 itibariyla ortak odeme kaldirilmistir.
-- Eski `payment_groups` ve `payment_shares` tablolari deployment sirasinda aktif/bekleyen grup yoksa kaldirilir.
+- Eski `payment_groups` ve `payment_shares` tablolari deployment sirasinda aktif/bekleyen grup yoksa kaldirilir; aktif/bekleyen grup varsa uygulamayi kapatmadan korunur.
 - Sure dolan `pending_payment` rezervasyonlar `payment.js` tarafindan iptal edilir.
 
 Isletme manuel odeme:
