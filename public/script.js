@@ -232,6 +232,7 @@ window.onload = async function() {
         initTeamSeekerForm();
         updateLoginUIVisibility();
         initGoogleAuthUi();
+        await processEmailVerificationRedirect();
 
         await loadReservationsFromServer();
         loadSecondaryUserPageData();
@@ -410,7 +411,7 @@ async function handleUserRegister(event) {
             if (result.requiresEmailVerification) {
                 closeModal('registerModal');
                 document.getElementById('registerForm').reset();
-                alert(result.message || 'Kayıt alındı. E-postanızı doğrulayın.');
+                showEmailVerificationPending(email, result.message, result.emailSent);
                 return;
             }
             await completeUserSession(result, false);
@@ -468,6 +469,49 @@ function setEmailNotice(message, showResend) {
     if (resend) resend.style.display = showResend ? 'inline-flex' : 'none';
 }
 
+let pendingVerificationEmail = '';
+
+function showEmailVerificationPending(email, message, emailSent) {
+    pendingVerificationEmail = email || '';
+    const emailEl = document.getElementById('pendingVerificationEmail');
+    const statusEl = document.getElementById('pendingVerificationStatus');
+    if (emailEl) emailEl.textContent = pendingVerificationEmail;
+    if (statusEl) {
+        statusEl.textContent = message || (emailSent === false ? 'Doğrulama e-postası gönderilemedi. Tekrar deneyin.' : 'Doğrulama e-postası gönderildi.');
+        statusEl.style.display = 'block';
+    }
+    openModal('emailVerificationPendingModal');
+}
+
+async function resendPendingVerification() {
+    const email = pendingVerificationEmail || document.getElementById('regEmail')?.value.trim() || document.getElementById('loginEmail')?.value.trim();
+    if (!email) return setPendingVerificationStatus('E-posta adresi bulunamadı.');
+    const button = document.getElementById('pendingResendVerificationBtn');
+    if (button) button.disabled = true;
+    try {
+        const response = await fetch('/api/auth/resend-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        let result = {};
+        try { result = await response.json(); } catch (_) {}
+        if (!response.ok || result.success === false) {
+            setPendingVerificationStatus(result.message || 'Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.');
+            return;
+        }
+        setPendingVerificationStatus(result.message || 'Doğrulama e-postası gönderildi.');
+    } catch (error) {
+        setPendingVerificationStatus('Şu anda yeniden gönderilemedi. Lütfen tekrar deneyin.');
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
+function setPendingVerificationStatus(message) {
+    const statusEl = document.getElementById('pendingVerificationStatus');
+    if (statusEl) {
+        statusEl.textContent = message || '';
+        statusEl.style.display = message ? 'block' : 'none';
+    }
+}
+
 async function resendVerificationFromLogin() {
     const email = document.getElementById('loginEmail')?.value.trim();
     if (!email) return setEmailNotice('E-posta adresinizi yazın.', true);
@@ -487,6 +531,45 @@ async function resendVerificationFromLogin() {
     } finally {
         const resend = document.getElementById('resendVerificationBtn');
         if (resend) resend.disabled = false;
+    }
+}
+
+async function processEmailVerificationRedirect() {
+    const params = new URLSearchParams(window.location.search);
+    const state = params.get('email_verified');
+    const loginCode = params.get('login_code');
+    if (!state && !loginCode) return;
+    const cleanUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, document.title, cleanUrl || '/');
+
+    if (state === '1' && loginCode) {
+        try {
+            const response = await fetch('/api/auth/email-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: loginCode })
+            });
+            const result = await response.json();
+            if (response.ok && result.success) {
+                await completeUserSession(result, false);
+                alert('E-posta doğrulandı. Giriş yapıldı.');
+                return;
+            }
+            openModal('loginModal');
+            setEmailNotice(result.message || 'E-posta doğrulandı, ancak otomatik giriş yapılamadı. Lütfen giriş yapın.', false);
+        } catch (error) {
+            openModal('loginModal');
+            setEmailNotice('E-posta doğrulandı, ancak otomatik giriş yapılamadı. Lütfen giriş yapın.', false);
+        }
+        return;
+    }
+
+    if (state === 'invalid') {
+        openModal('loginModal');
+        setEmailNotice('Doğrulama bağlantısı geçersiz veya süresi dolmuş.', true);
+    } else if (state === 'error') {
+        openModal('loginModal');
+        setEmailNotice('Doğrulama sırasında hata oluştu. Lütfen tekrar deneyin.', true);
     }
 }
 

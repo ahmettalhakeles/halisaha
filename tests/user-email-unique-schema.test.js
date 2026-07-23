@@ -13,6 +13,7 @@ test('users email is unique in base schema and startup migration', () => {
     assert.match(schemaSql, /is_email_verified TINYINT(?:\(1\))? NOT NULL DEFAULT 0/);
     assert.match(schemaSql, /CREATE TABLE IF NOT EXISTS user_auth_identities/);
     assert.match(schemaSql, /CREATE TABLE IF NOT EXISTS email_verification_tokens/);
+    assert.match(schemaSql, /CREATE TABLE IF NOT EXISTS email_login_tokens/);
     assert.match(initDbJs, /normalizeAndUniquifyUserEmails\(connection\)/);
     assert.match(initDbJs, /ensureUniquePhoneIndex\(connection\)/);
     assert.match(initDbJs, /ALTER TABLE users ADD UNIQUE KEY unique_phone \(phone\)/);
@@ -21,4 +22,5 @@ test('users email is unique in base schema and startup migration', () => {
     assert.doesNotMatch(initDbJs, /split payment tablolari kaldirilamaz/);
     assert.match(initDbJs, /ALTER TABLE users ADD UNIQUE KEY unique_email \(email\)/);
     assert.match(initDbJs, /SHOW INDEX FROM users WHERE Key_name = 'unique_email'/);
+    assert.match(initDbJs, /SHOW TABLES LIKE 'email_login_tokens'/);
 });

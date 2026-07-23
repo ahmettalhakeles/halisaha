@@ -6,12 +6,17 @@ function createResponse() {
     return {
         statusCode: 200,
         body: null,
+        redirectTo: null,
         status(code) {
             this.statusCode = code;
             return this;
         },
         json(body) {
             this.body = body;
+            return this;
+        },
+        redirect(url) {
+            this.redirectTo = url;
             return this;
         }
     };
@@ -30,7 +35,9 @@ async function runHandlers(handlers, req, res) {
 function createAppForRoutes() {
     const routes = new Map();
     const app = {
-        get() {},
+        get(path, ...routeHandlers) {
+            routes.set(`GET ${path}`, routeHandlers);
+        },
         put(path, ...routeHandlers) {
             routes.set(`PUT ${path}`, routeHandlers);
         },
@@ -53,14 +60,15 @@ function createDb(connection) {
     };
 }
 
-function createRequest(body) {
+function createRequest(body, query = {}) {
     return {
         ip: '127.0.0.1',
         protocol: 'http',
         headers: {},
         app: { get: () => false },
         get: () => 'localhost:5000',
-        body
+        body,
+        query
     };
 }
 
@@ -246,6 +254,106 @@ test('resend verification confirms delivery for an unverified account', async ()
         assert.equal(response.body.success, true);
         assert.equal(sent, true);
     });
+});
+
+test('verify email redirects with a short-lived login code', async () => {
+    const queries = [];
+    const connection = {
+        async beginTransaction() {},
+        async commit() {},
+        async rollback() {},
+        async query(sql, params) {
+            queries.push({ sql, params });
+            if (sql.startsWith('SELECT user_id FROM email_verification_tokens')) return [[{ user_id: 7 }]];
+            if (sql.startsWith('UPDATE users SET is_email_verified')) return [{}];
+            if (sql.startsWith('DELETE FROM email_verification_tokens')) return [{}];
+            if (sql.startsWith('DELETE FROM email_login_tokens')) return [{}];
+            if (sql.startsWith('INSERT INTO email_login_tokens')) {
+                assert.equal(params[1], 7);
+                assert.equal(params[2], 5);
+                return [{}];
+            }
+            throw new Error(`unexpected query: ${sql}`);
+        },
+        release() {}
+    };
+    const { app, routes } = createAppForRoutes();
+    initAuthRoutes(app, createDb(connection));
+    const response = createResponse();
+
+    await runHandlers(routes.get('GET /api/auth/verify-email'), createRequest({}, { token: 'verify-token' }), response);
+
+    assert.match(response.redirectTo, /^\/\?email_verified=1&login_code=/);
+    assert.equal(queries.some(q => q.sql.startsWith('INSERT INTO email_login_tokens')), true);
+});
+
+test('email login consumes a valid code and returns a normal user session', async () => {
+    let committed = false;
+    const connection = {
+        async beginTransaction() {},
+        async commit() { committed = true; },
+        async rollback() {},
+        async query(sql, params) {
+            if (sql.startsWith('DELETE FROM email_login_tokens WHERE expires_at')) return [{}];
+            if (sql.includes('FROM email_login_tokens t')) {
+                assert.equal(params.length, 1);
+                return [[{
+                    id: 7,
+                    first_name: 'Berk',
+                    last_name: 'Ceyhan',
+                    phone: '05000000000',
+                    email: 'berk@example.com',
+                    age: null,
+                    height: null,
+                    weight: null,
+                    position: null,
+                    experience: null,
+                    status: 'active',
+                    is_email_verified: 1
+                }]];
+            }
+            if (sql.startsWith('UPDATE email_login_tokens SET consumed_at')) return [{}];
+            throw new Error(`unexpected query: ${sql}`);
+        },
+        release() {}
+    };
+    const { app, routes } = createAppForRoutes();
+    initAuthRoutes(app, createDb(connection));
+    const response = createResponse();
+
+    await runHandlers(routes.get('POST /api/auth/email-login'), createRequest({
+        code: 'abcdefghijklmnopqrstuvwxyz1234567890'
+    }), response);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.success, true);
+    assert.equal(response.body.user.email, 'berk@example.com');
+    assert.ok(response.body.token);
+    assert.equal(committed, true);
+});
+
+test('email login rejects invalid or expired codes', async () => {
+    const connection = {
+        async beginTransaction() {},
+        async commit() {},
+        async rollback() {},
+        async query(sql) {
+            if (sql.startsWith('DELETE FROM email_login_tokens WHERE expires_at')) return [{}];
+            if (sql.includes('FROM email_login_tokens t')) return [[]];
+            throw new Error(`unexpected query: ${sql}`);
+        },
+        release() {}
+    };
+    const { app, routes } = createAppForRoutes();
+    initAuthRoutes(app, createDb(connection));
+    const response = createResponse();
+
+    await runHandlers(routes.get('POST /api/auth/email-login'), createRequest({
+        code: 'abcdefghijklmnopqrstuvwxyz1234567890'
+    }), response);
+
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.success, false);
 });
 
 test('google auth endpoint stays hidden until feature flag is enabled', async () => {

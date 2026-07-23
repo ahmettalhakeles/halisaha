@@ -447,6 +447,22 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="emailVerificationPendingModal">
+        <div class="modal-card mini-modal">
+            <div class="modal-header">
+                <h2>E-POSTANI DOĞRULA</h2>
+                <button type="button" class="close-modal" onclick="closeModal('emailVerificationPendingModal')">X</button>
+            </div>
+            <div style="color:var(--text-light);font-size:0.9rem;line-height:1.55;margin-bottom:14px;">
+                <strong id="pendingVerificationEmail" style="color:var(--primary-green);word-break:break-word;"></strong>
+                adresine doğrulama bağlantısı gönderdik. Linke bastığında otomatik giriş yapılacak.
+            </div>
+            <div id="pendingVerificationStatus" style="display:none;margin-bottom:12px;color:#fbbf24;font-size:0.82rem;text-align:center;"></div>
+            <button type="button" id="pendingResendVerificationBtn" class="modal-btn" style="width:100%;padding:10px;margin-bottom:10px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);" onclick="resendPendingVerification()">DOĞRULAMA E-POSTASINI TEKRAR GÖNDER</button>
+            <button type="button" class="action-btn" onclick="closeModal('emailVerificationPendingModal'); openModal('loginModal');">GİRİŞ EKRANINA DÖN</button>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="registerModal">
         <div class="modal-card mini-modal">
             <form id="registerForm" autocomplete="on" onsubmit="handleUserRegister(event)">
@@ -910,7 +926,7 @@
     </div>
 
     <script src="js/auth-context.js?v=1.0.0" defer></script>
-    <script src="script.min.js?v=1.3.3" defer></script>
+    <script src="script.min.js?v=1.3.4" defer></script>
     <script src="js/main.js?v=1.1.9" defer></script>
 </body>
 </html>

@@ -45,6 +45,10 @@ test('field rerenders preserve the mobile booking panel and refresh selected hou
 });
 
 test('email verification resend UI only reports checked delivery state', () => {
+    assert.match(indexHtml, /id="emailVerificationPendingModal"/);
+    assert.match(scriptJs, /function showEmailVerificationPending\(email, message, emailSent\)/);
+    assert.match(scriptJs, /async function processEmailVerificationRedirect\(\)[\s\S]*?login_code[\s\S]*?\/api\/auth\/email-login/);
+    assert.match(scriptJs, /window\.history\.replaceState\(\{\}, document\.title/);
     assert.match(scriptJs, /function openModal\(id\) \{[\s\S]*?id === 'loginModal'[\s\S]*?setEmailNotice\('', false\)/);
     assert.match(scriptJs, /async function resendVerificationFromLogin\(\)[\s\S]*?const response = await fetch\('\/api\/auth\/resend-verification'/);
     assert.match(scriptJs, /if \(!response\.ok \|\| result\.success === false\) \{[\s\S]*?Doğrulama e-postası gönderilemedi/);
@@ -61,7 +65,7 @@ test('minified Turnstile output stays synchronized with the source configuration
 
 test('all main entry pages request the current minified script version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
-        assert.match(html, /script\.min\.js\?v=1\.3\.3/);
+        assert.match(html, /script\.min\.js\?v=1\.3\.4/);
     }
 });
 

@@ -48,6 +48,17 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
   CONSTRAINT fk_email_token_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS email_login_tokens (
+  token_hash CHAR(64) NOT NULL,
+  user_id INT NOT NULL,
+  expires_at DATETIME NOT NULL,
+  consumed_at DATETIME DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (token_hash),
+  KEY idx_email_login_user (user_id),
+  CONSTRAINT fk_email_login_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS reservations (
   id INT NOT NULL AUTO_INCREMENT,
   fieldKey VARCHAR(50) NOT NULL,

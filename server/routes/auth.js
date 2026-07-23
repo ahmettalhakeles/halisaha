@@ -15,6 +15,7 @@ const { verifyGoogleCredential } = require('../utils/googleAuth');
 
 const failedLogins = new Map();
 const EMAIL_TOKEN_TTL_MINUTES = 30;
+const EMAIL_LOGIN_TOKEN_TTL_MINUTES = 5;
 const EMAIL_RESEND_COOLDOWN_SECONDS = 60;
 const GOOGLE_FLOW_TTL = '10m';
 
@@ -401,11 +402,54 @@ function initAuthRoutes(app, db, options = {}) {
             }
             await connection.query('UPDATE users SET is_email_verified = 1 WHERE id = ?', [rows[0].user_id]);
             await connection.query('DELETE FROM email_verification_tokens WHERE user_id = ?', [rows[0].user_id]);
+            const loginCode = await createEmailLoginToken(connection, rows[0].user_id);
             await connection.commit();
-            res.redirect('/?email_verified=1');
+            res.redirect(`/?email_verified=1&login_code=${encodeURIComponent(loginCode)}`);
         } catch (err) {
             await connection.rollback().catch(() => {});
             res.redirect('/?email_verified=error');
+        } finally {
+            connection.release();
+        }
+    });
+
+    app.post('/api/auth/email-login', loginLimitPerSec, loginLimitPer15Min, cleanAndTrimBody, async (req, res) => {
+        const code = String(req.body.code || '').trim();
+        if (!code || code.length < 32) {
+            return res.status(400).json({ success: false, message: 'Dogrulama oturumu gecersiz veya suresi dolmus.' });
+        }
+        const tokenHash = hashToken(code);
+        const connection = await db.promise().getConnection();
+        try {
+            await connection.beginTransaction();
+            await connection.query('DELETE FROM email_login_tokens WHERE expires_at <= NOW() OR consumed_at IS NOT NULL');
+            const [rows] = await connection.query(
+                `SELECT u.id, u.first_name, u.last_name, u.phone, u.email, u.age, u.height, u.weight, u.position, u.experience, u.status, u.is_email_verified
+                 FROM email_login_tokens t
+                 JOIN users u ON u.id = t.user_id
+                 WHERE t.token_hash = ? AND t.expires_at > NOW() AND t.consumed_at IS NULL
+                 FOR UPDATE`,
+                [tokenHash]
+            );
+            if (rows.length === 0) {
+                await connection.rollback();
+                return res.status(400).json({ success: false, message: 'Dogrulama oturumu gecersiz veya suresi dolmus.' });
+            }
+            const user = rows[0];
+            if (user.status === 'globally_banned') {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'Hesabiniz suistimal nedeniyle kalici olarak askiya alinmistir!' });
+            }
+            if (Number(user.is_email_verified) !== 1) {
+                await connection.rollback();
+                return res.status(403).json({ success: false, message: 'E-posta adresi henuz dogrulanmamis.' });
+            }
+            await connection.query('UPDATE email_login_tokens SET consumed_at = NOW() WHERE token_hash = ?', [tokenHash]);
+            await connection.commit();
+            res.json({ success: true, token: signSessionToken(user), user });
+        } catch (err) {
+            await connection.rollback().catch(() => {});
+            res.status(500).json({ success: false, message: 'Dogrulama oturumu acilamadi.' });
         } finally {
             connection.release();
         }
@@ -628,6 +672,18 @@ async function createAndSendVerification(queryable, userId, email, req, mailer) 
         });
         return { sent: false };
     }
+}
+
+async function createEmailLoginToken(queryable, userId) {
+    const rawToken = crypto.randomBytes(32).toString('base64url');
+    const tokenHash = hashToken(rawToken);
+    await queryable.query('DELETE FROM email_login_tokens WHERE user_id = ? OR expires_at <= NOW() OR consumed_at IS NOT NULL', [userId]);
+    await queryable.query(
+        `INSERT INTO email_login_tokens (token_hash, user_id, expires_at)
+         VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+        [tokenHash, userId, EMAIL_LOGIN_TOKEN_TTL_MINUTES]
+    );
+    return rawToken;
 }
 
 function hashToken(token) {
