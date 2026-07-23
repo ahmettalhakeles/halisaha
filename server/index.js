@@ -72,7 +72,14 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+app.get('/healthz', (req, res) => {
+    res.status(200).send('OK');
+});
+
 app.use((req, res, next) => {
+    if ((req.path === '/health' || req.path === '/healthz') && process.env.NODE_ENV === 'production') {
+        return next();
+    }
     if (req.headers['x-forwarded-proto'] !== 'https' && process.env.NODE_ENV === 'production') {
         return res.redirect(301, `https://${req.headers.host}${req.url}`);
     }
