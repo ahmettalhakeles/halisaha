@@ -590,16 +590,13 @@ let latestReservationId = null;
 
 function resetPaymentUI() {
     document.getElementById('paymentButtons').style.display = 'flex';
-    document.getElementById('paymentShareInfo').style.display = 'none';
     const statusEl = document.getElementById('paymentStatus');
     statusEl.style.display = 'none';
     statusEl.className = '';
     statusEl.innerHTML = '';
     
     document.getElementById('btnPaySingle').disabled = false;
-    document.getElementById('btnPaySplit').disabled = false;
     document.getElementById('btnPaySingle').innerHTML = 'Tek Kişi Öde';
-    document.getElementById('btnPaySplit').innerHTML = 'İki Kişi Paylaş';
 }
 
 async function paySingle() {
@@ -608,7 +605,6 @@ async function paySingle() {
     const btn = document.getElementById('btnPaySingle');
     btn.disabled = true;
     btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(255,255,255,0.2);border-left-color:#fff;border-radius:50%;animation:spin 1s linear infinite;"></div>İşleniyor...</div>';
-    document.getElementById('btnPaySplit').disabled = true;
 
     setTimeout(async () => {
         try {
@@ -636,74 +632,12 @@ async function paySingle() {
                 statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
                 statusEl.innerHTML = `✗ ${result.message || 'Ödeme başarısız oldu'}`;
                 btn.disabled = false;
-                document.getElementById('btnPaySplit').disabled = false;
                 btn.innerHTML = 'Tek Kişi Öde';
             }
         } catch (error) {
             btn.disabled = false;
-            document.getElementById('btnPaySplit').disabled = false;
             btn.innerHTML = 'Tek Kişi Öde';
             alert('Bağlantı hatası!');
         }
     }, 2000); // simulate 2s payment processing
-}
-
-async function initSplitPayment() {
-    if (!latestReservationId) return;
-    
-    const btn = document.getElementById('btnPaySplit');
-    btn.disabled = true;
-    btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(16,185,129,0.2);border-left-color:var(--neon-green);border-radius:50%;animation:spin 1s linear infinite;"></div>İşleniyor...</div>';
-    document.getElementById('btnPaySingle').disabled = true;
-
-    try {
-        const res = await fetch(`/api/reservations/${latestReservationId}/payment/init`, { method: 'POST' });
-        const result = await res.json();
-        
-        if (result.success) {
-            document.getElementById('paymentButtons').style.display = 'none';
-            document.getElementById('paymentShareInfo').style.display = 'block';
-            
-            const shareUrl = `${window.location.origin}/payment/share/${result.share_code}`;
-            document.getElementById('shareLinkInput').value = shareUrl;
-            
-            const statusEl = document.getElementById('paymentStatus');
-            statusEl.style.display = 'block';
-            statusEl.style.background = 'rgba(16,185,129,0.1)';
-            statusEl.style.color = 'var(--neon-green)';
-            statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
-            statusEl.innerHTML = '✓ Ortak ödeme başlatıldı! Kendi payınızı ödemek için linki kullanın.';
-        } else {
-            const statusEl = document.getElementById('paymentStatus');
-            statusEl.style.display = 'block';
-            statusEl.style.background = 'rgba(239,68,68,0.1)';
-            statusEl.style.color = '#ef4444';
-            statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
-            statusEl.innerHTML = `✗ ${result.message || 'İşlem başarısız oldu'}`;
-            btn.disabled = false;
-            document.getElementById('btnPaySingle').disabled = false;
-            btn.innerHTML = 'İki Kişi Paylaş';
-        }
-    } catch (error) {
-        btn.disabled = false;
-        document.getElementById('btnPaySingle').disabled = false;
-        btn.innerHTML = 'İki Kişi Paylaş';
-        alert('Bağlantı hatası!');
-    }
-}
-
-function copyShareLink() {
-    const input = document.getElementById('shareLinkInput');
-    input.select();
-    input.setSelectionRange(0, 99999);
-    navigator.clipboard.writeText(input.value);
-    
-    const btn = document.getElementById('btnCopyLink');
-    const originalText = btn.innerText;
-    btn.innerText = 'Kopyalandı!';
-    btn.style.background = '#fff';
-    setTimeout(() => {
-        btn.innerText = originalText;
-        btn.style.background = 'var(--neon-green)';
-    }, 2000);
 }

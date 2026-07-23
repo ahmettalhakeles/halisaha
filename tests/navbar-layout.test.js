@@ -6,7 +6,6 @@ const path = require('node:path');
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 const businessHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'isletme.html'), 'utf8');
 const adminHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'yonetici.html'), 'utf8');
-const paymentHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'payment-share.html'), 'utf8');
 const styleCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
 const styleMinCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.min.css'), 'utf8');
 const scriptJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'script.js'), 'utf8');
@@ -32,7 +31,7 @@ test('own locked reservation slot uses the red occupied state', () => {
 test('all main entry pages request the current minified stylesheet version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
         assert.match(html, /style\.min\.css\?v=1\.1\.14/);
-        assert.match(html, /script\.min\.js\?v=1\.2\.4/);
+        assert.match(html, /script\.min\.js\?v=1\.3\.0/);
     }
 });
 
@@ -78,7 +77,7 @@ test('business and admin drawers use compositor motion without restoring blur', 
 });
 
 test('all entry pages declare the native dark color scheme', () => {
-    for (const html of [indexHtml, businessHtml, adminHtml, paymentHtml]) {
+    for (const html of [indexHtml, businessHtml, adminHtml]) {
         assert.match(html, /<meta name="color-scheme" content="dark">/);
         assert.match(html, /<meta name="theme-color" content="#0b0f19">/);
     }

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const publicDir = path.join(__dirname, '..', 'public');
-const pages = ['index.html', 'isletme.html', 'yonetici.html', 'payment-share.html'];
+const pages = ['index.html', 'isletme.html', 'yonetici.html', 'privacy.html', 'terms.html'];
 
 test('all public entry pages use the football favicon', () => {
     for (const page of pages) {

@@ -27,52 +27,116 @@ async function runHandlers(handlers, req, res) {
     }
 }
 
-function createRegisterHandlers(db) {
-    let handlers;
+function createAppForRoutes() {
+    const routes = new Map();
     const app = {
         get() {},
-        put() {},
+        put(path, ...routeHandlers) {
+            routes.set(`PUT ${path}`, routeHandlers);
+        },
         post(path, ...routeHandlers) {
-            if (path === '/api/register') handlers = routeHandlers;
+            routes.set(`POST ${path}`, routeHandlers);
         }
     };
-    initAuthRoutes(app, db);
-    return handlers;
+    return { app, routes };
+}
+
+function createDb(connection) {
+    return {
+        promise() {
+            return {
+                getConnection: async () => connection,
+                query: async (...args) => connection.query(...args)
+            };
+        },
+        execute() {}
+    };
+}
+
+function createRequest(body) {
+    return {
+        ip: '127.0.0.1',
+        protocol: 'http',
+        headers: {},
+        app: { get: () => false },
+        get: () => 'localhost:5000',
+        body
+    };
 }
 
 test('register rejects an existing email before insert and normalizes case', async () => {
     const queries = [];
-    const db = {
-        execute(sql, params, cb) {
+    const connection = {
+        async query(sql, params) {
             queries.push({ sql, params });
-            if (sql.startsWith('SELECT COUNT(DISTINCT fieldKey)')) {
-                return cb(null, [{ count: 0 }]);
-            }
-            if (sql.startsWith('SELECT id, phone, email FROM users')) {
-                assert.equal(params[1], 'berk@example.com');
-                return cb(null, [{ id: 7, phone: '05000000000', email: 'berk@example.com' }]);
+            if (sql.startsWith('SELECT COUNT(DISTINCT fieldKey)')) return [[{ count: 0 }]];
+            if (sql.startsWith('SELECT id FROM users WHERE email')) {
+                assert.deepEqual(params, ['berk@example.com']);
+                return [[{ id: 7 }]];
             }
             throw new Error('insert should not be reached');
-        }
+        },
+        release() {}
     };
-    const handlers = createRegisterHandlers(db);
+    const { app, routes } = createAppForRoutes();
+    initAuthRoutes(app, createDb(connection));
     const response = createResponse();
 
-    await runHandlers(handlers, {
-        ip: '127.0.0.1',
-        headers: {},
-        app: { get: () => false },
-        body: {
-            firstName: 'Berk',
-            lastName: 'Ceyhan',
-            phone: '05664477889',
-            email: '  BERK@example.com  ',
-            password: '123456'
-        }
-    }, response);
+    await runHandlers(routes.get('POST /api/register'), createRequest({
+        firstName: 'Berk',
+        lastName: 'Ceyhan',
+        phone: '05664477889',
+        email: '  BERK@example.com  ',
+        password: '123456'
+    }), response);
 
     assert.equal(response.statusCode, 409);
     assert.equal(response.body.success, false);
     assert.match(response.body.message, /e-posta/);
     assert.equal(queries.some(q => q.sql.startsWith('INSERT INTO users')), false);
+});
+
+test('register allows duplicate phone when email is unique', async () => {
+    const queries = [];
+    const connection = {
+        async query(sql, params) {
+            queries.push({ sql, params });
+            if (sql.startsWith('SELECT COUNT(DISTINCT fieldKey)')) return [[{ count: 0 }]];
+            if (sql.startsWith('SELECT id FROM users WHERE email')) return [[]];
+            if (sql.startsWith('INSERT INTO users')) {
+                assert.deepEqual(params.slice(0, 4), ['Berk', 'Ceyhan', '05000000000', 'new@example.com']);
+                assert.equal(params[5], 1);
+                return [{ insertId: 11 }];
+            }
+            throw new Error(`unexpected query: ${sql}`);
+        },
+        release() {}
+    };
+    const { app, routes } = createAppForRoutes();
+    initAuthRoutes(app, createDb(connection));
+    const response = createResponse();
+
+    await runHandlers(routes.get('POST /api/register'), createRequest({
+        firstName: 'Berk',
+        lastName: 'Ceyhan',
+        phone: '05000000000',
+        email: 'new@example.com',
+        password: '123456'
+    }), response);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.success, true);
+    assert.equal(response.body.user.phone, '05000000000');
+    assert.equal(queries.some(q => /WHERE phone\b/i.test(q.sql)), false);
+});
+
+test('google auth endpoint stays hidden until feature flag is enabled', async () => {
+    const { app, routes } = createAppForRoutes();
+    initAuthRoutes(app, createDb({ query() {}, release() {} }));
+    const response = createResponse();
+
+    await runHandlers(routes.get('POST /api/auth/google'), createRequest({ credential: 'token' }), response);
+
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.body.success, false);
 });

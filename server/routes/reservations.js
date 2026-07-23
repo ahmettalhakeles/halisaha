@@ -12,9 +12,8 @@ function initReservationRoutes(app, db, options = {}) {
     app.get('/api/reservations', async (req, res) => {
         await checkAndCancelExpiredPayments(db);
         const sqlQuery = `
-            SELECT r.*, pg.status AS pg_status, pg.paid_count AS pg_paid_count, pg.share_amount AS pg_share_amount
+            SELECT r.*
             FROM reservations r
-            LEFT JOIN payment_groups pg ON r.id = pg.reservation_id
             WHERE r.status != 'pending_payment'
             ORDER BY r.created_at DESC
         `;
@@ -138,11 +137,6 @@ function initReservationRoutes(app, db, options = {}) {
         const connection = await db.promise().getConnection();
         try {
             await connection.beginTransaction();
-            await connection.query(
-                `SELECT id FROM payment_groups WHERE reservation_id = ?
-                 AND status IN ('pending', 'active') FOR UPDATE`,
-                [id]
-            );
             const [rows] = await connection.query('SELECT * FROM reservations WHERE id = ? FOR UPDATE', [id]);
             if (rows.length === 0) {
                 await connection.rollback();
@@ -161,11 +155,6 @@ function initReservationRoutes(app, db, options = {}) {
                 await connection.rollback();
                 return res.json({ success: true, message: 'Rezervasyon daha önce iptal edilmiş.' });
             }
-            await connection.query(
-                `UPDATE payment_groups SET status = 'expired'
-                 WHERE reservation_id = ? AND status IN ('pending', 'active')`,
-                [id]
-            );
             const cancelledBy = actor.role === 'user' ? `user:${actor.userId}` : actor.role;
             const reason = String(req.body?.reason || 'Rezervasyon iptal edildi').slice(0, 255);
             await connection.query(

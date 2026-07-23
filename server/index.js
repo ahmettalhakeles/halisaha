@@ -1,11 +1,18 @@
 require('dotenv').config();
 const { hasRequiredTurnstileConfig } = require('./utils/turnstile');
+const { getGoogleClientId, isGoogleAuthEnabled, validateOptionalIntegrations } = require('./utils/authConfig');
 if (!process.env.JWT_SECRET) {
     console.error('FATAL ERROR: JWT_SECRET environment variable is not defined.');
     process.exit(1);
 }
 if (!hasRequiredTurnstileConfig()) {
     console.error('FATAL ERROR: TURNSTILE_SITEKEY and a Turnstile secret must be defined in production.');
+    process.exit(1);
+}
+try {
+    validateOptionalIntegrations();
+} catch (error) {
+    console.error('FATAL ERROR:', error.message);
     process.exit(1);
 }
 
@@ -40,17 +47,18 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'", "https://www.gstatic.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://www.gstatic.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://www.gstatic.com", "https://accounts.google.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            scriptSrc: ["'self'", "https://challenges.cloudflare.com", "https://translate.googleapis.com", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "https://challenges.cloudflare.com", "https://translate.googleapis.com", "https://accounts.google.com", "'unsafe-inline'"],
             scriptSrcAttr: ["'unsafe-inline'"],
-            frameSrc: ["'self'", "https://challenges.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https://www.google.com", "https://www.gstatic.com"],
-            connectSrc: ["'self'", "https://challenges.cloudflare.com"],
+            frameSrc: ["'self'", "https://challenges.cloudflare.com", "https://accounts.google.com"],
+            imgSrc: ["'self'", "data:", "https://www.google.com", "https://www.gstatic.com", "https://accounts.google.com"],
+            connectSrc: ["'self'", "https://challenges.cloudflare.com", "https://accounts.google.com", "https://www.googleapis.com"],
             formAction: ["'self'"],
         },
     },
     crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
 }));
 
 app.use((req, res, next) => {
@@ -82,7 +90,9 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-        turnstileSiteKey: process.env.TURNSTILE_SITEKEY || (process.env.NODE_ENV === 'production' ? '' : '1x00000000000000000000AA')
+        turnstileSiteKey: process.env.TURNSTILE_SITEKEY || (process.env.NODE_ENV === 'production' ? '' : '1x00000000000000000000AA'),
+        googleClientId: isGoogleAuthEnabled() ? getGoogleClientId() : '',
+        googleAuthEnabled: isGoogleAuthEnabled() && Boolean(getGoogleClientId())
     });
 });
 
@@ -128,12 +138,16 @@ app.get('/isletme', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'isletme.html'));
 });
 
-app.get('/payment/share/:code', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'payment-share.html'));
-});
-
 app.get('/yonetici', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'yonetici.html'));
+});
+
+app.get('/privacy', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'privacy.html'));
+});
+
+app.get('/terms', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'terms.html'));
 });
 
 app.use(errorHandler);
@@ -234,11 +248,11 @@ async function start() {
     } finally {
         connection.release();
     }
-    startTelegramOutboxWorker(db);
-    await processWeeklySubscriptions();
-    setInterval(() => processWeeklySubscriptions().catch(err => console.error('Cron hatasi:', err)), 60 * 60 * 1000);
     app.listen(port, '0.0.0.0', () => {
         console.log(`Sunucu http://0.0.0.0:${port} adresinde calisiyor!`);
+        startTelegramOutboxWorker(db);
+        processWeeklySubscriptions().catch(err => console.error('Cron hatasi:', err));
+        setInterval(() => processWeeklySubscriptions().catch(err => console.error('Cron hatasi:', err)), 60 * 60 * 1000);
     });
 }
 

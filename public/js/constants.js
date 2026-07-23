@@ -183,44 +183,6 @@ window.onload = async function() {
         if (input) applyPhoneMask(input);
     });
 
-    // OAuth ve Yönlendirme Kontrolleri
-    const urlParams = new URLSearchParams(window.location.search);
-    const oauthError = urlParams.get('error');
-    const needsPhone = urlParams.get('needs_phone');
-    const oauthToken = urlParams.get('token');
-    const oauthUserJson = urlParams.get('user');
-
-    if (oauthError) {
-        if (oauthError === 'globally_banned') {
-            alert("Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!");
-        } else if (oauthError === 'oauth_registration_failed') {
-            alert("Sosyal giriş ile kayıt esnasında hata oluştu!");
-        } else {
-            alert("Sosyal giriş doğrulaması başarısız oldu!");
-        }
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (needsPhone === 'true') {
-        const completeUserId = urlParams.get('userId');
-        const completeEmail = urlParams.get('email');
-        document.getElementById('completeProfileUserId').value = completeUserId || '';
-        openModal('socialCompleteProfileModal');
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (oauthToken && oauthUserJson) {
-        try {
-            const userObj = JSON.parse(decodeURIComponent(oauthUserJson));
-            localStorage.setItem('userToken', oauthToken);
-            loggedInUser = userObj.name.toLocaleUpperCase('tr-TR');
-            currentUser = userObj;
-            await loadUserBlacklist();
-            renderFieldsGrid();
-            updateLoginUIVisibility();
-            alert(`Hoş geldiniz, ${userObj.name || 'Oyuncu'}! Giriş yapıldı.`);
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (e) {
-            console.error("OAuth user parse error:", e);
-        }
-    }
-
     if (currentUser) {
         await loadUserBlacklist();
         renderFieldsGrid();

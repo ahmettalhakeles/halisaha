@@ -8,17 +8,43 @@ CREATE TABLE IF NOT EXISTS users (
   last_name VARCHAR(50) NOT NULL,
   phone VARCHAR(17) NOT NULL,
   email VARCHAR(100) NOT NULL,
-  password VARCHAR(255) NOT NULL,
+  password VARCHAR(255) DEFAULT NULL,
   status VARCHAR(50) DEFAULT 'active',
+  is_email_verified TINYINT NOT NULL DEFAULT 0,
   age INT DEFAULT NULL,
   position VARCHAR(50) DEFAULT NULL,
   experience VARCHAR(50) DEFAULT NULL,
   height INT DEFAULT NULL,
   weight INT DEFAULT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY unique_phone (phone),
   UNIQUE KEY unique_email (email),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_auth_identities (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  provider VARCHAR(32) NOT NULL,
+  provider_subject VARCHAR(255) NOT NULL,
+  provider_email VARCHAR(191) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_login_at DATETIME DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_provider_subject (provider, provider_subject),
+  UNIQUE KEY unique_user_provider (user_id, provider),
+  KEY idx_user_auth_user (user_id),
+  CONSTRAINT fk_user_auth_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  user_id INT NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  last_sent_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id),
+  UNIQUE KEY unique_email_token_hash (token_hash),
+  CONSTRAINT fk_email_token_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS reservations (
@@ -240,6 +266,8 @@ CREATE TABLE IF NOT EXISTS field_blacklists (
   id INT NOT NULL AUTO_INCREMENT,
   fieldKey VARCHAR(50) NOT NULL,
   phone_number VARCHAR(20) NOT NULL,
+  user_id INT DEFAULT NULL,
+  reason VARCHAR(255) DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY unique_field_phone (fieldKey, phone_number)

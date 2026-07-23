@@ -385,34 +385,6 @@ function updateLoginUIVisibility() {
     }
 }
 
-function openOAuth(provider) {
-    const width = 500;
-    const height = 600;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-    const url = provider === 'google' ? 'google_login.html' : 'apple_login.html';
-    window.open(url, `${provider} Login`, `width=${width},height=${height},top=${top},left=${left}`);
-}
-
-window.addEventListener('message', async function(event) {
-    if (event.data && event.data.type === 'oauth-success') {
-        const user = event.data.user;
-        currentUser = user;
-        loggedInUser = user.name.toLocaleUpperCase('tr-TR');
-        
-        await loadUserBlacklist();
-        renderFieldsGrid();
-        
-        closeModal('loginModal');
-        closeModal('registerModal');
-        
-        updateLoginUIVisibility();
-        
-        if (currentSelectedFieldKey) onDateOrFieldChange();
-        fillFormsFromProfile();
-    }
-});
-
 function switchCustomerTab(tabName) {
     document.querySelectorAll('.customer-tab-content').forEach(zone => {
         zone.style.display = 'none';

@@ -171,6 +171,9 @@ let userBlacklistedFields = [];
 let forumPostsLoaded = false;
 let matchSeekersLoaded = false;
 let teamSeekersLoaded = false;
+let appConfig = null;
+let appConfigPromise = null;
+let googleFlowToken = "";
 const announcementAudience = isBusinessPage ? 'businesses' : (isUserPage ? 'users' : 'all');
 
 function getAuthHeaders() {
@@ -228,6 +231,7 @@ window.onload = async function() {
         initMatchSeekerForm();
         initTeamSeekerForm();
         updateLoginUIVisibility();
+        initGoogleAuthUi();
 
         await loadReservationsFromServer();
         loadSecondaryUserPageData();
@@ -343,6 +347,26 @@ function handleUserLogout() {
     if (currentSelectedFieldKey) onDateOrFieldChange();
 }
 
+async function completeUserSession(result, remember) {
+    currentUser = result.user || null;
+    if (currentUser) currentUser.name = [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ').trim();
+    loggedInUser = currentUser && currentUser.name ? currentUser.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
+    if (remember) {
+        localStorage.setItem('userToken', result.token);
+        localStorage.setItem('userData', JSON.stringify(result.user));
+        localStorage.setItem('userRemember', 'true');
+        sessionStorage.removeItem('userToken');
+        sessionStorage.removeItem('userData');
+    } else {
+        sessionStorage.setItem('userToken', result.token);
+        sessionStorage.setItem('userData', JSON.stringify(result.user));
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('userRemember');
+    }
+    await refreshSignedInUserUi();
+}
+
 async function handleUserRegister(event) {
     event.preventDefault();
     const firstName = document.getElementById('regFirstName').value.trim();
@@ -383,18 +407,13 @@ async function handleUserRegister(event) {
         }
 
         if (result.success) {
-            currentUser = result.user || null;
-            if (currentUser) {
-                currentUser.name = (currentUser.first_name + ' ' + currentUser.last_name).trim();
+            if (result.requiresEmailVerification) {
+                closeModal('registerModal');
+                document.getElementById('registerForm').reset();
+                alert(result.message || 'Kayıt alındı. E-postanızı doğrulayın.');
+                return;
             }
-            loggedInUser = (currentUser && currentUser.name) ? currentUser.name.toLocaleUpperCase('tr-TR') : 'MÜŞTERİ';
-            // Kayıt sonrası oturum sadece bu sekme için geçerli (beni hatırla yok)
-            sessionStorage.setItem('userToken', result.token);
-            sessionStorage.setItem('userData', JSON.stringify(result.user));
-            localStorage.removeItem('userToken');
-            localStorage.removeItem('userData');
-            localStorage.removeItem('userRemember');
-            await refreshSignedInUserUi();
+            await completeUserSession(result, false);
             closeModal('registerModal');
             document.getElementById('registerForm').reset();
             if (result.message) alert(result.message);
@@ -427,31 +446,127 @@ async function handleUserLogin() {
         const result = await response.json();
 
         if (result.success) {
-            currentUser = result.user;
-            if (currentUser) {
-                currentUser.name = (currentUser.first_name + ' ' + currentUser.last_name).trim();
-            }
-            loggedInUser = currentUser.name.toLocaleUpperCase('tr-TR');
-            if (remember) {
-                localStorage.setItem('userToken', result.token);
-                localStorage.setItem('userData', JSON.stringify(result.user));
-                localStorage.setItem('userRemember', 'true');
-            } else {
-                sessionStorage.setItem('userToken', result.token);
-                sessionStorage.setItem('userData', JSON.stringify(result.user));
-                localStorage.removeItem('userToken');
-                localStorage.removeItem('userData');
-                localStorage.removeItem('userRemember');
-            }
-            await refreshSignedInUserUi();
+            setEmailNotice('');
+            await completeUserSession(result, remember);
             closeModal('loginModal');
         } else {
+            if (response.status === 403 && result.code === 'EMAIL_NOT_VERIFIED') {
+                setEmailNotice(result.message || 'E-postanızı doğrulayın.', true);
+                return;
+            }
             alert("HATA: " + result.message);
         }
     } catch (error) {
         alert("SUNUCUYA BAĞLANILAMADI! node server.js çalışıyor mu?");
     }
 }
+
+function setEmailNotice(message, showResend) {
+    const notice = document.getElementById('loginEmailNotice');
+    const resend = document.getElementById('resendVerificationBtn');
+    if (notice) { notice.textContent = message || ''; notice.style.display = message ? 'block' : 'none'; }
+    if (resend) resend.style.display = showResend ? 'inline-flex' : 'none';
+}
+
+async function resendVerificationFromLogin() {
+    const email = document.getElementById('loginEmail')?.value.trim();
+    if (!email) return setEmailNotice('E-posta adresinizi yazın.', true);
+    try {
+        await fetch('/api/auth/resend-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        setEmailNotice('Hesap uygunsa doğrulama e-postası gönderildi.', true);
+    } catch (error) { setEmailNotice('Şu anda yeniden gönderilemedi. Lütfen tekrar deneyin.', true); }
+}
+
+async function loadAppConfig() {
+    if (appConfig) return appConfig;
+    if (!appConfigPromise) {
+        appConfigPromise = fetch('/api/config').then(r => { if (!r.ok) throw new Error('Config HTTP ' + r.status); return r.json(); }).then(data => (appConfig = data));
+    }
+    return appConfigPromise;
+}
+
+async function initGoogleAuthUi() {
+    if (!isUserPage) return;
+    let config;
+    try { config = await loadAppConfig(); } catch (error) { return; }
+    if (!config.googleAuthEnabled || !config.googleClientId) return;
+    const loginArea = document.getElementById('googleLoginArea');
+    const registerArea = document.getElementById('googleRegisterArea');
+    if (loginArea) loginArea.style.display = 'block';
+    if (registerArea) registerArea.style.display = 'block';
+    try {
+        await loadGoogleIdentityScript();
+        window.google.accounts.id.initialize({ client_id: config.googleClientId, callback: handleGoogleCredential, auto_select: false, ux_mode: 'popup' });
+        renderGoogleButton('googleLoginButton');
+        renderGoogleButton('googleRegisterButton');
+    } catch (error) { setGoogleStatus('Google butonu yüklenemedi. Yerel giriş çalışmaya devam eder.'); }
+}
+
+function loadGoogleIdentityScript() {
+    if (window.google?.accounts?.id) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-google-gis="true"]');
+        if (existing) { existing.addEventListener('load', resolve, { once: true }); existing.addEventListener('error', reject, { once: true }); return; }
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client'; script.async = true; script.defer = true; script.dataset.googleGis = 'true'; script.onload = resolve; script.onerror = reject; document.head.appendChild(script);
+    });
+}
+
+function renderGoogleButton(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el || !window.google?.accounts?.id) return;
+    window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width: Math.min(320, el.parentElement?.clientWidth || 320), text: 'continue_with', locale: 'tr' });
+}
+
+async function handleGoogleCredential(response) {
+    const credential = response?.credential;
+    if (!credential) return setGoogleStatus('Google kimlik bilgisi alınamadı.');
+    setGoogleStatus('Google hesabı doğrulanıyor...');
+    try {
+        const res = await fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential }) });
+        const result = await res.json();
+        if (!result.success) return setGoogleStatus(result.message || 'Google girişi tamamlanamadı.');
+        if (result.token && result.user) { await completeUserSession(result, Boolean(document.getElementById('userRememberMe')?.checked)); closeModal('loginModal'); closeModal('registerModal'); return setGoogleStatus(''); }
+        googleFlowToken = result.flowToken || '';
+        if (result.nextAction === 'complete_profile') {
+            document.getElementById('googleFirstName').value = result.profile?.firstName || '';
+            document.getElementById('googleLastName').value = result.profile?.lastName || '';
+            document.getElementById('googlePhone').value = '';
+            document.getElementById('googleKvkk').checked = false;
+            document.getElementById('googleCompleteStatus').textContent = '';
+            openModal('googleCompleteProfileModal');
+        } else if (result.nextAction === 'link_account') {
+            document.getElementById('googleLinkText').textContent = result.email + ' adresli hesabı bağlamak için mevcut şifrenizi girin.';
+            document.getElementById('googleLinkPassword').value = '';
+            document.getElementById('googleLinkStatus').textContent = '';
+            openModal('googleLinkModal');
+        }
+        setGoogleStatus('');
+    } catch (error) { setGoogleStatus('Google girişinde bağlantı hatası oluştu.'); }
+}
+
+async function completeGoogleProfile() {
+    const phone = document.getElementById('googlePhone').value.replace(/\D/g, '');
+    const payload = { flowToken: googleFlowToken, firstName: document.getElementById('googleFirstName').value.trim(), lastName: document.getElementById('googleLastName').value.trim(), phone, kvkkAccepted: document.getElementById('googleKvkk').checked };
+    if (!phone.startsWith('05') || phone.length !== 11) { document.getElementById('googleCompleteStatus').textContent = 'Telefon 05 ile başlayan 11 hane olmalı.'; return; }
+    try {
+        const res = await fetch('/api/auth/google/complete-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const result = await res.json();
+        if (!result.success) { document.getElementById('googleCompleteStatus').textContent = result.message || 'Profil tamamlanamadı.'; return; }
+        await completeUserSession(result, false); closeModal('googleCompleteProfileModal'); closeModal('loginModal'); closeModal('registerModal');
+    } catch (error) { document.getElementById('googleCompleteStatus').textContent = 'Bağlantı hatası oluştu.'; }
+}
+
+async function linkGoogleAccount() {
+    try {
+        const res = await fetch('/api/auth/google/link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ flowToken: googleFlowToken, password: document.getElementById('googleLinkPassword').value }) });
+        const result = await res.json();
+        if (!result.success) { document.getElementById('googleLinkStatus').textContent = result.message || 'Hesap bağlanamadı.'; return; }
+        await completeUserSession(result, Boolean(document.getElementById('userRememberMe')?.checked)); closeModal('googleLinkModal'); closeModal('loginModal'); closeModal('registerModal');
+    } catch (error) { document.getElementById('googleLinkStatus').textContent = 'Bağlantı hatası oluştu.'; }
+}
+
+function setGoogleStatus(message) { ['googleLoginStatus', 'googleRegisterStatus'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = message || ''; }); }
 
 async function refreshSignedInUserUi() {
     await loadUserBlacklist();
@@ -3137,32 +3252,19 @@ function closeBookingConfirmModal(confirmed) {
 let latestReservationId = null;
 
 function resetPaymentUI() {
-    document.getElementById('paymentButtons').style.display = 'flex';
-    document.getElementById('paymentShareInfo').style.display = 'none';
+    const buttons = document.getElementById('paymentButtons');
+    if (buttons) buttons.style.display = 'flex';
     const statusEl = document.getElementById('paymentStatus');
-    statusEl.style.display = 'none';
-    statusEl.className = '';
-    statusEl.innerHTML = '';
-    
-    document.getElementById('btnPaySingle').disabled = false;
-    document.getElementById('btnPaySplit').disabled = false;
-    document.getElementById('btnPaySingle').innerHTML = 'Tek Kişi Öde';
-    document.getElementById('btnPaySplit').innerHTML = 'İki Kişi Paylaş';
+    if (statusEl) { statusEl.style.display = 'none'; statusEl.className = ''; statusEl.innerHTML = ''; }
+    const singleBtn = document.getElementById('btnPaySingle');
+    if (singleBtn) { singleBtn.disabled = false; singleBtn.innerHTML = 'Tek Ki?i ?de'; }
 }
 
-// Kredi Kartı Ödeme Değişkenleri
 let currentPaymentReservationId = null;
-let currentPaymentType = null; // 'single' veya 'split'
-let currentPaymentShareCode = null;
+let currentPaymentType = null;
 let currentPaymentAmount = 0;
 
-function showCardError(msg) {
-    const errorEl = document.getElementById('simCardError');
-    if (errorEl) {
-        errorEl.textContent = msg;
-        errorEl.style.display = 'block';
-    }
-}
+function showCardError(msg) { const errorEl = document.getElementById('simCardError'); if (errorEl) { errorEl.textContent = msg; errorEl.style.display = 'block'; } }
 
 function validateCardInputs() {
     const name = document.getElementById('simCardName').value.trim();
@@ -3170,259 +3272,53 @@ function validateCardInputs() {
     const expiry = document.getElementById('simCardExpiry').value.trim();
     const cvv = document.getElementById('simCardCvv').value.trim();
     const errorEl = document.getElementById('simCardError');
-    
-    if (!name) {
-        showCardError("Lütfen kart sahibinin adını girin.");
-        return null;
-    }
-    if (!/^\d{16}$/.test(number)) {
-        showCardError("Kart numarası 16 haneli olmalıdır.");
-        return null;
-    }
-    if (!/^\d{2}\/\d{2}$/.test(expiry)) {
-        showCardError("Son kullanma tarihi MM/YY formatında olmalıdır.");
-        return null;
-    }
-    
+    if (!name) return showCardError('Lütfen kart sahibinin adını girin.'), null;
+    if (!/^\d{16}$/.test(number)) return showCardError('Kart numarası 16 haneli olmalıdır.'), null;
+    if (!/^\d{2}\/\d{2}$/.test(expiry)) return showCardError('Son kullanma tarihi MM/YY formatında olmalıdır.'), null;
     const [month, year] = expiry.split('/').map(Number);
-    if (month < 1 || month > 12) {
-        showCardError("Geçersiz ay girdiniz (01 - 12 arası olmalıdır).");
-        return null;
-    }
-    
-    const now = new Date();
-    const currentYear = now.getFullYear() % 100;
-    const currentMonth = now.getMonth() + 1;
-    
-    if (year < currentYear || (year === currentYear && month < currentMonth)) {
-        showCardError("Kartın son kullanma tarihi geçmiş.");
-        return null;
-    }
-    
-    if (!/^\d{3}$/.test(cvv)) {
-        showCardError("CVV 3 haneli olmalıdır.");
-        return null;
-    }
-    
+    const now = new Date(); const currentYear = now.getFullYear() % 100; const currentMonth = now.getMonth() + 1;
+    if (month < 1 || month > 12) return showCardError('Geçersiz ay girdiniz.'), null;
+    if (year < currentYear || (year === currentYear && month < currentMonth)) return showCardError('Kartın son kullanma tarihi geçmiş.'), null;
+    if (!/^\d{3}$/.test(cvv)) return showCardError('CVV 3 haneli olmalıdır.'), null;
     if (errorEl) errorEl.style.display = 'none';
     return { name, number, expiry, cvv };
 }
 
-// Kart formatlama event listener'ları
 function initCardInputFormatters() {
     const numberInput = document.getElementById('simCardNumber');
     const expiryInput = document.getElementById('simCardExpiry');
     const cvvInput = document.getElementById('simCardCvv');
-    
-    if (numberInput) {
-        numberInput.addEventListener('input', (e) => {
-            let val = e.target.value.replace(/\D/g, '');
-            let formatted = val.match(/.{1,4}/g)?.join(' ') || val;
-            e.target.value = formatted;
-        });
-    }
-    if (expiryInput) {
-        expiryInput.addEventListener('input', (e) => {
-            let val = e.target.value.replace(/\D/g, '');
-            if (val.length >= 2) {
-                e.target.value = val.substring(0, 2) + '/' + val.substring(2, 4);
-            } else {
-                e.target.value = val;
-            }
-        });
-    }
-    if (cvvInput) {
-        cvvInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/\D/g, '').substring(0, 3);
-        });
-    }
+    if (numberInput) numberInput.addEventListener('input', (e) => { const val = e.target.value.replace(/\D/g, ''); e.target.value = val.match(/.{1,4}/g)?.join(' ') || val; });
+    if (expiryInput) expiryInput.addEventListener('input', (e) => { const val = e.target.value.replace(/\D/g, ''); e.target.value = val.length >= 2 ? val.substring(0, 2) + '/' + val.substring(2, 4) : val; });
+    if (cvvInput) cvvInput.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').substring(0, 3); });
 }
 
-// Sayfa yüklendiğinde formatlayıcıları kur
 setTimeout(initCardInputFormatters, 1000);
 
 async function paySingle() {
     if (!latestReservationId) return;
-    
-    currentPaymentReservationId = latestReservationId;
-    currentPaymentType = 'single';
-    currentPaymentAmount = parseFloat(document.getElementById('successBookingPrice').innerText);
-    
+    currentPaymentReservationId = latestReservationId; currentPaymentType = 'single'; currentPaymentAmount = parseFloat(document.getElementById('successBookingPrice').innerText);
     closeModal('bookingSuccessModal');
-    
-    // Formu sıfırla
-    document.getElementById('simCardName').value = '';
-    document.getElementById('simCardNumber').value = '';
-    document.getElementById('simCardExpiry').value = '';
-    document.getElementById('simCardCvv').value = '';
-    document.getElementById('simCardError').style.display = 'none';
-    
-    document.getElementById('simPaymentAmount').textContent = `${currentPaymentAmount} TL`;
-    document.getElementById('simPayBtnText').textContent = 'ÖDEMEYİ TAMAMLA';
-    
-    openModal('paymentSimulationModal');
+    document.getElementById('simCardName').value = ''; document.getElementById('simCardNumber').value = ''; document.getElementById('simCardExpiry').value = ''; document.getElementById('simCardCvv').value = ''; document.getElementById('simCardError').style.display = 'none';
+    document.getElementById('simPaymentAmount').textContent = currentPaymentAmount + ' TL'; document.getElementById('simPayBtnText').textContent = '?DEMEY? TAMAMLA'; openModal('paymentSimulationModal');
 }
 
-async function initSplitPayment() {
-    if (!latestReservationId) return;
-    
-    const btn = document.getElementById('btnPaySplit');
-    btn.disabled = true;
-    btn.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="spinner" style="width:20px;height:20px;border:3px solid rgba(16,185,129,0.2);border-left-color:var(--neon-green);border-radius:50%;animation:spin 1s linear infinite;"></div>Başlatılıyor...</div>';
-    document.getElementById('btnPaySingle').disabled = true;
-
-    try {
-        const res = await fetch(`/api/reservations/${latestReservationId}/payment/init`, { method: 'POST', headers: getAuthHeaders() });
-        const result = await res.json();
-        
-        if (result.success) {
-            currentPaymentReservationId = latestReservationId;
-            currentPaymentType = 'split';
-            currentPaymentShareCode = result.share_code;
-            currentPaymentAmount = parseFloat(document.getElementById('successBookingPrice').innerText) / 2;
-            
-            closeModal('bookingSuccessModal');
-            
-            // Formu sıfırla
-            document.getElementById('simCardName').value = '';
-            document.getElementById('simCardNumber').value = '';
-            document.getElementById('simCardExpiry').value = '';
-            document.getElementById('simCardCvv').value = '';
-            document.getElementById('simCardError').style.display = 'none';
-            
-            document.getElementById('simPaymentAmount').textContent = `${currentPaymentAmount} TL (Yarı Tutar)`;
-            document.getElementById('simPayBtnText').textContent = 'KENDİ PAYIMI ÖDE';
-            
-            openModal('paymentSimulationModal');
-        } else {
-            const statusEl = document.getElementById('paymentStatus');
-            statusEl.style.display = 'block';
-            statusEl.style.background = 'rgba(239,68,68,0.1)';
-            statusEl.style.color = '#ef4444';
-            statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
-            statusEl.innerHTML = `✗ ${result.message || 'İşlem başarısız oldu'}`;
-            btn.disabled = false;
-            document.getElementById('btnPaySingle').disabled = false;
-            btn.innerHTML = 'İki Kişi Paylaş';
-        }
-    } catch (error) {
-        btn.disabled = false;
-        document.getElementById('btnPaySingle').disabled = false;
-        btn.innerHTML = 'İki Kişi Paylaş';
-        alert('Bağlantı hatası!');
-    }
-}
-
-// Ödeme Simülasyonu Gönder Butonu Tıklama Dinleyicisi
 setTimeout(() => {
-    const paySubmitBtn = document.getElementById('simPaySubmitBtn');
-    if (paySubmitBtn) {
-        paySubmitBtn.onclick = async () => {
-            const cardData = validateCardInputs();
-            if (!cardData) return;
-            
-            paySubmitBtn.disabled = true;
-            const originalBtnContent = document.getElementById('simPayBtnText').innerHTML;
-            document.getElementById('simPayBtnText').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="btn-loading-spinner"></div>Ödeme Yapılıyor...</div>';
-            
-            setTimeout(async () => {
-                try {
-                    if (currentPaymentType === 'single') {
-                        const res = await fetch(`/api/reservations/${currentPaymentReservationId}/payment/pay-single`, { method: 'POST', headers: getAuthHeaders() });
-                        const result = await res.json();
-                        
-                        closeModal('paymentSimulationModal');
-                        openModal('bookingSuccessModal');
-                        
-                        const statusEl = document.getElementById('paymentStatus');
-                        statusEl.style.display = 'block';
-                        
-                        if (result.success) {
-                            const successTitle = document.getElementById('bookingSuccessTitle');
-                            const successMessage = document.getElementById('bookingSuccessMessage');
-                            if (successTitle) successTitle.innerText = 'REZERVASYON ONAYLANDI!';
-                            if (successMessage) successMessage.innerText = 'İyi Oyunlar!';
-                            document.getElementById('paymentButtons').style.display = 'none';
-                            statusEl.style.background = 'rgba(16,185,129,0.1)';
-                            statusEl.style.color = 'var(--neon-green)';
-                            statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
-                            statusEl.innerHTML = '✓ Ödeme Başarılı!';
-                            await loadReservationsFromServer();
-                            onDateOrFieldChange();
-                        } else {
-                            statusEl.style.background = 'rgba(239,68,68,0.1)';
-                            statusEl.style.color = '#ef4444';
-                            statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
-                            statusEl.innerHTML = `✗ ${result.message || 'Ödeme başarısız oldu'}`;
-                            resetPaymentUI();
-                        }
-                    } else if (currentPaymentType === 'split') {
-                        // Kendi payını ödemek için API /api/payment/share/:code/pay kullanılır
-                        const res = await fetch(`/api/payment/share/${currentPaymentShareCode}/pay`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ payer_name: loggedInUser })
-                        });
-                        const result = await res.json();
-                        
-                        closeModal('paymentSimulationModal');
-                        openModal('bookingSuccessModal');
-                        
-                        const statusEl = document.getElementById('paymentStatus');
-                        statusEl.style.display = 'block';
-                        
-                        if (result.success) {
-                            const successTitle = document.getElementById('bookingSuccessTitle');
-                            const successMessage = document.getElementById('bookingSuccessMessage');
-                            if (successTitle) successTitle.innerText = 'PAYLAŞIMLI ÖDEME BAŞLADI';
-                            if (successMessage) successMessage.innerText = 'İkinci ödeme tamamlanınca rezervasyon kesinleşir.';
-                            document.getElementById('paymentButtons').style.display = 'none';
-                            document.getElementById('paymentShareInfo').style.display = 'block';
-                            
-                            const shareUrl = `${window.location.origin}/payment/share/${currentPaymentShareCode}`;
-                            document.getElementById('shareLinkInput').value = shareUrl;
-                            
-                            statusEl.style.background = 'rgba(16,185,129,0.1)';
-                            statusEl.style.color = 'var(--neon-green)';
-                            statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
-                            statusEl.innerHTML = '✓ Kendi payınızı ödediniz! Arkadaşınızla linki paylaşın.';
-                            await loadReservationsFromServer();
-                            onDateOrFieldChange();
-                        } else {
-                            statusEl.style.background = 'rgba(239,68,68,0.1)';
-                            statusEl.style.color = '#ef4444';
-                            statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
-                            statusEl.innerHTML = `✗ ${result.message || 'Ödeme başarısız oldu'}`;
-                            resetPaymentUI();
-                        }
-                    }
-                } catch(e) {
-                    console.error("Ödeme hatası:", e);
-                    alert("Ödeme alınırken bağlantı hatası oluştu!");
-                } finally {
-                    paySubmitBtn.disabled = false;
-                    document.getElementById('simPayBtnText').innerHTML = originalBtnContent;
-                }
-            }, 2000);
-        };
-    }
+    const paySubmitBtn = document.getElementById('simPaySubmitBtn'); if (!paySubmitBtn) return;
+    paySubmitBtn.onclick = async () => {
+        const cardData = validateCardInputs(); if (!cardData || currentPaymentType !== 'single') return;
+        paySubmitBtn.disabled = true; const originalBtnContent = document.getElementById('simPayBtnText').innerHTML; document.getElementById('simPayBtnText').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div class="btn-loading-spinner"></div>Ödeme yapılıyor...</div>';
+        setTimeout(async () => {
+            try {
+                const res = await fetch('/api/reservations/' + currentPaymentReservationId + '/payment/pay-single', { method: 'POST', headers: getAuthHeaders() });
+                const result = await res.json(); closeModal('paymentSimulationModal'); openModal('bookingSuccessModal'); const statusEl = document.getElementById('paymentStatus'); statusEl.style.display = 'block';
+                if (result.success) { const successTitle = document.getElementById('bookingSuccessTitle'); const successMessage = document.getElementById('bookingSuccessMessage'); if (successTitle) successTitle.innerText = 'REZERVASYON ONAYLANDI!'; if (successMessage) successMessage.innerText = 'İyi Oyunlar!'; document.getElementById('paymentButtons').style.display = 'none'; statusEl.style.background = 'rgba(16,185,129,0.1)'; statusEl.style.color = 'var(--neon-green)'; statusEl.style.border = '1px solid rgba(16,185,129,0.3)'; statusEl.innerHTML = 'Ödeme başarılı!'; await loadReservationsFromServer(); onDateOrFieldChange(); }
+                else { statusEl.style.background = 'rgba(239,68,68,0.1)'; statusEl.style.color = '#ef4444'; statusEl.style.border = '1px solid rgba(239,68,68,0.3)'; statusEl.innerHTML = result.message || 'Ödeme başarısız oldu'; resetPaymentUI(); }
+            } catch(e) { console.error('Ödeme hatası:', e); alert('Ödeme alınırken bağlantı hatası oluştu!'); }
+            finally { paySubmitBtn.disabled = false; document.getElementById('simPayBtnText').innerHTML = originalBtnContent; }
+        }, 1200);
+    };
 }, 1000);
-
-function copyShareLink() {
-    const input = document.getElementById('shareLinkInput');
-    input.select();
-    input.setSelectionRange(0, 99999);
-    navigator.clipboard.writeText(input.value);
-    
-    const btn = document.getElementById('btnCopyLink');
-    const originalText = btn.innerText;
-    btn.innerText = 'Kopyalandı!';
-    btn.style.background = '#fff';
-    setTimeout(() => {
-        btn.innerText = originalText;
-        btn.style.background = 'var(--neon-green)';
-    }, 2000);
-}
 
 // =======================================================
 // FORUM: OYUNCU ARANIYOR
@@ -4555,7 +4451,7 @@ async function saveUserProfile() {
     try {
         const response = await fetch('/api/users/profile', {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify(updateData)
         });
         const result = await response.json();
@@ -5326,20 +5222,13 @@ function setTurnstileState(state, message) {
 function loadTurnstileConfig() {
     if (turnstileSiteKey) return Promise.resolve(turnstileSiteKey);
     if (!turnstileConfigPromise) {
-        turnstileConfigPromise = fetch('/api/config')
-            .then(r => {
-                if (!r.ok) throw new Error(`Config HTTP ${r.status}`);
-                return r.json();
-            })
+        turnstileConfigPromise = loadAppConfig()
             .then(data => {
                 if (!data.success || !data.turnstileSiteKey) throw new Error('Turnstile site key missing');
                 turnstileSiteKey = data.turnstileSiteKey;
                 return turnstileSiteKey;
             })
-            .catch(error => {
-                turnstileConfigPromise = null;
-                throw error;
-            });
+            .catch(error => { turnstileConfigPromise = null; throw error; });
     }
     return turnstileConfigPromise;
 }
@@ -7140,7 +7029,4 @@ async function submitBusinessReservation() {
         btn.textContent = 'REZERVASYONU KAYDET';
     }
 }
-
-
-
 

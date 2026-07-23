@@ -392,7 +392,6 @@ test('reservation list does not expose unpaid pending reservations', async () =>
         promise: () => ({
             query: async (sql) => {
                 if (sql.startsWith('DELETE FROM reservations')) return [{}];
-                if (sql.startsWith('SELECT id FROM payment_groups')) return [[]];
                 throw new Error(`Unexpected promise query: ${sql}`);
             }
         }),

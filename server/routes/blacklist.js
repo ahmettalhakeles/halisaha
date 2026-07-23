@@ -36,10 +36,9 @@ function initBlacklistRoutes(app, db) {
             if (errCheck) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
             if (checkRes[0].cnt > 0) return res.status(409).json({ success: false, message: 'Bu numara zaten kara listede!' });
 
-            db.query('SELECT id, name FROM users WHERE phone = ?', [phone_number], (errUser, userRes) => {
+            db.query('SELECT id FROM users WHERE phone = ?', [phone_number], (errUser, userRes) => {
                 if (errUser) return res.status(500).json({ success: false, message: 'Veritabanı hatası!' });
-                const userId = userRes.length > 0 ? userRes[0].id : null;
-                const userName = userRes.length > 0 ? userRes[0].name : null;
+                const userId = userRes.length === 1 ? userRes[0].id : null;
 
                 db.query('INSERT INTO field_blacklists (fieldKey, phone_number, user_id, reason) VALUES (?, ?, ?, ?)', [fieldKey, phone_number, userId, reason || 'Bildirilmemiş'], (err) => {
                     if (err) return res.status(500).json({ success: false, message: 'Kara liste eklenemedi!' });

@@ -78,9 +78,10 @@ Statik sayfa rotalari:
 | `/` | `public/index.html` | Musteri ana ekrani |
 | `/isletme` | `public/isletme.html` | Isletme paneli |
 | `/yonetici` | `public/yonetici.html` | Admin paneli |
-| `/payment/share/:code` | `public/payment-share.html` | Ortak odeme sayfasi |
+| `/privacy` | `public/privacy.html` | Gizlilik politikasi |
+| `/terms` | `public/terms.html` | Kullanim kosullari |
 | `/health` | metin yanit | Railway healthcheck |
-| `/api/config` | JSON yanit | Frontend icin Turnstile site key |
+| `/api/config` | JSON yanit | Frontend icin Turnstile ve Google auth ayarlari |
 
 ### 3.2 Router Yapisi
 
@@ -88,7 +89,7 @@ API katmani tek dosyada tutulmaz. Her ana is alani `server/routes/` altindaki ay
 
 | Dosya | Sorumluluk |
 | --- | --- |
-| `server/routes/auth.js` | Kullanici kaydi, kullanici girisi, profil guncelleme, isletme girisi |
+| `server/routes/auth.js` | Kullanici kaydi, kullanici girisi, Google kimlik dogrulama, e-posta dogrulama, profil guncelleme, isletme girisi |
 | `server/routes/pitch.js` | Saha listesi, saha ayarlari, gunluk saatler, saha fotograflari, Telegram ayarlari |
 | `server/routes/reservations.js` | Rezervasyon listeleme, olusturma, iptal, erteleme, bloklama, odeme durumu |
 | `server/routes/business.js` | Isletme rezervasyonlari, manuel rezervasyon, borclar, istatistikler, mac/takim ilanlari |
@@ -147,7 +148,9 @@ Temel tablolar:
 
 | Tablo | Icerik |
 | --- | --- |
-| `users` | Musteri hesaplari, profil bilgileri, telefon/email, parola hash'i |
+| `users` | Musteri hesaplari, profil bilgileri, telefon/email, yerel hesap parola hash'i, e-posta dogrulama durumu |
+| `user_auth_identities` | Google gibi harici kimlik saglayici hesap baglantilari |
+| `email_verification_tokens` | SHA-256 ozetli, tek kullanimlik e-posta dogrulama tokenlari |
 | `reservations` | Rezervasyonlar, odeme durumu, status, saha/saat/tarih bilgisi |
 | `reservation_details` | Rezervasyon detay iliskileri |
 | `pitch_settings` | Isletme/saha ayarlari, sifre, Telegram chat id, gorunurluk |
@@ -163,8 +166,6 @@ Temel tablolar:
 | `player_reviews` | Oyuncu degerlendirmeleri |
 | `field_comments` | Saha yorumlari |
 | `daily_statistics` | Gunluk saha istatistikleri |
-| `payment_groups` | Ortak odeme gruplari ve paylasim kodlari |
-| `payment_shares` | Ortak odemede bireysel odeme kayitlari |
 | `telegram_notification_outbox` | Telegram bildirim kuyrugu |
 | `super_admins` | Admin hesaplari |
 | `admin_login_logs` | Admin giris loglari |
@@ -176,6 +177,10 @@ Kritik migration davranislari:
 - `reservations.status` alanini esnek `VARCHAR(20)` durumuna normalize eder.
 - Eski `users.name` alanini `first_name` ve `last_name` alanlarina ayirir.
 - Eski sosyal giris ve tek kullanimlik dogrulama kolonlari varsa kaldirir.
+- `users.password` alanini Google hesaplari icin nullable yapar, `is_email_verified` alanini ekler.
+- `user_auth_identities` ve `email_verification_tokens` tablolarini idempotent olusturur.
+- Eski `unique_phone` indeksini kaldirir; telefon tekrari desteklenir, e-posta tekil kalir.
+- Aktif/bekleyen ortak odeme grubu yoksa eski split payment tablolarini kaldirir; varsa startup fail-closed durur.
 - Abonelik rezervasyonlarini `subscription_id` ile eslestirir.
 - Ayni abonelik/gun icin `unique_subscription_occurrence` indeksini dogrular.
 - Varsayilan isletme sifrelerini yalnizca hala default durumdaysa seeder.
@@ -190,7 +195,8 @@ Frontend dosyalari `public/` altindan statik olarak sunulur.
 | `public/index.html` | Musteri ana uygulamasi |
 | `public/isletme.html` | Isletme paneli |
 | `public/yonetici.html` | Admin paneli |
-| `public/payment-share.html` | Ortak odeme linki ile acilan odeme sayfasi |
+| `public/privacy.html` | Gizlilik politikasi |
+| `public/terms.html` | Kullanim kosullari |
 | `public/style.css` | Kaynak CSS |
 | `public/style.min.css` | Minify edilmis CSS |
 | `public/script.js` | Ana kaynak JavaScript |
@@ -225,7 +231,7 @@ HTML parcali build sistemi yoktur. Frontend kaynaklari `public/` altinda tutulur
 4. `POST /api/reservations` istegi gonderilir.
 5. Backend saha/saat cakismasini, kullanici limitlerini, kara listeyi ve abonelik cakismalarini kontrol eder.
 6. Rezervasyon ilk olarak `pending_payment` status ile olusur.
-7. Tek odeme veya ortak odeme tamamlaninca odeme durumu `odendi`, rezervasyon durumu `active` olur.
+7. Tek odeme tamamlaninca odeme durumu `odendi`, rezervasyon durumu `active` olur.
 8. Uygun olaylarda Telegram outbox'a bildirim eklenir.
 
 ### 6.2 Odeme
@@ -238,11 +244,9 @@ Tek odeme:
 
 Ortak odeme:
 
-- `POST /api/reservations/:id/payment/init` ortak odeme grubu ve `share_code` olusturur.
-- `/payment/share/:code` sayfasi paylasim linkinden acilir.
-- `POST /api/payment/share/:code/pay` bireysel odeme kaydini ekler.
-- Ikinci odeme tamamlaninca grup `completed`, rezervasyon `odendi` olur.
-- Sure dolan ortak odemeler `payment.js` tarafindan `expired` durumuna cekilir.
+- v5 itibariyla ortak odeme kaldirilmistir.
+- Eski `payment_groups` ve `payment_shares` tablolari deployment sirasinda aktif/bekleyen grup yoksa kaldirilir.
+- Sure dolan `pending_payment` rezervasyonlar `payment.js` tarafindan iptal edilir.
 
 Isletme manuel odeme:
 
@@ -319,10 +323,10 @@ Bu bolum ayrintili request/response sozlesmesi degil, gelistiriciye rota haritas
 | Alan | Endpointler |
 | --- | --- |
 | Config | `GET /api/config` |
-| Auth | `POST /api/register`, `POST /api/login`, `PUT /api/users/profile`, `POST /api/business-login` |
+| Auth | `POST /api/register`, `POST /api/login`, `POST /api/auth/google`, `POST /api/auth/google/complete-profile`, `POST /api/auth/google/link`, `GET /api/auth/verify-email`, `POST /api/auth/resend-verification`, `PUT /api/users/profile`, `POST /api/business-login` |
 | Sahalar | `GET /api/fields`, `GET /api/pitch-list`, `GET /api/all-fields`, `GET/PUT /api/pitch-settings...`, `GET/PUT /api/field-daily-hours...`, `GET/POST/DELETE /api/field-photos...` |
 | Rezervasyon | `GET/POST /api/reservations`, `GET /api/reservations/:id`, `PUT/DELETE /api/reservations/:id`, `POST /api/reserve-specific-hours`, `GET /api/user-reservations` |
-| Odeme | `POST /api/reservations/:id/payment/init`, `POST /api/reservations/:id/payment/pay-single`, `PUT /api/reservations/:id/payment`, `GET/POST /api/payment/share/:code` |
+| Odeme | `POST /api/reservations/:id/payment/pay-single`, `PUT /api/reservations/:id/payment` |
 | Isletme | `GET /api/business-reservations/:fieldKey`, `POST /api/business-reservations/:fieldKey/manual`, `GET /api/business-debts/:fieldKey`, `GET /api/business-stats`, `GET /api/stats-content/:fieldKey` |
 | Abonelik | `GET /api/subscriptions`, `GET /api/subscriptions/:fieldKey`, `GET /api/subscriptions/by-user/:userId`, `POST /api/subscriptions`, `DELETE /api/subscriptions/:id` |
 | Forum/Mac/Takim | `GET/POST /api/forum`, `PUT/DELETE /api/forum/:id`, `GET/POST /api/match-seekers`, `GET/POST /api/team-seekers` |
@@ -362,10 +366,24 @@ DB_PORT=3306
 TURNSTILE_SITEKEY=...
 TURNSTILE_SECRET=...
 TURNSTILE_EXPECTED_HOSTNAME=halisaha-production.up.railway.app
+GOOGLE_AUTH_ENABLED=false
+GOOGLE_CLIENT_ID=...
+EMAIL_VERIFICATION_REQUIRED=false
+BREVO_API_KEY=...
+MAIL_FROM_EMAIL=kskdestek@gmail.com
+MAIL_FROM_NAME=KSK Kolay Saha Kiralama
+APP_BASE_URL=https://halisaha-production.up.railway.app
 TELEGRAM_BOT_TOKEN=...
 ```
 
 Production ortaminda `TURNSTILE_SITEKEY` ile `TURNSTILE_SECRET` veya mevcut Railway uyumlulugu icin `TURNSTILE_SECRET_KEY` zorunludur. `TURNSTILE_EXPECTED_HOSTNAME` verilmezse dogrulamada mevcut istek hostname'i kullanilir.
+
+Google ve e-posta dogrulamasi feature flag ile acilir:
+
+- `GOOGLE_AUTH_ENABLED=true` olmadan Google endpoint'i gizli kalir ve frontend Google butonunu gostermez.
+- `GOOGLE_CLIENT_ID`, Google Cloud Console'da olusturulan Web application client id olmalidir. Popup GIS akisi client secret kullanmaz.
+- `EMAIL_VERIFICATION_REQUIRED=true` olmadan yeni yerel hesaplar dogrulanmis kabul edilir; acildiginda yeni yerel kayitlar Brevo linkiyle dogrulanmadan giris yapamaz.
+- `BREVO_API_KEY`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME` ve `APP_BASE_URL` e-posta dogrulamasi acikken zorunludur.
 
 Gizli degerler `.env` veya Railway environment variables disinda tutulmamalidir.
 

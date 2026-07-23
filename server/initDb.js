@@ -20,6 +20,7 @@ async function initDatabase(connection) {
         { check: "SHOW COLUMNS FROM users LIKE 'experience'", alter: "ALTER TABLE users ADD COLUMN experience VARCHAR(50) DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM users LIKE 'height'",     alter: "ALTER TABLE users ADD COLUMN height INT DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM users LIKE 'weight'",     alter: "ALTER TABLE users ADD COLUMN weight INT DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM users LIKE 'is_email_verified'", alter: "ALTER TABLE users ADD COLUMN is_email_verified TINYINT NOT NULL DEFAULT 1" },
         // match_seekers table
         { check: "SHOW COLUMNS FROM match_seekers LIKE 'height'", alter: "ALTER TABLE match_seekers ADD COLUMN height INT DEFAULT NULL" },
         { check: "SHOW COLUMNS FROM match_seekers LIKE 'weight'", alter: "ALTER TABLE match_seekers ADD COLUMN weight INT DEFAULT NULL" },
@@ -70,10 +71,10 @@ async function initDatabase(connection) {
         { check: "SHOW TABLES LIKE 'field_photos'", alter: "CREATE TABLE field_photos (id INT AUTO_INCREMENT PRIMARY KEY, fieldKey VARCHAR(50) NOT NULL, url LONGTEXT NOT NULL, caption VARCHAR(255) DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
         { check: "SHOW TABLES LIKE 'super_admins'", alter: "CREATE TABLE super_admins (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, display_name VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
         { check: "SHOW COLUMNS FROM announcements LIKE 'status'", alter: "ALTER TABLE announcements ADD COLUMN status VARCHAR(20) DEFAULT 'active'" },
-        
-        // Split Payment Tables
-        { check: "SHOW TABLES LIKE 'payment_groups'", alter: "CREATE TABLE payment_groups (id INT AUTO_INCREMENT PRIMARY KEY, reservation_id INT NOT NULL, share_code VARCHAR(8) NOT NULL UNIQUE, total_amount INT NOT NULL, share_amount INT NOT NULL, status ENUM('pending','active','completed','expired') DEFAULT 'pending', paid_count TINYINT DEFAULT 0, first_paid_at DATETIME NULL, deadline DATETIME NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX(share_code), INDEX(reservation_id), INDEX(status), FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
-        { check: "SHOW TABLES LIKE 'payment_shares'", alter: "CREATE TABLE payment_shares (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, payer_name VARCHAR(100), amount INT NOT NULL, paid_at DATETIME DEFAULT CURRENT_TIMESTAMP, ip_address VARCHAR(45), FOREIGN KEY (group_id) REFERENCES payment_groups(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
+        { check: "SHOW COLUMNS FROM field_blacklists LIKE 'user_id'", alter: "ALTER TABLE field_blacklists ADD COLUMN user_id INT DEFAULT NULL" },
+        { check: "SHOW COLUMNS FROM field_blacklists LIKE 'reason'", alter: "ALTER TABLE field_blacklists ADD COLUMN reason VARCHAR(255) DEFAULT NULL" },
+        { check: "SHOW TABLES LIKE 'user_auth_identities'", alter: "CREATE TABLE user_auth_identities (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, provider VARCHAR(32) NOT NULL, provider_subject VARCHAR(255) NOT NULL, provider_email VARCHAR(191) DEFAULT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, last_login_at DATETIME DEFAULT NULL, UNIQUE KEY unique_provider_subject (provider, provider_subject), UNIQUE KEY unique_user_provider (user_id, provider), KEY idx_user_auth_user (user_id), CONSTRAINT fk_user_auth_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
+        { check: "SHOW TABLES LIKE 'email_verification_tokens'", alter: "CREATE TABLE email_verification_tokens (user_id INT NOT NULL PRIMARY KEY, token_hash CHAR(64) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, last_sent_at DATETIME NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT fk_email_token_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" },
         { check: "SHOW TABLES LIKE 'telegram_notification_outbox'", alter: "CREATE TABLE telegram_notification_outbox (id BIGINT AUTO_INCREMENT PRIMARY KEY, reservation_id INT NOT NULL, field_key VARCHAR(50) NOT NULL, chat_id_snapshot VARCHAR(50) NOT NULL, event_type VARCHAR(50) NOT NULL, payload JSON NOT NULL, status ENUM('pending','processing','sent','dead') NOT NULL DEFAULT 'pending', attempts INT NOT NULL DEFAULT 0, next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, last_error VARCHAR(500) DEFAULT NULL, locked_at DATETIME DEFAULT NULL, sent_at DATETIME DEFAULT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, UNIQUE KEY unique_reservation_event (reservation_id, event_type), INDEX idx_telegram_outbox_due (status, next_attempt_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" }
     ];
 
@@ -109,6 +110,9 @@ async function initDatabase(connection) {
     }
 
     await normalizeAndUniquifyUserEmails(connection);
+    await ensureUsersAuthColumns(connection);
+    await dropUniquePhoneIndex(connection);
+    await removeLegacySplitPaymentTables(connection);
     const [emailIndex] = await connection.query(
         "SHOW INDEX FROM users WHERE Key_name = 'unique_email'"
     );
@@ -167,12 +171,13 @@ async function initDatabase(connection) {
         console.error('Reservation status normalization failed:', err.message);
     }
 
-    // Drop OAuth/OTP columns if they exist
+    // Drop legacy OAuth/OTP columns if they exist. The new auth model keeps
+    // email verification and external identities in first-class schema.
     try {
         const [columns] = await connection.query("SHOW COLUMNS FROM users");
         const colNames = columns.map(c => c.Field);
         
-        const colsToDrop = ['google_id', 'apple_id', 'is_email_verified', 'otp_code', 'otp_expiry'];
+        const colsToDrop = ['google_id', 'apple_id', 'otp_code', 'otp_expiry'];
         for (const col of colsToDrop) {
             if (colNames.includes(col)) {
                 await connection.query(`ALTER TABLE users DROP COLUMN ${col}`);
@@ -330,6 +335,47 @@ function buildDuplicateEmail(email, userId, seen) {
         suffix++;
     }
     return candidate;
+}
+
+async function ensureUsersAuthColumns(connection) {
+    try {
+        await connection.query('UPDATE users SET is_email_verified = 1 WHERE is_email_verified IS NULL');
+        await connection.query('ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL');
+        await connection.query('ALTER TABLE users MODIFY COLUMN is_email_verified TINYINT NOT NULL DEFAULT 0');
+    } catch (err) {
+        console.error('Auth column normalization failed:', err.message);
+    }
+}
+
+async function dropUniquePhoneIndex(connection) {
+    try {
+        const [indexRows] = await connection.query("SHOW INDEX FROM users WHERE Key_name = 'unique_phone'");
+        if (indexRows.length > 0) {
+            await connection.query('ALTER TABLE users DROP INDEX unique_phone');
+            console.log('Dropped unique_phone index from users table.');
+        }
+    } catch (err) {
+        console.error('unique_phone index migration failed:', err.message);
+    }
+}
+
+async function removeLegacySplitPaymentTables(connection) {
+    try {
+        const [groupTable] = await connection.query("SHOW TABLES LIKE 'payment_groups'");
+        if (groupTable.length === 0) return;
+        const [activeGroups] = await connection.query(
+            "SELECT COUNT(*) AS count FROM payment_groups WHERE status IN ('pending', 'active')"
+        );
+        if (Number(activeGroups[0]?.count || 0) > 0) {
+            throw new Error('Aktif veya bekleyen ortak odeme grubu varken split payment tablolari kaldirilamaz.');
+        }
+        await connection.query('DROP TABLE IF EXISTS payment_shares');
+        await connection.query('DROP TABLE IF EXISTS payment_groups');
+        console.log('Legacy split payment tables removed.');
+    } catch (err) {
+        if (err.message && err.message.includes('ortak odeme grubu')) throw err;
+        console.error('Legacy split payment cleanup failed:', err.message);
+    }
 }
 
 function parseLegacyPlayDate(dateText, hourText, createdAt) {
