@@ -20,16 +20,32 @@ test('password and simulated card fields have form and autocomplete semantics', 
 
 test('Turnstile uses explicit Turkish configuration and clears stale tokens', () => {
     assert.match(scriptJs, /language:\s*'tr'/);
+    assert.match(scriptJs, /action:\s*'reservation_create'/);
     assert.match(scriptJs, /'error-callback':\s*onTurnstileError/);
     assert.match(scriptJs, /'expired-callback':\s*onTurnstileExpired/);
     assert.match(scriptJs, /'timeout-callback':\s*onTurnstileExpired/);
     assert.match(scriptJs, /function renderTurnstileWidget[\s\S]*?latestTurnstileToken = ""[\s\S]*?turnstile\.reset/);
     assert.match(scriptJs, /function onTurnstileError[\s\S]*?latestTurnstileToken = ""/);
     assert.match(scriptJs, /function onTurnstileExpired[\s\S]*?latestTurnstileToken = ""/);
+    assert.match(indexHtml, /id="turnstileStatus"[^>]*role="status"/);
+    assert.match(indexHtml, /id="turnstileRetryBtn"/);
+    assert.match(scriptJs, /turnstileConfigPromise = null;\s*throw error/);
+    assert.match(scriptJs, /script\.remove\(\);\s*turnstileScriptPromise = null;\s*reject/);
+    assert.match(scriptJs, /async function executePendingBooking[\s\S]*?getCurrentTurnstileToken\(\)[\s\S]*?data\.turnstileToken = turnstileToken/);
+    assert.match(scriptJs, /if \(!pendingBookingData \|\| reservationSubmissionInProgress\) return/);
+    assert.match(scriptJs, /data\.turnstileToken = turnstileToken;\s*latestTurnstileToken = "";\s*reservationSubmissionInProgress = true/);
+    assert.match(scriptJs, /finally \{\s*delete data\.turnstileToken;[\s\S]*?reservationSubmissionInProgress = false;[\s\S]*?resetTurnstileVerification\(reservationCreated\)/);
+});
+
+test('field rerenders preserve the mobile booking panel and refresh selected hours', () => {
+    assert.match(scriptJs, /function parkCustomerBookingPanel[\s\S]*?grid\.contains\(panel\)[\s\S]*?layout\.appendChild\(panel\)/);
+    assert.match(scriptJs, /function renderFieldsGrid[\s\S]*?parkCustomerBookingPanel\(\)[\s\S]*?grid\.innerHTML[\s\S]*?restoreCustomerBookingPanel\(\)/);
+    assert.match(scriptJs, /async function refreshSignedInUserUi[\s\S]*?renderFieldsGrid\(\)[\s\S]*?if \(currentSelectedFieldKey\) await onDateOrFieldChange\(\)/);
 });
 
 test('minified Turnstile output stays synchronized with the source configuration', () => {
     assert.match(scriptMinJs, /language:"tr"/);
+    assert.match(scriptMinJs, /action:"reservation_create"/);
     assert.match(scriptMinJs, /"error-callback":/);
     assert.match(scriptMinJs, /"expired-callback":/);
     assert.match(scriptMinJs, /"timeout-callback":/);
@@ -37,7 +53,7 @@ test('minified Turnstile output stays synchronized with the source configuration
 
 test('all main entry pages request the current minified script version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
-        assert.match(html, /script\.min\.js\?v=1\.2\.3/);
+        assert.match(html, /script\.min\.js\?v=1\.2\.4/);
     }
 });
 

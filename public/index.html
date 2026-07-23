@@ -157,6 +157,8 @@
                             <!-- Cloudflare Turnstile Container -->
                             <div class="form-group" id="turnstileContainer" style="display: none; margin-top: 15px; margin-bottom: 15px; text-align: center;">
                                 <div id="bookingTurnstile" style="display:inline-block;"></div>
+                                <div id="turnstileStatus" role="status" aria-live="polite" style="margin-top:8px;font-size:0.82rem;color:var(--text-muted);"></div>
+                                <button type="button" id="turnstileRetryBtn" class="modal-btn" style="display:none;margin:10px auto 0;padding:8px 16px;">TEKRAR DENE</button>
                             </div>
 
                             <button id="submitBtn" class="action-btn" data-click="completeBooking">REZERVASYON YAP</button>
@@ -885,7 +887,7 @@
     </div>
 
     <script src="js/auth-context.js?v=1.0.0" defer></script>
-    <script src="script.min.js?v=1.2.3" defer></script>
+    <script src="script.min.js?v=1.2.4" defer></script>
     <script src="js/main.js?v=1.1.9" defer></script>
 </body>
 </html>

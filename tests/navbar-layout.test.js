@@ -32,7 +32,7 @@ test('own locked reservation slot uses the red occupied state', () => {
 test('all main entry pages request the current minified stylesheet version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
         assert.match(html, /style\.min\.css\?v=1\.1\.14/);
-        assert.match(html, /script\.min\.js\?v=1\.2\.3/);
+        assert.match(html, /script\.min\.js\?v=1\.2\.4/);
     }
 });
 

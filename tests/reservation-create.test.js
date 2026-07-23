@@ -22,20 +22,20 @@ function formatDisplayDate(ymd) {
         .toLocaleUpperCase('tr-TR');
 }
 
-function createReservationHandler(connection) {
-    let handler;
+function createReservationHandler(connection, verifyTurnstile = async () => ({ success: true, unavailable: false })) {
+    let handlers;
     const app = {
         get() {},
         put() {},
         delete() {},
-        post(path, ...handlers) {
-            if (path === '/api/reservations') handler = handlers.at(-1);
+        post(path, ...routeHandlers) {
+            if (path === '/api/reservations') handlers = routeHandlers;
         }
     };
     const db = { promise: () => ({ getConnection: async () => connection }) };
 
-    initReservationRoutes(app, db);
-    return handler;
+    initReservationRoutes(app, db, { verifyTurnstile });
+    return async (req, res) => runHandlers(handlers.slice(-2), req, res);
 }
 
 function createListReservationsHandler(db) {
@@ -70,6 +70,8 @@ function createResponse() {
 
 function validRequest() {
     return {
+        headers: userAuthHeader(),
+        hostname: 'halisaha-production.up.railway.app',
         body: {
             fieldKey: 'final',
             pitchNumber: 1,
@@ -77,7 +79,8 @@ function validRequest() {
             hourText: '21:00 - 22:00',
             user_name: 'TEST USER',
             user_id: 7,
-            reservation_price: 2800
+            reservation_price: 2800,
+            turnstileToken: 'valid-test-token'
         }
     };
 }
@@ -113,9 +116,15 @@ function businessAuthHeader(fieldKey = 'final') {
     return { authorization: `Bearer ${token}` };
 }
 
+function userAuthHeader(userId = 7) {
+    const token = jwt.sign({ id: userId, email: 'test@example.com' }, process.env.JWT_SECRET);
+    return { authorization: `Bearer ${token}` };
+}
+
 test('reservation creation uses current user schema and commits an available slot', async () => {
     const queries = [];
     let insertedUserId;
+    let insertedUserName;
     const connection = {
         async beginTransaction() {},
         async commit() {},
@@ -123,13 +132,14 @@ test('reservation creation uses current user schema and commits an available slo
         release() {},
         async query(sql, params = []) {
             queries.push(sql);
-            if (sql.startsWith('SELECT id, phone, status FROM users')) {
-                return [[{ id: 7, phone: '05051234567', status: 'active' }]];
+            if (sql.startsWith('SELECT id, first_name, last_name, phone, status FROM users')) {
+                return [[{ id: 7, first_name: 'Test', last_name: 'User', phone: '05051234567', status: 'active' }]];
             }
             if (sql.startsWith('SELECT COUNT(*) AS cnt FROM field_blacklists')) return [[{ cnt: 0 }]];
             if (sql.startsWith('SELECT GET_LOCK')) return [[{ acquired: 1 }]];
             if (sql.startsWith('SELECT id, status, type FROM reservations')) return [[]];
             if (sql.startsWith('INSERT INTO reservations')) {
+                insertedUserName = params[5];
                 insertedUserId = params[6];
                 return [{ insertId: 42 }];
             }
@@ -138,8 +148,10 @@ test('reservation creation uses current user schema and commits an available slo
         }
     };
     const response = createResponse();
+    const request = validRequest();
+    request.body.user_name = 'SPOOFED USER';
 
-    await createReservationHandler(connection)(validRequest(), response);
+    await createReservationHandler(connection)(request, response);
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.body, {
@@ -147,8 +159,9 @@ test('reservation creation uses current user schema and commits an available slo
         message: 'Rezervasyon başarıyla oluşturuldu!',
         id: 42
     });
-    assert.ok(queries.some(sql => sql.startsWith('SELECT id, phone, status FROM users')));
+    assert.ok(queries.some(sql => sql.startsWith('SELECT id, first_name, last_name, phone, status FROM users')));
     assert.ok(queries.every(sql => !sql.includes('SELECT id, name, phone, status FROM users')));
+    assert.equal(insertedUserName, 'TEST USER');
     assert.equal(insertedUserId, 7);
 });
 
@@ -162,7 +175,7 @@ test('reservation creation rejects an unknown user before locking or inserting',
         release() {},
         async query(sql) {
             queries.push(sql);
-            if (sql.startsWith('SELECT id, phone, status FROM users')) return [[]];
+            if (sql.startsWith('SELECT id, first_name, last_name, phone, status FROM users')) return [[]];
             throw new Error(`Unexpected query: ${sql}`);
         }
     };
@@ -207,6 +220,104 @@ test('reservation creation rejects a missing user id as a bad request', async ()
     assert.equal(requestedConnection, false);
 });
 
+test('reservation creation rejects requests without user authentication', async () => {
+    const request = validRequest();
+    request.headers = {};
+    let requestedConnection = false;
+    const connection = {
+        release() {},
+        async query() {
+            requestedConnection = true;
+            throw new Error('connection should not be used');
+        }
+    };
+    const response = createResponse();
+
+    await createReservationHandler(connection)(request, response);
+
+    assert.equal(response.statusCode, 401);
+    assert.equal(response.body.success, false);
+    assert.equal(requestedConnection, false);
+});
+
+test('reservation creation rejects a user id that does not match the JWT', async () => {
+    const request = validRequest();
+    request.headers = userAuthHeader(99);
+    let requestedConnection = false;
+    const connection = {
+        release() {},
+        async query() {
+            requestedConnection = true;
+            throw new Error('connection should not be used');
+        }
+    };
+    const response = createResponse();
+
+    await createReservationHandler(connection)(request, response);
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.body.success, false);
+    assert.equal(requestedConnection, false);
+});
+
+test('reservation creation rejects a missing Turnstile token before database access', async () => {
+    const request = validRequest();
+    delete request.body.turnstileToken;
+    let requestedConnection = false;
+    const connection = {
+        release() {},
+        async query() {
+            requestedConnection = true;
+            throw new Error('connection should not be used');
+        }
+    };
+    const response = createResponse();
+
+    await createReservationHandler(connection)(request, response);
+
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(requestedConnection, false);
+});
+
+test('reservation creation fails closed when Turnstile is unavailable', async () => {
+    const request = validRequest();
+    let requestedConnection = false;
+    const connection = {
+        release() {},
+        async query() {
+            requestedConnection = true;
+            throw new Error('connection should not be used');
+        }
+    };
+    const response = createResponse();
+
+    await createReservationHandler(connection, async () => ({ success: false, unavailable: true }))(request, response);
+
+    assert.equal(response.statusCode, 503);
+    assert.equal(response.body.success, false);
+    assert.equal(requestedConnection, false);
+});
+
+test('reservation creation rejects an invalid Turnstile token before database access', async () => {
+    const request = validRequest();
+    let requestedConnection = false;
+    const connection = {
+        release() {},
+        async query() {
+            requestedConnection = true;
+            throw new Error('connection should not be used');
+        }
+    };
+    const response = createResponse();
+
+    await createReservationHandler(connection, async () => ({ success: false, unavailable: false }))(request, response);
+
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(requestedConnection, false);
+});
+
 test('reservation creation preserves the occupied-slot conflict response', async () => {
     let inserted = false;
     let rolledBack = false;
@@ -216,8 +327,8 @@ test('reservation creation preserves the occupied-slot conflict response', async
         async rollback() { rolledBack = true; },
         release() {},
         async query(sql) {
-            if (sql.startsWith('SELECT id, phone, status FROM users')) {
-                return [[{ id: 7, phone: '05051234567', status: 'active' }]];
+            if (sql.startsWith('SELECT id, first_name, last_name, phone, status FROM users')) {
+                return [[{ id: 7, first_name: 'Test', last_name: 'User', phone: '05051234567', status: 'active' }]];
             }
             if (sql.startsWith('SELECT COUNT(*) AS cnt FROM field_blacklists')) return [[{ cnt: 0 }]];
             if (sql.startsWith('SELECT GET_LOCK')) return [[{ acquired: 1 }]];
@@ -248,8 +359,8 @@ test('reservation creation ignores unpaid pending rows when checking slot confli
         async rollback() {},
         release() {},
         async query(sql) {
-            if (sql.startsWith('SELECT id, phone, status FROM users')) {
-                return [[{ id: 7, phone: '05051234567', status: 'active' }]];
+            if (sql.startsWith('SELECT id, first_name, last_name, phone, status FROM users')) {
+                return [[{ id: 7, first_name: 'Test', last_name: 'User', phone: '05051234567', status: 'active' }]];
             }
             if (sql.startsWith('SELECT COUNT(*) AS cnt FROM field_blacklists')) return [[{ cnt: 0 }]];
             if (sql.startsWith('SELECT GET_LOCK')) return [[{ acquired: 1 }]];

@@ -1,6 +1,11 @@
 require('dotenv').config();
+const { hasRequiredTurnstileConfig } = require('./utils/turnstile');
 if (!process.env.JWT_SECRET) {
     console.error('FATAL ERROR: JWT_SECRET environment variable is not defined.');
+    process.exit(1);
+}
+if (!hasRequiredTurnstileConfig()) {
+    console.error('FATAL ERROR: TURNSTILE_SITEKEY and TURNSTILE_SECRET must be defined in production.');
     process.exit(1);
 }
 
@@ -77,7 +82,7 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-        turnstileSiteKey: process.env.TURNSTILE_SITEKEY || '1x00000000000000000000AA'
+        turnstileSiteKey: process.env.TURNSTILE_SITEKEY || (process.env.NODE_ENV === 'production' ? '' : '1x00000000000000000000AA')
     });
 });
 

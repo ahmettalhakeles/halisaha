@@ -166,6 +166,7 @@ let forumPosts = [];
 let dailyHoursList = [];
 let currentPitchDailyHours = [];
 let pendingBookingData = null;
+let reservationSubmissionInProgress = false;
 let userBlacklistedFields = [];
 let forumPostsLoaded = false;
 let matchSeekersLoaded = false;
@@ -245,6 +246,8 @@ window.onload = async function() {
         if (bookingConfirmYes) bookingConfirmYes.onclick = () => closeBookingConfirmModal(true);
         const bookingConfirmNo = document.getElementById('bookingConfirmNoBtn');
         if (bookingConfirmNo) bookingConfirmNo.onclick = () => closeBookingConfirmModal(false);
+        const turnstileRetry = document.getElementById('turnstileRetryBtn');
+        if (turnstileRetry) turnstileRetry.onclick = retryTurnstileVerification;
     }
     
     if (isBusinessPage) {
@@ -391,13 +394,9 @@ async function handleUserRegister(event) {
             localStorage.removeItem('userToken');
             localStorage.removeItem('userData');
             localStorage.removeItem('userRemember');
-            await loadUserBlacklist();
-            renderFieldsGrid();
-            updateLoginUIVisibility();
+            await refreshSignedInUserUi();
             closeModal('registerModal');
             document.getElementById('registerForm').reset();
-            if (currentSelectedFieldKey) onDateOrFieldChange();
-            fillFormsFromProfile();
             if (result.message) alert(result.message);
         } else {
             alert("Hata: " + result.message);
@@ -444,18 +443,22 @@ async function handleUserLogin() {
                 localStorage.removeItem('userData');
                 localStorage.removeItem('userRemember');
             }
-            await loadUserBlacklist();
-            renderFieldsGrid();
-            updateLoginUIVisibility();
+            await refreshSignedInUserUi();
             closeModal('loginModal');
-            if (currentSelectedFieldKey) onDateOrFieldChange();
-            fillFormsFromProfile();
         } else {
             alert("HATA: " + result.message);
         }
     } catch (error) {
         alert("SUNUCUYA BAĞLANILAMADI! node server.js çalışıyor mu?");
     }
+}
+
+async function refreshSignedInUserUi() {
+    await loadUserBlacklist();
+    renderFieldsGrid();
+    updateLoginUIVisibility();
+    if (currentSelectedFieldKey) await onDateOrFieldChange();
+    fillFormsFromProfile();
 }
 
 // =======================================================
@@ -2413,10 +2416,37 @@ async function populateForumActiveFields() {
 // =======================================================
 // SAHALARI LİSTELEME (ÇİFT FİYAT GÖSTERİMİ)
 // =======================================================
+function parkCustomerBookingPanel() {
+    const grid = document.getElementById('fieldsGrid');
+    const layout = document.getElementById('customerBookingGridLayout');
+    const panel = document.getElementById('customerBookingPanel');
+    if (grid && layout && panel && grid.contains(panel)) layout.appendChild(panel);
+}
+
+function restoreCustomerBookingPanel() {
+    if (!currentSelectedFieldKey) return;
+    const card = document.getElementById('card-' + currentSelectedFieldKey);
+    const layout = document.getElementById('customerBookingGridLayout');
+    const panel = document.getElementById('customerBookingPanel');
+    if (!card || !layout || !panel) return;
+
+    card.classList.add('active');
+    if (isMobileViewport()) {
+        panel.classList.add('mobile-open');
+        panel.style.display = '';
+        card.parentNode.insertBefore(panel, card.nextSibling);
+    } else {
+        panel.classList.remove('mobile-open');
+        layout.appendChild(panel);
+    }
+}
+
 function renderFieldsGrid() {
     const grid = document.getElementById('fieldsGrid');
     if (!grid) return;
     const isMobile = isMobileViewport();
+
+    parkCustomerBookingPanel();
 
     grid.innerHTML = Object.keys(fieldsData).filter(key => !fieldsData[key].isDeleted && !fieldsData[key].isClosed).map(key => {
         const field = fieldsData[key];
@@ -2529,6 +2559,8 @@ function renderFieldsGrid() {
             </div>`;
         }
     }).join('');
+
+    restoreCustomerBookingPanel();
 
     Object.keys(fieldsData).forEach(key => {
         loadFieldPhotos(key);
@@ -2942,11 +2974,7 @@ async function onDateOrFieldChange() {
                 document.getElementById('submitBtn').style.display = 'block';
                 const turnstileCont = document.getElementById('turnstileContainer');
                 if (turnstileCont) {
-                    turnstileCont.style.display = 'block';
-                    await loadTurnstileScript();
-                    if (typeof turnstile !== 'undefined') {
-                        renderTurnstileWidget();
-                    }
+                    await prepareTurnstileVerification();
                 }
             };
         }
@@ -2956,6 +2984,7 @@ async function onDateOrFieldChange() {
 }
 
 async function completeBooking() {
+    if (reservationSubmissionInProgress) return;
     if (!loggedInUser || !currentUser || !currentSelectedFieldKey || !currentSelectedHourBtn || !currentSelectedPitchNumber) {
         alert("Lütfen giriş yapın ve saha seçin."); return;
     }
@@ -3001,12 +3030,7 @@ async function completeBooking() {
         return;
     }
 
-    let turnstileToken = latestTurnstileToken;
-    if (typeof turnstile !== 'undefined') {
-        const widgetToken = turnstile.getResponse();
-        if (widgetToken) turnstileToken = widgetToken;
-    }
-    if (!turnstileToken) {
+    if (!getCurrentTurnstileToken()) {
         alert("Lütfen güvenlik doğrulamasını (Turnstile) tamamlayın!");
         return;
     }
@@ -3026,8 +3050,7 @@ async function completeBooking() {
         hourText: hour, 
         user_name: loggedInUser,
         user_id: currentUser.id,
-        reservation_price: price,
-        turnstileToken: turnstileToken
+        reservation_price: price
     };
 
     const field = fieldsData[currentSelectedFieldKey] || { name: currentSelectedFieldKey.toLocaleUpperCase('tr-TR'), address: "" };
@@ -3041,9 +3064,22 @@ async function completeBooking() {
 }
 
 async function executePendingBooking() {
-    if (!pendingBookingData) return;
+    if (!pendingBookingData || reservationSubmissionInProgress) return;
     const data = pendingBookingData;
     pendingBookingData = null;
+
+    const turnstileToken = getCurrentTurnstileToken();
+    if (!turnstileToken) {
+        setTurnstileState('expired');
+        showStyledError('Güvenlik doğrulaması hazır değil. Lütfen tekrar deneyin.');
+        return;
+    }
+    data.turnstileToken = turnstileToken;
+    latestTurnstileToken = "";
+    reservationSubmissionInProgress = true;
+    const submitButton = document.getElementById('submitBtn');
+    if (submitButton) submitButton.disabled = true;
+    let reservationCreated = false;
 
     try {
         const response = await fetch('/api/reservations', {
@@ -3052,13 +3088,7 @@ async function executePendingBooking() {
         });
         const result = await response.json();
         if (result.success) {
-            if (typeof turnstile !== 'undefined') {
-                if (turnstileWidgetId !== null) turnstile.reset(turnstileWidgetId);
-                else turnstile.reset('#bookingTurnstile');
-                latestTurnstileToken = "";
-            }
-            const turnstileCont = document.getElementById('turnstileContainer');
-            if (turnstileCont) turnstileCont.style.display = 'none';
+            reservationCreated = true;
 
             const field = fieldsData[data.fieldKey] || { name: data.fieldKey.toLocaleUpperCase('tr-TR'), address: "" };
 
@@ -3083,7 +3113,15 @@ async function executePendingBooking() {
                 alert("Hata: " + result.message);
             }
         }
-    } catch (error) { console.error("Rezervasyon bağlantı hatası:", error); showStyledError("Rezervasyon veritabanına kaydedilemedi!"); }
+    } catch (error) {
+        console.error("Rezervasyon bağlantı hatası:", error);
+        showStyledError("Rezervasyon veritabanına kaydedilemedi!");
+    } finally {
+        delete data.turnstileToken;
+        reservationSubmissionInProgress = false;
+        if (submitButton) submitButton.disabled = false;
+        resetTurnstileVerification(reservationCreated);
+    }
 }
 
 function closeBookingConfirmModal(confirmed) {
@@ -5265,18 +5303,43 @@ let turnstileScriptLoaded = false;
 let turnstileSiteKey = "";
 let turnstileWidgetId = null;
 let turnstileConfigPromise = null;
+let turnstileScriptPromise = null;
+
+function setTurnstileState(state, message) {
+    const status = document.getElementById('turnstileStatus');
+    const retry = document.getElementById('turnstileRetryBtn');
+    const defaults = {
+        idle: '',
+        loading: 'Güvenlik doğrulaması hazırlanıyor...',
+        ready: 'Güvenlik doğrulaması tamamlandı.',
+        error: 'Güvenlik doğrulaması yüklenemedi.',
+        expired: 'Güvenlik doğrulamasının süresi doldu.'
+    };
+    if (status) {
+        status.textContent = message || defaults[state] || '';
+        status.dataset.state = state;
+        status.style.color = state === 'ready' ? 'var(--neon-green)' : (state === 'error' || state === 'expired' ? '#f87171' : 'var(--text-muted)');
+    }
+    if (retry) retry.style.display = state === 'error' || state === 'expired' ? 'block' : 'none';
+}
 
 function loadTurnstileConfig() {
-    if (turnstileSiteKey) return Promise.resolve();
+    if (turnstileSiteKey) return Promise.resolve(turnstileSiteKey);
     if (!turnstileConfigPromise) {
         turnstileConfigPromise = fetch('/api/config')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success && data.turnstileSiteKey) {
-                    turnstileSiteKey = data.turnstileSiteKey;
-                }
+            .then(r => {
+                if (!r.ok) throw new Error(`Config HTTP ${r.status}`);
+                return r.json();
             })
-            .catch(e => console.error("Config load error:", e));
+            .then(data => {
+                if (!data.success || !data.turnstileSiteKey) throw new Error('Turnstile site key missing');
+                turnstileSiteKey = data.turnstileSiteKey;
+                return turnstileSiteKey;
+            })
+            .catch(error => {
+                turnstileConfigPromise = null;
+                throw error;
+            });
     }
     return turnstileConfigPromise;
 }
@@ -5290,6 +5353,7 @@ function renderTurnstileWidget() {
                     sitekey: turnstileSiteKey,
                     language: 'tr',
                     theme: 'dark',
+                    action: 'reservation_create',
                     callback: onTurnstileSuccess,
                     'error-callback': onTurnstileError,
                     'expired-callback': onTurnstileExpired,
@@ -5300,6 +5364,7 @@ function renderTurnstileWidget() {
             }
         } catch (e) {
             console.error("Turnstile render error:", e);
+            onTurnstileError('render-error');
         }
     }
 }
@@ -5311,40 +5376,93 @@ async function loadTurnstileScript() {
         return;
     }
 
-    return new Promise((resolve) => {
-        const existingScript = document.querySelector('script[data-turnstile-loader="true"]');
-        const script = existingScript || document.createElement('script');
+    if (!turnstileScriptPromise) {
+        turnstileScriptPromise = new Promise((resolve, reject) => {
+            const staleScript = document.querySelector('script[data-turnstile-loader="true"]');
+            if (staleScript) staleScript.remove();
+            const script = document.createElement('script');
+            let settled = false;
+            let timeout;
+            const finish = (error) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                turnstileScriptLoaded = !!window.turnstile;
+                if (error || !turnstileScriptLoaded) {
+                    script.remove();
+                    turnstileScriptPromise = null;
+                    reject(error || new Error('Turnstile API unavailable'));
+                    return;
+                }
+                resolve();
+            };
 
-        const finish = () => {
-            turnstileScriptLoaded = !!window.turnstile;
-            resolve();
-        };
-
-        script.addEventListener('load', finish, { once: true });
-        script.addEventListener('error', finish, { once: true });
-
-        if (!existingScript) {
+            script.addEventListener('load', () => finish(), { once: true });
+            script.addEventListener('error', () => finish(new Error('Turnstile script failed')), { once: true });
             script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
             script.async = true;
             script.defer = true;
             script.dataset.turnstileLoader = 'true';
             document.head.appendChild(script);
-        }
+            timeout = setTimeout(() => finish(new Error('Turnstile script timeout')), 8000);
+        });
+    }
+    return turnstileScriptPromise;
+}
 
-        setTimeout(finish, 3000);
-    });
+async function prepareTurnstileVerification() {
+    const container = document.getElementById('turnstileContainer');
+    if (container) container.style.display = 'block';
+    latestTurnstileToken = "";
+    setTurnstileState('loading');
+    try {
+        await loadTurnstileScript();
+        renderTurnstileWidget();
+    } catch (error) {
+        console.warn('Turnstile yüklenemedi:', error.message);
+        onTurnstileError('load-error');
+    }
+}
+
+async function retryTurnstileVerification() {
+    if (turnstileWidgetId !== null && window.turnstile) {
+        latestTurnstileToken = "";
+        setTurnstileState('loading');
+        turnstile.reset(turnstileWidgetId);
+        return;
+    }
+    await prepareTurnstileVerification();
+}
+
+function getCurrentTurnstileToken() {
+    if (reservationSubmissionInProgress) return "";
+    if (window.turnstile && turnstileWidgetId !== null) {
+        return turnstile.getResponse(turnstileWidgetId) || latestTurnstileToken;
+    }
+    return latestTurnstileToken;
+}
+
+function resetTurnstileVerification(hideContainer) {
+    latestTurnstileToken = "";
+    if (window.turnstile && turnstileWidgetId !== null) turnstile.reset(turnstileWidgetId);
+    const container = document.getElementById('turnstileContainer');
+    if (container) container.style.display = hideContainer ? 'none' : 'block';
+    setTurnstileState(hideContainer ? 'idle' : 'loading');
 }
 function onTurnstileSuccess(token) {
     latestTurnstileToken = token;
+    setTurnstileState('ready');
 }
 
 function onTurnstileError(errorCode) {
     latestTurnstileToken = "";
     console.warn("Turnstile doğrulaması tamamlanamadı:", errorCode);
+    setTurnstileState('error');
 }
 
 function onTurnstileExpired() {
     latestTurnstileToken = "";
+    setTurnstileState('expired');
 }
 
 

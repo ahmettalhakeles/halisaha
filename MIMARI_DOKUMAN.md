@@ -361,8 +361,11 @@ DB_NAME=halisaha_kiralama
 DB_PORT=3306
 TURNSTILE_SITEKEY=...
 TURNSTILE_SECRET=...
+TURNSTILE_EXPECTED_HOSTNAME=halisaha-production.up.railway.app
 TELEGRAM_BOT_TOKEN=...
 ```
+
+Production ortaminda `TURNSTILE_SITEKEY` ve `TURNSTILE_SECRET` zorunludur. `TURNSTILE_EXPECTED_HOSTNAME` verilmezse dogrulamada mevcut istek hostname'i kullanilir.
 
 Gizli degerler `.env` veya Railway environment variables disinda tutulmamalidir.
 

@@ -1,10 +1,12 @@
 const { checkAndCancelExpiredPayments } = require('./payment');
 const { acquireSlotLock } = require('../utils/slotLock');
+const { verifyTurnstileToken } = require('../utils/turnstile');
 
-function initReservationRoutes(app, db) {
+function initReservationRoutes(app, db, options = {}) {
     const { resLimitPerMin, resLimitPerSec } = require('../middleware/rateLimiter');
     const { requireAuthenticatedActor } = require('../middleware/businessAuth');
     const { enqueueTelegramNotification } = require('../utils/telegram');
+    const verifyTurnstile = options.verifyTurnstile || verifyTurnstileToken;
 
     // Get all reservations
     app.get('/api/reservations', async (req, res) => {
@@ -23,11 +25,18 @@ function initReservationRoutes(app, db) {
     });
 
     // Create reservation
-    app.post('/api/reservations', resLimitPerMin, resLimitPerSec, async (req, res) => {
-        const { fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status } = req.body;
+    app.post('/api/reservations', resLimitPerMin, resLimitPerSec, requireAuthenticatedActor, async (req, res) => {
+        const { fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, turnstileToken } = req.body;
         const normalizedUserId = Number(user_id);
         if (!fieldKey || !pitchNumber || (!dateText && !play_date) || !hourText || !user_name || !Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
             return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur!' });
+        }
+
+        if (req.reservationActor?.role !== 'user' || req.reservationActor.userId !== normalizedUserId) {
+            return res.status(403).json({ success: false, message: 'Bu kullanıcı adına rezervasyon oluşturamazsınız!' });
+        }
+        if (!turnstileToken) {
+            return res.status(400).json({ success: false, message: 'Güvenlik doğrulaması eksik. Lütfen tekrar deneyin.' });
         }
 
         const playDateVal = play_date || parseTurkishDateString(dateText);
@@ -36,11 +45,31 @@ function initReservationRoutes(app, db) {
         }
         const displayDateText = getTurkishDateTextFromYMD(playDateVal);
 
+        const forwardedFor = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+        const remoteIp = req.headers['cf-connecting-ip'] || forwardedFor || req.ip;
+        let turnstileResult;
+        try {
+            turnstileResult = await verifyTurnstile({
+                token: turnstileToken,
+                remoteIp,
+                expectedHostname: process.env.TURNSTILE_EXPECTED_HOSTNAME || req.hostname,
+                expectedAction: 'reservation_create'
+            });
+        } catch (error) {
+            turnstileResult = { success: false, unavailable: true };
+        }
+        if (!turnstileResult.success) {
+            if (turnstileResult.unavailable) {
+                return res.status(503).json({ success: false, message: 'Güvenlik doğrulama servisine ulaşılamıyor. Lütfen tekrar deneyin.' });
+            }
+            return res.status(400).json({ success: false, message: 'Güvenlik doğrulaması geçersiz veya süresi dolmuş. Lütfen tekrar deneyin.' });
+        }
+
         const connection = await db.promise().getConnection();
         try {
             await connection.beginTransaction();
 
-            const [userResult] = await connection.query('SELECT id, phone, status FROM users WHERE id = ?', [normalizedUserId]);
+            const [userResult] = await connection.query('SELECT id, first_name, last_name, phone, status FROM users WHERE id = ?', [normalizedUserId]);
             if (userResult.length === 0) {
                 await connection.rollback();
                 return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı!' });
@@ -50,6 +79,15 @@ function initReservationRoutes(app, db) {
                 return res.status(403).json({ success: false, message: 'Hesabınız suistimal nedeniyle kalıcı olarak askıya alınmıştır!' });
             }
 
+            const canonicalUserName = [userResult[0].first_name, userResult[0].last_name]
+                .filter(Boolean)
+                .join(' ')
+                .trim()
+                .toLocaleUpperCase('tr-TR');
+            if (!canonicalUserName) {
+                await connection.rollback();
+                return res.status(422).json({ success: false, message: 'Kullanıcı profil adı eksik!' });
+            }
             const userPhone = userResult[0].phone;
             const [blacklistResults] = await connection.query('SELECT COUNT(*) AS cnt FROM field_blacklists WHERE phone_number = ? AND fieldKey = ?', [userPhone, fieldKey]);
             if (blacklistResults[0].cnt > 0) {
@@ -77,7 +115,7 @@ function initReservationRoutes(app, db) {
 
                 const [insertResult] = await connection.query(
                     'INSERT INTO reservations (fieldKey, pitchNumber, dateText, play_date, hourText, user_name, user_id, reservation_price, payment_status, status, type, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "pending_payment", "normal", "online")',
-                    [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, user_name, normalizedUserId, reservation_price || 0, payment_status || 'odenmedi']
+                    [fieldKey, pitchNumber, displayDateText, playDateVal, hourText, canonicalUserName, normalizedUserId, reservation_price || 0, payment_status || 'odenmedi']
                 );
 
                 await connection.commit();
