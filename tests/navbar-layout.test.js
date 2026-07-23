@@ -30,9 +30,16 @@ test('own locked reservation slot uses the red occupied state', () => {
 
 test('all main entry pages request the current minified stylesheet version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
-        assert.match(html, /style\.min\.css\?v=1\.1\.14/);
-        assert.match(html, /script\.min\.js\?v=1\.3\.0/);
+        assert.match(html, /style\.min\.css\?v=1\.1\.15/);
+        assert.match(html, /script\.min\.js\?v=1\.3\.1/);
     }
+});
+
+test('customer tabs and Google auth buttons keep polished mobile sizing', () => {
+    assert.match(styleCss, /#googleLoginButton,\s*#googleRegisterButton\s*\{[\s\S]*?width:\s*100%/);
+    assert.match(styleCss, /#googleLoginButton iframe,\s*#googleRegisterButton iframe\s*\{[\s\S]*?width:\s*100% !important/);
+    assert.match(styleCss, /\.customer-tabs\s*\{[\s\S]*?width:\s*190px[\s\S]*?border-radius:\s*10px/);
+    assert.match(styleCss, /\.customer-tabs \.tab-btn\.active\s*\{[\s\S]*?linear-gradient\(135deg,\s*#10b981,\s*#34d399\)/);
 });
 
 test('mobile stylesheet disables heavy glow and blur effects on Android-class screens', () => {

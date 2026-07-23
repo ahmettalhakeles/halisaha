@@ -12,6 +12,7 @@ const scriptMinJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'script
 test('password and simulated card fields have form and autocomplete semantics', () => {
     assert.match(indexHtml, /<form id="userLoginForm"[\s\S]*?id="loginPassword"[^>]*autocomplete="current-password"[\s\S]*?<\/form>/);
     assert.match(indexHtml, /id="regPassword"[^>]*autocomplete="new-password"/);
+    assert.match(indexHtml, /<form id="googleLinkForm"[\s\S]*?id="googleLinkEmail"[^>]*autocomplete="username"[\s\S]*?id="googleLinkPassword"[^>]*autocomplete="current-password"[\s\S]*?<\/form>/);
     assert.match(indexHtml, /<form id="paymentSimulationForm"[\s\S]*?id="simCardCvv"[^>]*autocomplete="cc-csc"[\s\S]*?<\/form>/);
     assert.match(indexHtml, /id="simCardNumber"[^>]*autocomplete="cc-number"/);
     assert.match(indexHtml, /id="simCardExpiry"[^>]*autocomplete="cc-exp"/);
@@ -53,7 +54,7 @@ test('minified Turnstile output stays synchronized with the source configuration
 
 test('all main entry pages request the current minified script version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
-        assert.match(html, /script\.min\.js\?v=1\.3\.0/);
+        assert.match(html, /script\.min\.js\?v=1\.3\.1/);
     }
 });
 

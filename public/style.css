@@ -2071,6 +2071,25 @@ main.business-mode {
     border: 1px solid rgba(71, 85, 105, 0.3);
 }
 
+#googleLoginArea,
+#googleRegisterArea {
+    width: 100%;
+}
+
+#googleLoginButton,
+#googleRegisterButton {
+    width: 100%;
+    min-height: 44px;
+}
+
+#googleLoginButton > div,
+#googleRegisterButton > div,
+#googleLoginButton iframe,
+#googleRegisterButton iframe {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
 /* OAUTH GİRİŞ BUTONLARI */
 /* FORUM FORM GİRİŞ ENGELİ (OVERLAY) */
 .forum-form-container {
@@ -5054,20 +5073,59 @@ header {
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-    gap: 10px;
-    width: 176px;
+    gap: 8px;
+    width: 190px;
     margin: 18px 0 0 -32px;
-    padding-bottom: 0;
-    border-bottom: none;
+    padding: 8px;
+    border: 1px solid rgba(20, 184, 166, 0.16);
+    border-radius: 10px;
+    background: rgba(8, 15, 26, 0.54);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .customer-tabs .tab-btn {
     width: 100%;
-    min-height: 40px;
-    padding: 9px 12px;
+    min-height: 42px;
+    padding: 10px 13px;
     text-align: left;
     justify-content: flex-start;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    border-radius: 8px;
+    border-color: rgba(71, 85, 105, 0.38);
+    background: rgba(20, 31, 50, 0.72);
+    color: #b7c4d7;
+    box-shadow: none;
+    position: relative;
+}
+
+.customer-tabs .tab-btn::before {
+    content: '';
+    width: 3px;
+    height: 18px;
+    margin-right: 9px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.34);
+    transition: background 0.2s ease, height 0.2s ease;
+}
+
+.customer-tabs .tab-btn:hover {
+    background: rgba(23, 37, 58, 0.94);
+    color: #fff;
+    border-color: rgba(16, 185, 129, 0.36);
+    transform: translateY(-1px);
+}
+
+.customer-tabs .tab-btn.active {
+    background: linear-gradient(135deg, #10b981, #34d399);
+    color: #04110d;
+    border-color: rgba(52, 211, 153, 0.9);
+    box-shadow: 0 10px 24px rgba(16, 185, 129, 0.22);
+}
+
+.customer-tabs .tab-btn.active::before {
+    height: 22px;
+    background: rgba(4, 17, 13, 0.62);
 }
 
 .customer-tab-content {

@@ -36,6 +36,13 @@ async function sendVerificationEmail({ to, token, baseUrl, fetchImpl = fetch, ti
         if (!response.ok) {
             const err = new Error(`Brevo HTTP ${response.status}`);
             err.code = 'MAIL_PROVIDER_ERROR';
+            err.providerStatus = response.status;
+            try {
+                const body = await response.json();
+                err.providerCode = body?.code || body?.message || '';
+            } catch (_) {
+                err.providerCode = '';
+            }
             throw err;
         }
     } catch (error) {

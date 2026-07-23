@@ -515,7 +515,8 @@ function loadGoogleIdentityScript() {
 function renderGoogleButton(elementId) {
     const el = document.getElementById(elementId);
     if (!el || !window.google?.accounts?.id) return;
-    window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width: Math.min(320, el.parentElement?.clientWidth || 320), text: 'continue_with', locale: 'tr' });
+    const width = Math.max(260, Math.floor(el.getBoundingClientRect().width || el.parentElement?.clientWidth || 320));
+    window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width, text: 'continue_with', locale: 'tr' });
 }
 
 async function handleGoogleCredential(response) {
@@ -537,6 +538,8 @@ async function handleGoogleCredential(response) {
             openModal('googleCompleteProfileModal');
         } else if (result.nextAction === 'link_account') {
             document.getElementById('googleLinkText').textContent = result.email + ' adresli hesabı bağlamak için mevcut şifrenizi girin.';
+            const googleLinkEmail = document.getElementById('googleLinkEmail');
+            if (googleLinkEmail) googleLinkEmail.value = result.email || '';
             document.getElementById('googleLinkPassword').value = '';
             document.getElementById('googleLinkStatus').textContent = '';
             openModal('googleLinkModal');
@@ -7029,4 +7032,3 @@ async function submitBusinessReservation() {
         btn.textContent = 'REZERVASYONU KAYDET';
     }
 }
-

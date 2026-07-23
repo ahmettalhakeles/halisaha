@@ -540,6 +540,11 @@ async function createAndSendVerification(queryable, userId, email, req, mailer) 
         await mailer({ to: email, token: rawToken, baseUrl: getAppBaseUrl(req) });
         return { sent: true };
     } catch (err) {
+        console.warn('Verification email delivery failed:', {
+            code: err.code || 'MAIL_ERROR',
+            providerStatus: err.providerStatus || null,
+            providerCode: err.providerCode || null
+        });
         return { sent: false };
     }
 }
