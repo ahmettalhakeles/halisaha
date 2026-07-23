@@ -7,7 +7,7 @@ GOOGLE_CLIENT_ID=Google Cloud Console'dan aldigin client id
 GOOGLE_AUTH_ENABLED=false
 EMAIL_VERIFICATION_REQUIRED=false
 BREVO_API_KEY=Brevo API key
-MAIL_FROM_EMAIL=kskdestek@gmail.com
+MAIL_FROM_EMAIL=ksk.yardım@gmail.com
 MAIL_FROM_NAME=KSK Kolay Saha Kiralama
 APP_BASE_URL=https://halisaha-production.up.railway.app
 ```
