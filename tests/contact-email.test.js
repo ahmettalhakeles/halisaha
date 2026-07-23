@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SUPPORT_EMAIL = 'ksk.yardım@gmail.com';
+const SUPPORT_EMAIL = 'ksk.yardim@gmail.com';
 
 const files = [
     'public/index.html',
