@@ -95,9 +95,27 @@ function initAuthRoutes(app, db, options = {}) {
                 return res.status(403).json({ success: false, message: 'Bu telefon numarasi suistimal nedeniyle kalici olarak askiya alinmistir!' });
             }
 
-            const [dupRows] = await connection.query('SELECT id FROM users WHERE email = ? LIMIT 1', [email]);
+            const [dupRows] = await connection.query('SELECT id, is_email_verified FROM users WHERE email = ? LIMIT 1', [email]);
             if (dupRows.length > 0) {
+                if (isEmailVerificationRequired() && Number(dupRows[0].is_email_verified) !== 1) {
+                    const mailState = await createAndSendVerification(connection, dupRows[0].id, email, req, mailer);
+                    return res.status(202).json({
+                        success: true,
+                        requiresEmailVerification: true,
+                        emailSent: mailState.sent,
+                        message: mailState.sent
+                            ? 'Dogrulama e-postasi yeniden gonderildi. Giris yapmadan once e-postanizi dogrulayin.'
+                            : 'Hesabiniz kayitli ancak dogrulama e-postasi gonderilemedi. Yeniden gondermeyi deneyin.'
+                    });
+                }
                 return res.status(409).json({ success: false, message: 'Bu e-posta adresi zaten kullanimda!' });
+            }
+            if (await phoneBelongsToAnotherUser(connection, phone)) {
+                return res.status(409).json({
+                    success: false,
+                    code: 'PHONE_IN_USE',
+                    message: duplicatePhoneMessage()
+                });
             }
 
             const hashedPassword = bcrypt.hashSync(password, 10);
@@ -128,7 +146,12 @@ function initAuthRoutes(app, db, options = {}) {
             });
         } catch (err) {
             if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(409).json({ success: false, message: 'Bu e-posta adresi zaten kullanimda!' });
+                const isPhoneDuplicate = String(err.message || '').includes('unique_phone');
+                return res.status(409).json({
+                    success: false,
+                    code: isPhoneDuplicate ? 'PHONE_IN_USE' : 'EMAIL_IN_USE',
+                    message: isPhoneDuplicate ? duplicatePhoneMessage() : 'Bu e-posta adresi zaten kullanimda!'
+                });
             }
             console.error('Register error:', err.message);
             res.status(500).json({ success: false, message: 'Kayit olurken veritabani hatasi olustu!' });
@@ -278,6 +301,14 @@ function initAuthRoutes(app, db, options = {}) {
                 await connection.rollback();
                 return res.status(409).json({ success: false, code: 'ACCOUNT_LINK_REQUIRED', message: 'Bu e-posta ile hesap var. Google baglama adimini kullanin.' });
             }
+            if (await phoneBelongsToAnotherUser(connection, phone)) {
+                await connection.rollback();
+                return res.status(409).json({
+                    success: false,
+                    code: 'PHONE_IN_USE',
+                    message: duplicatePhoneMessage()
+                });
+            }
             const [insert] = await connection.query(
                 'INSERT INTO users (first_name, last_name, phone, email, password, is_email_verified) VALUES (?, ?, ?, ?, NULL, 1)',
                 [firstName, lastName, phone, flow.profile.email]
@@ -291,7 +322,14 @@ function initAuthRoutes(app, db, options = {}) {
             res.json({ success: true, token: signSessionToken(user), user });
         } catch (err) {
             await connection.rollback().catch(() => {});
-            if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ success: false, message: 'Bu hesap zaten mevcut.' });
+            if (err.code === 'ER_DUP_ENTRY') {
+                const isPhoneDuplicate = String(err.message || '').includes('unique_phone');
+                return res.status(409).json({
+                    success: false,
+                    code: isPhoneDuplicate ? 'PHONE_IN_USE' : 'ACCOUNT_EXISTS',
+                    message: isPhoneDuplicate ? duplicatePhoneMessage() : 'Bu hesap zaten mevcut.'
+                });
+            }
             console.error('Google complete-profile error:', err.message);
             res.status(500).json({ success: false, message: 'Google profili tamamlanamadi.' });
         } finally {
@@ -401,6 +439,13 @@ function initAuthRoutes(app, db, options = {}) {
         const phoneError = validatePhone(phone);
         if (phoneError) return res.status(400).json({ success: false, message: phoneError });
         try {
+            if (await phoneBelongsToAnotherUser(db.promise(), phone, userId)) {
+                return res.status(409).json({
+                    success: false,
+                    code: 'PHONE_IN_USE',
+                    message: duplicatePhoneMessage()
+                });
+            }
             await db.promise().query(
                 'UPDATE users SET first_name = ?, last_name = ?, phone = ?, age = ?, height = ?, weight = ?, position = ?, experience = ? WHERE id = ?',
                 [firstName, lastName, phone, age || null, height || null, weight || null, position || null, experience || null, userId]
@@ -412,6 +457,13 @@ function initAuthRoutes(app, db, options = {}) {
             if (results.length === 0) return res.status(404).json({ success: false, message: 'Kullanici bulunamadi!' });
             res.json({ success: true, message: 'Profil basariyla guncellendi!', user: results[0] });
         } catch (err) {
+            if (err.code === 'ER_DUP_ENTRY' && String(err.message || '').includes('unique_phone')) {
+                return res.status(409).json({
+                    success: false,
+                    code: 'PHONE_IN_USE',
+                    message: duplicatePhoneMessage()
+                });
+            }
             res.status(500).json({ success: false, message: 'Profil guncellenemedi!' });
         }
     });
@@ -489,6 +541,24 @@ function validatePhone(phone) {
         return 'Gecersiz telefon numarasi formati. Orn: 5xxxxxxxxx';
     }
     return null;
+}
+
+function duplicatePhoneMessage() {
+    return 'Bu telefon numarasi zaten baska bir hesapta kullaniliyor.';
+}
+
+async function phoneBelongsToAnotherUser(queryable, phone, userId = null) {
+    const normalizedPhone = String(phone || '').trim();
+    if (!normalizedPhone) return false;
+    const params = [normalizedPhone];
+    let sql = 'SELECT id FROM users WHERE phone = ?';
+    if (userId) {
+        sql += ' AND id != ?';
+        params.push(userId);
+    }
+    sql += ' LIMIT 1';
+    const [rows] = await queryable.query(sql, params);
+    return rows.length > 0;
 }
 
 function getClientIp(req) {

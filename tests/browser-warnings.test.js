@@ -54,7 +54,7 @@ test('minified Turnstile output stays synchronized with the source configuration
 
 test('all main entry pages request the current minified script version', () => {
     for (const html of [indexHtml, businessHtml, adminHtml]) {
-        assert.match(html, /script\.min\.js\?v=1\.3\.1/);
+        assert.match(html, /script\.min\.js\?v=1\.3\.2/);
     }
 });
 

@@ -179,7 +179,7 @@ Kritik migration davranislari:
 - Eski sosyal giris ve tek kullanimlik dogrulama kolonlari varsa kaldirir.
 - `users.password` alanini Google hesaplari icin nullable yapar, `is_email_verified` alanini ekler.
 - `user_auth_identities` ve `email_verification_tokens` tablolarini idempotent olusturur.
-- Eski `unique_phone` indeksini kaldirir; telefon tekrari desteklenir, e-posta tekil kalir.
+- `users.email` ve `users.phone` alanlarinin tekil indekslerini dogrular; telefon tekrari desteklenmez.
 - Aktif/bekleyen ortak odeme grubu yoksa eski split payment tablolarini kaldirir; varsa tablolar korunur ve uygulama acilir.
 - Abonelik rezervasyonlarini `subscription_id` ile eslestirir.
 - Ayni abonelik/gun icin `unique_subscription_occurrence` indeksini dogrular.

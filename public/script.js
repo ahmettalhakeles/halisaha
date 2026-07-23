@@ -3018,10 +3018,7 @@ async function onDateOrFieldChange() {
             const targetNextDateStr = nextDateText ? getPlayDateStringYMD(nextDateText) : '';
             const match = rDateStr === targetDateStr || (targetNextDateStr && rDateStr === targetNextDateStr);
             if (match) {
-                const isMine = currentUser && (
-                    (r.user_id && parseInt(r.user_id) === parseInt(currentUser.id)) ||
-                    (r.user_name && r.user_name.toLocaleUpperCase('tr-TR') === currentUser.name.toLocaleUpperCase('tr-TR'))
-                );
+                const isMine = currentUser && r.user_id && parseInt(r.user_id) === parseInt(currentUser.id);
                 if (isMine) myRes = r;
             }
             return match;
@@ -4225,9 +4222,10 @@ async function loadProfileReservations() {
         } catch (e) { console.error("Abonelikler çekilemedi:", e); }
     }
 
-    const userRes = userReservations.filter(r => 
-        ((r.user_id && currentUser && parseInt(r.user_id) === parseInt(currentUser.id)) ||
-        (r.user_name && currentUser && r.user_name.toLocaleUpperCase('tr-TR') === currentUser.name.toLocaleUpperCase('tr-TR'))) &&
+    const userRes = userReservations.filter(r =>
+        r.user_id &&
+        currentUser &&
+        parseInt(r.user_id) === parseInt(currentUser.id) &&
         r.status !== 'cancelled' &&
         r.status !== 'pending_payment'
     );

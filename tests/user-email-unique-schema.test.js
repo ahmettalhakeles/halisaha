@@ -8,13 +8,14 @@ const initDbJs = fs.readFileSync(path.join(__dirname, '..', 'server', 'initDb.js
 
 test('users email is unique in base schema and startup migration', () => {
     assert.match(schemaSql, /UNIQUE KEY unique_email \(email\)/);
-    assert.doesNotMatch(schemaSql, /UNIQUE KEY unique_phone \(phone\)/);
+    assert.match(schemaSql, /UNIQUE KEY unique_phone \(phone\)/);
     assert.match(schemaSql, /password VARCHAR\(255\) DEFAULT NULL/);
     assert.match(schemaSql, /is_email_verified TINYINT(?:\(1\))? NOT NULL DEFAULT 0/);
     assert.match(schemaSql, /CREATE TABLE IF NOT EXISTS user_auth_identities/);
     assert.match(schemaSql, /CREATE TABLE IF NOT EXISTS email_verification_tokens/);
     assert.match(initDbJs, /normalizeAndUniquifyUserEmails\(connection\)/);
-    assert.match(initDbJs, /dropUniquePhoneIndex\(connection\)/);
+    assert.match(initDbJs, /ensureUniquePhoneIndex\(connection\)/);
+    assert.match(initDbJs, /ALTER TABLE users ADD UNIQUE KEY unique_phone \(phone\)/);
     assert.match(initDbJs, /removeLegacySplitPaymentTables\(connection\)/);
     assert.match(initDbJs, /Legacy split payment tables kept because active or pending payment groups still exist/);
     assert.doesNotMatch(initDbJs, /split payment tablolari kaldirilamaz/);

@@ -189,9 +189,10 @@ async function loadProfileReservations() {
         } catch (e) { console.error("Abonelikler çekilemedi:", e); }
     }
 
-    const userRes = userReservations.filter(r => 
-        ((r.user_id && currentUser && parseInt(r.user_id) === parseInt(currentUser.id)) ||
-        (r.user_name && currentUser && r.user_name.toLocaleUpperCase('tr-TR') === currentUser.name.toLocaleUpperCase('tr-TR'))) &&
+    const userRes = userReservations.filter(r =>
+        r.user_id &&
+        currentUser &&
+        parseInt(r.user_id) === parseInt(currentUser.id) &&
         r.status !== 'cancelled'
     );
     
@@ -1052,4 +1053,3 @@ async function submitFieldCardComment(fieldKey, event) {
 // =======================================================
 // ENTEGRASYON, OTP, YORUM VE KARALİSTE DESTEKLERİ
 // =======================================================
-

@@ -111,7 +111,7 @@ async function initDatabase(connection) {
 
     await normalizeAndUniquifyUserEmails(connection);
     await ensureUsersAuthColumns(connection);
-    await dropUniquePhoneIndex(connection);
+    await ensureUniquePhoneIndex(connection);
     await removeLegacySplitPaymentTables(connection);
     const [emailIndex] = await connection.query(
         "SHOW INDEX FROM users WHERE Key_name = 'unique_email'"
@@ -347,12 +347,24 @@ async function ensureUsersAuthColumns(connection) {
     }
 }
 
-async function dropUniquePhoneIndex(connection) {
+async function ensureUniquePhoneIndex(connection) {
     try {
+        const [duplicateRows] = await connection.query(
+            `SELECT phone, COUNT(*) AS count
+             FROM users
+             WHERE phone IS NOT NULL AND phone != ''
+             GROUP BY phone
+             HAVING COUNT(*) > 1
+             LIMIT 1`
+        );
+        if (duplicateRows.length > 0) {
+            console.warn('unique_phone index skipped because duplicate user phone rows exist.');
+            return;
+        }
         const [indexRows] = await connection.query("SHOW INDEX FROM users WHERE Key_name = 'unique_phone'");
-        if (indexRows.length > 0) {
-            await connection.query('ALTER TABLE users DROP INDEX unique_phone');
-            console.log('Dropped unique_phone index from users table.');
+        if (indexRows.length === 0) {
+            await connection.query('ALTER TABLE users ADD UNIQUE KEY unique_phone (phone)');
+            console.log('Ensured unique_phone index on users table.');
         }
     } catch (err) {
         console.error('unique_phone index migration failed:', err.message);

@@ -64,15 +64,26 @@ function createRequest(body) {
     };
 }
 
+async function withEnv(key, value, fn) {
+    const previous = process.env[key];
+    process.env[key] = value;
+    try {
+        await fn();
+    } finally {
+        if (previous === undefined) delete process.env[key];
+        else process.env[key] = previous;
+    }
+}
+
 test('register rejects an existing email before insert and normalizes case', async () => {
     const queries = [];
     const connection = {
         async query(sql, params) {
             queries.push({ sql, params });
             if (sql.startsWith('SELECT COUNT(DISTINCT fieldKey)')) return [[{ count: 0 }]];
-            if (sql.startsWith('SELECT id FROM users WHERE email')) {
+            if (sql.startsWith('SELECT id, is_email_verified FROM users WHERE email')) {
                 assert.deepEqual(params, ['berk@example.com']);
-                return [[{ id: 7 }]];
+                return [[{ id: 7, is_email_verified: 1 }]];
             }
             throw new Error('insert should not be reached');
         },
@@ -96,17 +107,61 @@ test('register rejects an existing email before insert and normalizes case', asy
     assert.equal(queries.some(q => q.sql.startsWith('INSERT INTO users')), false);
 });
 
-test('register allows duplicate phone when email is unique', async () => {
+test('register resends verification for an existing unverified email', async () => {
+    await withEnv('EMAIL_VERIFICATION_REQUIRED', 'true', async () => {
+        let sent = false;
+        const queries = [];
+        const connection = {
+            async query(sql, params) {
+                queries.push({ sql, params });
+                if (sql.startsWith('SELECT COUNT(DISTINCT fieldKey)')) return [[{ count: 0 }]];
+                if (sql.startsWith('SELECT id, is_email_verified FROM users WHERE email')) {
+                    return [[{ id: 7, is_email_verified: 0 }]];
+                }
+                if (sql.startsWith('REPLACE INTO email_verification_tokens')) {
+                    assert.equal(params[0], 7);
+                    return [{}];
+                }
+                throw new Error(`unexpected query: ${sql}`);
+            },
+            release() {}
+        };
+        const { app, routes } = createAppForRoutes();
+        initAuthRoutes(app, createDb(connection), {
+            mailer: async ({ to }) => {
+                assert.equal(to, 'berk@example.com');
+                sent = true;
+            }
+        });
+        const response = createResponse();
+
+        await runHandlers(routes.get('POST /api/register'), createRequest({
+            firstName: 'Berk',
+            lastName: 'Ceyhan',
+            phone: '05664477889',
+            email: 'berk@example.com',
+            password: '123456'
+        }), response);
+
+        assert.equal(response.statusCode, 202);
+        assert.equal(response.body.success, true);
+        assert.equal(response.body.requiresEmailVerification, true);
+        assert.equal(response.body.emailSent, true);
+        assert.equal(sent, true);
+        assert.equal(queries.some(q => q.sql.startsWith('INSERT INTO users')), false);
+    });
+});
+
+test('register rejects duplicate phone when email is unique', async () => {
     const queries = [];
     const connection = {
         async query(sql, params) {
             queries.push({ sql, params });
             if (sql.startsWith('SELECT COUNT(DISTINCT fieldKey)')) return [[{ count: 0 }]];
-            if (sql.startsWith('SELECT id FROM users WHERE email')) return [[]];
-            if (sql.startsWith('INSERT INTO users')) {
-                assert.deepEqual(params.slice(0, 4), ['Berk', 'Ceyhan', '05000000000', 'new@example.com']);
-                assert.equal(params[5], 1);
-                return [{ insertId: 11 }];
+            if (sql.startsWith('SELECT id, is_email_verified FROM users WHERE email')) return [[]];
+            if (sql.startsWith('SELECT id FROM users WHERE phone = ?')) {
+                assert.deepEqual(params, ['05000000000']);
+                return [[{ id: 3 }]];
             }
             throw new Error(`unexpected query: ${sql}`);
         },
@@ -124,10 +179,11 @@ test('register allows duplicate phone when email is unique', async () => {
         password: '123456'
     }), response);
 
-    assert.equal(response.statusCode, 200);
-    assert.equal(response.body.success, true);
-    assert.equal(response.body.user.phone, '05000000000');
-    assert.equal(queries.some(q => /WHERE phone\b/i.test(q.sql)), false);
+    assert.equal(response.statusCode, 409);
+    assert.equal(response.body.success, false);
+    assert.equal(response.body.code, 'PHONE_IN_USE');
+    assert.match(response.body.message, /telefon/);
+    assert.equal(queries.some(q => q.sql.startsWith('INSERT INTO users')), false);
 });
 
 test('google auth endpoint stays hidden until feature flag is enabled', async () => {
